@@ -58,3 +58,107 @@ class UserProfile(models.Model):
     class Meta:
         verbose_name        = "Profil utilisateur"
         verbose_name_plural = "Profils utilisateurs"
+
+
+# ── Groupes de soutien ────────────────────────────────────────────────────────
+
+class SanaGroup(models.Model):
+    name        = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    icon        = models.CharField(max_length=20, default='👥')
+    created_by  = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_groups')
+    members     = models.ManyToManyField(User, related_name='sana_groups', blank=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    MOOD_SCORE = {'tres_mal': 10, 'pas_bien': 30, 'neutre': 50, 'bien': 70, 'tres_bien': 90}
+
+    class Meta:
+        ordering            = ['created_at']
+        verbose_name        = 'Groupe'
+        verbose_name_plural = 'Groupes'
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def member_count(self):
+        return self.members.count()
+
+
+class GroupMessage(models.Model):
+    group   = models.ForeignKey(SanaGroup, on_delete=models.CASCADE, related_name='messages')
+    sender  = models.ForeignKey(User, on_delete=models.CASCADE, related_name='group_messages')
+    content = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['sent_at']
+        verbose_name        = 'Message de groupe'
+        verbose_name_plural = 'Messages de groupe'
+
+    def __str__(self):
+        return f'[{self.group.name}] {self.sender}: {self.content[:40]}'
+
+
+# ── Suivi de l'humeur ─────────────────────────────────────────────────────────
+
+class MoodEntry(models.Model):
+    MOOD_CHOICES = [
+        ('tres_mal',  '😔 Vraiment mal'),
+        ('pas_bien',  '😟 Pas très bien'),
+        ('neutre',    '😐 Neutre'),
+        ('bien',      '🙂 Bien'),
+        ('tres_bien', '😊 Très bien'),
+    ]
+    _EMOJI = {'tres_mal': '😔', 'pas_bien': '😟', 'neutre': '😐', 'bien': '🙂', 'tres_bien': '😊'}
+    _SCORE = {'tres_mal': 10, 'pas_bien': 30, 'neutre': 50, 'bien': 70, 'tres_bien': 90}
+
+    user        = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mood_entries')
+    mood        = models.CharField(max_length=20, choices=MOOD_CHOICES)
+    note        = models.TextField(blank=True)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-recorded_at']
+        verbose_name        = "Entrée d'humeur"
+        verbose_name_plural = "Entrées d'humeur"
+
+    def __str__(self):
+        return f'{self.user.username} — {self.mood} — {self.recorded_at.date()}'
+
+    @property
+    def emoji(self):
+        return self._EMOJI.get(self.mood, '😐')
+
+    @property
+    def score(self):
+        return self._SCORE.get(self.mood, 50)
+
+
+# ── Posts communautaires ──────────────────────────────────────────────────────
+
+class CommunityPost(models.Model):
+    TAG_CHOICES = [
+        ('anxiete',    'Anxiété'),
+        ('depression', 'Dépression'),
+        ('burnout',    'Burn-out'),
+        ('deuil',      'Deuil'),
+        ('examens',    'Étudiants'),
+        ('famille',    'Famille'),
+        ('travail',    'Travail'),
+        ('guerison',   'Guérison'),
+        ('autre',      'Autre'),
+    ]
+    author     = models.ForeignKey(User, on_delete=models.CASCADE, related_name='community_posts')
+    content    = models.TextField()
+    tag        = models.CharField(max_length=20, choices=TAG_CHOICES, default='autre')
+    likes      = models.ManyToManyField(User, related_name='liked_posts', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Post communautaire'
+        verbose_name_plural = 'Posts communautaires'
+
+    def __str__(self):
+        return f'{self.author.username}: {self.content[:60]}'

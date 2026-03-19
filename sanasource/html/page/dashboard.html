@@ -23,60 +23,63 @@
   --rad:20px;
 }
 html{scroll-behavior:smooth;}
-body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);overflow-x:hidden;min-height:100vh;}
+body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);overflow-x:hidden;min-height:100vh;}
 
 /* ── SIDEBAR ── */
 .sidebar{
   position:fixed;top:0;left:0;bottom:0;width:var(--sid);z-index:300;
-  background:var(--p950);
+  background:var(--white);
+  border-right:1px solid rgba(194,110,138,.12);
+  box-shadow:3px 0 24px rgba(194,110,138,.07);
   display:flex;flex-direction:column;
   transition:transform .35s cubic-bezier(.22,1,.36,1);
 }
 .sid-brand{
   padding:24px 22px 20px;
-  border-bottom:1px solid rgba(255,255,255,.07);
+  border-bottom:1px solid rgba(194,110,138,.1);
   flex-shrink:0;
 }
 .sid-logo{
   font-family:'Playfair Display',serif;font-size:1.8rem;
-  font-weight:300;font-style:italic;color:var(--r100);
+  font-weight:300;font-style:italic;color:var(--p700);
   letter-spacing:3px;text-decoration:none;display:block;
 }
-.sid-tagline{font-size:.6rem;text-transform:uppercase;letter-spacing:3px;color:rgba(255,255,255,.3);margin-top:4px;}
+.sid-tagline{font-size:.6rem;text-transform:uppercase;letter-spacing:3px;color:var(--txt-s);margin-top:4px;}
 
 .sid-user{
-  padding:16px 22px;border-bottom:1px solid rgba(255,255,255,.07);
+  padding:16px 22px;border-bottom:1px solid rgba(194,110,138,.1);
   display:flex;align-items:center;gap:10px;flex-shrink:0;
+  background:var(--blush);
 }
 .sid-av{
   width:36px;height:36px;border-radius:50%;
-  background:linear-gradient(135deg,var(--r500),var(--p700));
+  background:linear-gradient(135deg,var(--r300),var(--r500));
   display:flex;align-items:center;justify-content:center;
   font-size:.9rem;color:white;font-weight:500;flex-shrink:0;
 }
-.sid-name{font-size:.8rem;font-weight:500;color:rgba(255,255,255,.85);}
-.sid-anon{font-size:.62rem;color:rgba(255,255,255,.35);letter-spacing:1.5px;}
+.sid-name{font-size:.8rem;font-weight:500;color:var(--p950);}
+.sid-anon{font-size:.62rem;color:var(--r500);letter-spacing:1.5px;}
 
 .sid-nav{flex:1;overflow-y:auto;padding:12px 0;}
 .sid-nav::-webkit-scrollbar{width:3px;}
-.sid-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px;}
+.sid-nav::-webkit-scrollbar-thumb{background:rgba(194,110,138,.2);border-radius:3px;}
 
 .nav-section-label{
   font-size:.55rem;text-transform:uppercase;letter-spacing:3px;
-  color:rgba(255,255,255,.25);padding:12px 22px 4px;
+  color:var(--txt-s);padding:12px 22px 4px;
 }
 .nav-item{
   display:flex;align-items:center;gap:10px;
   padding:10px 22px;cursor:pointer;
   transition:background .2s,color .2s;
   border-left:2px solid transparent;
-  font-size:.78rem;font-weight:400;color:rgba(255,255,255,.55);
+  font-size:.78rem;font-weight:400;color:var(--txt-m);
   letter-spacing:.5px;
 }
-.nav-item:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.85);}
+.nav-item:hover{background:var(--r50);color:var(--p700);}
 .nav-item.active{
-  background:rgba(194,110,138,.12);color:var(--r300);
-  border-left-color:var(--r500);
+  background:var(--r50);color:var(--r500);
+  border-left-color:var(--r500);font-weight:500;
 }
 .nav-item svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;flex-shrink:0;}
 .nav-badge{
@@ -85,7 +88,8 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
 }
 
 .sid-footer{
-  padding:16px 22px;border-top:1px solid rgba(255,255,255,.07);flex-shrink:0;
+  padding:16px 22px;border-top:1px solid rgba(194,110,138,.1);flex-shrink:0;
+  background:var(--blush);
 }
 .urgence-btn{
   display:flex;align-items:center;gap:8px;width:100%;
@@ -100,8 +104,8 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
 /* ── TOP BAR ── */
 .topbar{
   position:fixed;top:0;left:var(--sid);right:0;height:var(--nav-h);z-index:200;
-  background:rgba(254,250,248,.94);backdrop-filter:blur(20px);
-  border-bottom:1px solid rgba(194,110,138,.1);
+  background:rgba(253,243,247,.96);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(194,110,138,.12);
   display:flex;align-items:center;justify-content:space-between;
   padding:0 clamp(16px,3vw,32px);
   transition:left .35s;
@@ -167,26 +171,28 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
    SECTION 0 — ACCUEIL
 ══════════════════════════════════ */
 .welcome-card{
-  background:linear-gradient(135deg,var(--p950),var(--p700));
+  background:linear-gradient(135deg,var(--white) 0%,var(--r50) 50%,var(--r100) 100%);
+  border:1px solid rgba(194,110,138,.14);
   border-radius:clamp(20px,3vw,32px);
   padding:clamp(24px,4vw,40px);
   display:flex;align-items:center;justify-content:space-between;gap:20px;
   margin-bottom:clamp(16px,2.5vw,24px);
   position:relative;overflow:hidden;
+  box-shadow:0 4px 24px rgba(194,110,138,.1);
 }
 .welcome-card::before{
-  content:'';position:absolute;width:300px;height:300px;border-radius:50%;
-  background:radial-gradient(circle,rgba(194,110,138,.18),transparent 70%);
+  content:'';position:absolute;width:320px;height:320px;border-radius:50%;
+  background:radial-gradient(circle,rgba(194,110,138,.08),transparent 70%);
   top:-80px;right:-60px;pointer-events:none;
 }
 .wc-left{}
-.wc-greeting{font-size:.68rem;text-transform:uppercase;letter-spacing:3px;color:rgba(253,243,247,.45);margin-bottom:6px;}
-.wc-name{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,4vw,2.4rem);font-weight:300;color:var(--r100);margin-bottom:8px;}
-.wc-name em{font-style:italic;}
-.wc-msg{font-size:clamp(.82rem,1.5vw,.9rem);color:rgba(253,243,247,.6);font-weight:300;line-height:1.7;max-width:420px;}
+.wc-greeting{font-size:.68rem;text-transform:uppercase;letter-spacing:3px;color:var(--txt-s);margin-bottom:6px;}
+.wc-name{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,4vw,2.4rem);font-weight:300;color:var(--p700);margin-bottom:8px;}
+.wc-name em{font-style:italic;color:var(--r500);}
+.wc-msg{font-size:clamp(.82rem,1.5vw,.9rem);color:var(--txt-m);font-weight:300;line-height:1.7;max-width:420px;}
 .wc-right{flex-shrink:0;text-align:center;}
-.wc-date{font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:300;font-style:italic;color:rgba(253,243,247,.2);line-height:1;}
-.wc-day{font-size:.65rem;text-transform:uppercase;letter-spacing:3px;color:rgba(253,243,247,.35);}
+.wc-date{font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:300;font-style:italic;color:rgba(194,110,138,.18);line-height:1;}
+.wc-day{font-size:.65rem;text-transform:uppercase;letter-spacing:3px;color:var(--txt-s);}
 
 /* Mood selector */
 .mood-bar{
@@ -258,7 +264,7 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
   font-size:.72rem;font-weight:400;letter-spacing:1px;cursor:pointer;transition:all .3s;
   display:flex;align-items:center;justify-content:center;gap:5px;border:none;
 }
-.btn-primary-sm{background:var(--p950);color:var(--blush);}
+.btn-primary-sm{background:var(--r500);color:white;}
 .btn-primary-sm:hover{background:var(--p700);}
 .btn-outline-sm{background:transparent;color:var(--p700);border:1px solid rgba(107,47,71,.2);}
 .btn-outline-sm:hover{border-color:var(--r500);color:var(--r500);}
@@ -347,7 +353,7 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
   font-size:clamp(.82rem,1.6vw,.9rem);line-height:1.65;font-weight:300;word-break:break-word;
 }
 .cmsg.bot .cmsg-bubble{background:var(--white);border:1px solid rgba(194,110,138,.1);color:var(--txt);border-bottom-left-radius:4px;box-shadow:0 2px 8px rgba(107,47,71,.06);}
-.cmsg.user .cmsg-bubble{background:linear-gradient(135deg,var(--p700),var(--p950));color:rgba(253,243,247,.92);border-bottom-right-radius:4px;}
+.cmsg.user .cmsg-bubble{background:linear-gradient(135deg,var(--r500),var(--p700));color:white;border-bottom-right-radius:4px;}
 
 .chat-typing{display:none;align-items:flex-end;gap:8px;}
 .chat-typing.show{display:flex;}
@@ -370,7 +376,7 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
 .chat-input:focus{border-color:var(--r500);box-shadow:0 0 0 3px rgba(194,110,138,.1);}
 .chat-input::placeholder{color:var(--txt-s);}
 .chat-send{
-  width:46px;height:46px;border-radius:50%;background:var(--p950);
+  width:46px;height:46px;border-radius:50%;background:var(--r500);
   border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
   transition:background .3s,transform .2s;flex-shrink:0;
 }
@@ -443,7 +449,7 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
 .write-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
 .write-anon-tag{font-size:.65rem;color:var(--txt-s);}
 .btn-post{
-  background:var(--p950);color:var(--blush);border:none;border-radius:100px;
+  background:var(--r500);color:white;border:none;border-radius:100px;
   padding:9px 18px;font-family:'Jost',sans-serif;font-size:.72rem;cursor:pointer;transition:background .3s;
 }
 .btn-post:hover{background:var(--p700);}
@@ -488,7 +494,7 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
   letter-spacing:1px;cursor:pointer;transition:all .3s;
   background:var(--white);border:1px solid rgba(194,110,138,.15);color:var(--txt-m);
 }
-.rtab.active{background:var(--p950);color:var(--blush);border-color:var(--p950);}
+.rtab.active{background:var(--r500);color:white;border-color:var(--r500);}
 .rtab-content{display:none;}
 .rtab-content.active{display:block;}
 
@@ -515,7 +521,7 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
 .conf-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(14px,2.5vw,22px);display:flex;align-items:center;gap:16px;}
 .conf-date-box{
   width:clamp(52px,8vw,64px);height:clamp(52px,8vw,64px);border-radius:14px;
-  background:linear-gradient(135deg,var(--p950),var(--p700));
+  background:linear-gradient(135deg,var(--r500),var(--p700));
   display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;
 }
 .conf-day{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:300;color:var(--r100);line-height:1;}
@@ -601,7 +607,7 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
 .profil-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(24px,4vw,36px);}
 .profil-av-wrap{position:relative;width:fit-content;margin:0 auto 16px;}
 .profil-av{width:clamp(72px,12vw,96px);height:clamp(72px,12vw,96px);border-radius:50%;background:linear-gradient(135deg,var(--r100),var(--r500));display:flex;align-items:center;justify-content:center;font-size:clamp(1.8rem,3.5vw,2.4rem);}
-.profil-av-edit{position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--p950);border:2px solid var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.65rem;color:white;}
+.profil-av-edit{position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--r500);border:2px solid var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.65rem;color:white;}
 .profil-username{font-family:'Playfair Display',serif;font-size:clamp(1.1rem,2vw,1.3rem);font-weight:400;color:var(--p950);text-align:center;margin-bottom:2px;}
 .profil-since{font-size:.65rem;color:var(--txt-s);text-align:center;margin-bottom:16px;}
 .profil-fields{display:flex;flex-direction:column;gap:10px;}
@@ -626,7 +632,9 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
 .mobile-nav{
   display:none;
   position:fixed;bottom:0;left:0;right:0;z-index:400;
-  background:rgba(30,13,23,.97);backdrop-filter:blur(20px);
+  background:rgba(255,255,255,.97);backdrop-filter:blur(20px);
+  border-top:1px solid rgba(194,110,138,.15);
+  box-shadow:0 -4px 20px rgba(194,110,138,.08);
   padding:8px 0 max(8px,env(safe-area-inset-bottom));
   flex-wrap:nowrap;overflow-x:auto;
 }
@@ -634,9 +642,9 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
   display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:6px 12px;cursor:pointer;flex-shrink:0;
   font-size:.52rem;text-transform:uppercase;letter-spacing:1px;
-  color:rgba(255,255,255,.4);transition:color .3s;min-width:56px;
+  color:var(--txt-s);transition:color .3s;min-width:56px;
 }
-.mn-item.active{color:var(--r300);}
+.mn-item.active{color:var(--r500);}
 .mn-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;}
 
 /* Overlay sidebar mobile */
@@ -690,6 +698,133 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
   .bar-chart{height:100px;}
   .mood-stats{grid-template-columns:1fr 1fr;}
 }
+
+/* ══════════════════════════════════
+   THEME PICKER
+══════════════════════════════════ */
+.theme-btn{
+  position:relative;
+  width:36px;height:36px;border-radius:50%;
+  background:var(--blush);border:1px solid rgba(194,110,138,.2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:background .3s;font-size:.9rem;
+}
+.theme-btn:hover{background:var(--r50);}
+.theme-dropdown{
+  position:absolute;top:calc(100% + 10px);right:0;
+  background:var(--white);border:1px solid rgba(194,110,138,.15);
+  border-radius:16px;padding:10px;
+  box-shadow:0 8px 32px rgba(107,47,71,.14);
+  display:none;z-index:500;min-width:180px;
+  animation:secIn .2s ease;
+}
+.theme-dropdown.open{display:block;}
+.theme-opt{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;
+  border-radius:10px;cursor:pointer;transition:background .2s;
+  font-size:.78rem;color:var(--txt-m);font-weight:400;
+}
+.theme-opt:hover{background:var(--blush);}
+.theme-opt.active{background:var(--r50);color:var(--r500);font-weight:500;}
+.theme-swatch{width:16px;height:16px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.7);box-shadow:0 1px 4px rgba(0,0,0,.12);}
+
+/* ══════════════════════════════════
+   THEME: SOMBRE
+══════════════════════════════════ */
+[data-theme="sombre"]{
+  --white:#1e1028;--blush:#170d20;--ivory:#1a1025;--cream:#1c1128;
+  --r50:#2a1535;--r100:#3a2045;--glass:rgba(26,16,36,.85);
+  --txt:#f2dff0;--txt-m:#d4a8cc;--txt-s:#9a7090;
+}
+[data-theme="sombre"] body{background:#120a18;}
+[data-theme="sombre"] .sidebar{background:#170d20;border-right-color:rgba(194,110,138,.25);box-shadow:3px 0 24px rgba(0,0,0,.4);}
+[data-theme="sombre"] .sid-user,[data-theme="sombre"] .sid-footer{background:#120a18;}
+[data-theme="sombre"] .sid-logo{color:var(--r300);}
+[data-theme="sombre"] .sid-tagline{color:rgba(255,255,255,.3);}
+[data-theme="sombre"] .sid-name{color:rgba(255,255,255,.9);}
+[data-theme="sombre"] .sid-anon{color:var(--r300);}
+[data-theme="sombre"] .nav-section-label{color:rgba(255,255,255,.2);}
+[data-theme="sombre"] .nav-item{color:rgba(255,255,255,.5);}
+[data-theme="sombre"] .nav-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85);}
+[data-theme="sombre"] .nav-item.active{background:rgba(194,110,138,.18);color:var(--r300);}
+[data-theme="sombre"] .topbar{background:rgba(18,10,24,.96);border-bottom-color:rgba(194,110,138,.18);}
+[data-theme="sombre"] .topbar-title{color:var(--r300);}
+[data-theme="sombre"] .tb-icon{background:#2a1535;border-color:rgba(194,110,138,.2);}
+[data-theme="sombre"] .tb-av{background:linear-gradient(135deg,var(--r500),var(--p700));}
+[data-theme="sombre"] .mobile-nav{background:rgba(18,10,24,.97);border-top-color:rgba(194,110,138,.2);}
+[data-theme="sombre"] .mn-item{color:rgba(255,255,255,.35);}
+[data-theme="sombre"] .mn-item.active{color:var(--r300);}
+[data-theme="sombre"] .card,.card-glass,[data-theme="sombre"] .chart-card,[data-theme="sombre"] .post-card,[data-theme="sombre"] .group-card,
+[data-theme="sombre"] .blog-card,[data-theme="sombre"] .jeu-card,[data-theme="sombre"] .testi-card,
+[data-theme="sombre"] .pro-card,[data-theme="sombre"] .ressources-card,[data-theme="sombre"] .write-card,
+[data-theme="sombre"] .agenda-card,[data-theme="sombre"] .profil-card,[data-theme="sombre"] .settings-card,
+[data-theme="sombre"] .badges-section-card,[data-theme="sombre"] .pro-profile-card,
+[data-theme="sombre"] .quick-card,[data-theme="sombre"] .mood-bar,[data-theme="sombre"] .badges-strip{background:#1e1028;border-color:rgba(194,110,138,.12);}
+[data-theme="sombre"] .welcome-card{background:linear-gradient(135deg,#2a1535 0%,var(--p700) 55%,var(--r500) 100%);border-color:rgba(194,110,138,.2);}
+[data-theme="sombre"] .wc-greeting{color:rgba(253,243,247,.4);}
+[data-theme="sombre"] .wc-name{color:var(--r100);}
+[data-theme="sombre"] .wc-name em{color:var(--r300);}
+[data-theme="sombre"] .wc-msg{color:rgba(253,243,247,.55);}
+[data-theme="sombre"] .wc-date{color:rgba(253,243,247,.15);}
+[data-theme="sombre"] .wc-day{color:rgba(253,243,247,.3);}
+[data-theme="sombre"] .mood-stat-card,[data-theme="sombre"] .profil-field,
+[data-theme="sombre"] .rdv-item,[data-theme="sombre"] .pro-stat{background:#2a1535;}
+[data-theme="sombre"] .chat-messages{background:#120a18;}
+[data-theme="sombre"] .theme-btn{background:#2a1535;}
+[data-theme="sombre"] .theme-dropdown{background:#1e1028;border-color:rgba(194,110,138,.18);}
+[data-theme="sombre"] .theme-opt:hover{background:#2a1535;}
+[data-theme="sombre"] .write-input{background:#2a1535;color:var(--txt);}
+[data-theme="sombre"] .chat-input{background:#1e1028;border-color:rgba(194,110,138,.25);color:var(--txt);}
+[data-theme="sombre"] .chat-input::placeholder{color:rgba(255,255,255,.25);}
+
+/* ══════════════════════════════════
+   THEME: LAVANDE
+══════════════════════════════════ */
+[data-theme="lavande"]{
+  --r500:#7c5cfc;--r300:#b4a0ff;--r100:#e4deff;--r50:#f0edff;
+  --blush:#f5f2ff;--p950:#1a1040;--p800:#2d1d7a;--p700:#4a35c0;--p400:#7060e0;
+  --txt:#1a1040;--txt-m:#4a3a90;--txt-s:#8878c8;
+}
+[data-theme="lavande"] body{background:#f0edff;}
+[data-theme="lavande"] .topbar{background:rgba(240,237,255,.96);border-bottom-color:rgba(124,92,252,.12);}
+[data-theme="lavande"] .sidebar{border-right-color:rgba(124,92,252,.15);box-shadow:3px 0 24px rgba(74,53,192,.06);}
+[data-theme="lavande"] .sid-logo{color:#4a35c0;}
+[data-theme="lavande"] .sid-anon{color:#7c5cfc;}
+[data-theme="lavande"] .nav-item.active{background:#f0edff;color:#7c5cfc;border-left-color:#7c5cfc;}
+[data-theme="lavande"] .nav-item:hover{background:#f0edff;color:#4a35c0;}
+[data-theme="lavande"] .welcome-card{background:linear-gradient(135deg,#fff 0%,#f0edff 50%,#e4deff 100%);border-color:rgba(124,92,252,.15);}
+[data-theme="lavande"] .wc-name em{color:#7c5cfc;}
+[data-theme="lavande"] .chat-send,[data-theme="lavande"] .btn-primary-sm,[data-theme="lavande"] .btn-post{background:#7c5cfc;}
+[data-theme="lavande"] .rtab.active{background:#7c5cfc;border-color:#7c5cfc;}
+[data-theme="lavande"] .nav-badge{background:#7c5cfc;}
+[data-theme="lavande"] .mobile-nav{border-top-color:rgba(124,92,252,.15);}
+[data-theme="lavande"] .mn-item.active{color:#7c5cfc;}
+
+/* ══════════════════════════════════
+   THEME: NATURE
+══════════════════════════════════ */
+[data-theme="nature"]{
+  --r500:#4a9068;--r300:#82c4a0;--r100:#cceedd;--r50:#e8f7ef;
+  --blush:#f0f8f3;--p950:#0d2818;--p800:#1a4028;--p700:#266040;--p400:#508060;
+  --txt:#0d2818;--txt-m:#2a5038;--txt-s:#6a9878;
+}
+[data-theme="nature"] body{background:#e8f7ef;}
+[data-theme="nature"] .topbar{background:rgba(232,247,239,.96);border-bottom-color:rgba(74,144,104,.12);}
+[data-theme="nature"] .sidebar{border-right-color:rgba(74,144,104,.15);box-shadow:3px 0 24px rgba(26,64,40,.06);}
+[data-theme="nature"] .sid-logo{color:#266040;}
+[data-theme="nature"] .sid-anon{color:#4a9068;}
+[data-theme="nature"] .nav-item.active{background:#e8f7ef;color:#4a9068;border-left-color:#4a9068;}
+[data-theme="nature"] .nav-item:hover{background:#e8f7ef;color:#266040;}
+[data-theme="nature"] .welcome-card{background:linear-gradient(135deg,#fff 0%,#e8f7ef 50%,#cceedd 100%);border-color:rgba(74,144,104,.15);}
+[data-theme="nature"] .wc-name em{color:#4a9068;}
+[data-theme="nature"] .chat-send,[data-theme="nature"] .btn-primary-sm,[data-theme="nature"] .btn-post{background:#4a9068;}
+[data-theme="nature"] .chat-send:hover,[data-theme="nature"] .btn-primary-sm:hover{background:#266040;}
+[data-theme="nature"] .rtab.active{background:#4a9068;border-color:#4a9068;}
+[data-theme="nature"] .nav-badge{background:#4a9068;}
+[data-theme="nature"] .mobile-nav{border-top-color:rgba(74,144,104,.15);}
+[data-theme="nature"] .mn-item.active{color:#4a9068;}
+[data-theme="nature"] .eyebrow{color:#4a9068;}
+[data-theme="nature"] .sec-title em{color:#4a9068;}
 </style>
 </head>
 <body>
@@ -705,10 +840,10 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
   </div>
 
   <div class="sid-user">
-    <div class="sid-av">A</div>
+    <div class="sid-av">{% if user.first_name %}{{ user.first_name|slice:":1"|upper }}{% elif profile %}{{ profile.username_anonyme|slice:":1"|upper }}{% else %}?{% endif %}</div>
     <div>
-      <div class="sid-name">{{ user.username|default:"Anonyme·e" }}</div>
-      <div class="sid-anon">Espace sécurisé</div>
+      <div class="sid-name">{% if user.first_name %}{{ user.first_name }}{% else %}Anonyme·e{% endif %}</div>
+      <div class="sid-anon">{% if profile %}@{{ profile.username_anonyme }}{% else %}Espace sécurisé{% endif %}</div>
     </div>
   </div>
 
@@ -745,6 +880,14 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
     </div>
 
     <div class="nav-section-label">Mon espace</div>
+    <div class="nav-item" onclick="showSection('parcours',this)">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Mon Parcours
+    </div>
+    <div class="nav-item" onclick="showSection('journal',this)">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Mon Journal
+    </div>
     <div class="nav-item" onclick="showSection('pro',this)">
       <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       Mon Professionnel
@@ -753,6 +896,11 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
       <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
       Mes Badges
     </div>
+    <div class="nav-section-label">Sensibilisation</div>
+    <div class="nav-item" onclick="showSection('sensibilisation',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Sensibilisation
+    </div>
     <div class="nav-item" onclick="showSection('profil',this)">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
       Mon Profil
@@ -760,9 +908,13 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
   </nav>
 
   <div class="sid-footer">
-    <a href="/help" class="urgence-btn">
+    <button class="urgence-btn" onclick="openSOS()">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       Urgence — SAMU 185
+    </button>
+    <a href="{% url 'sanasource:logout' %}" style="display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;padding:9px 14px;border-radius:12px;font-family:'Jost',sans-serif;font-size:.72rem;font-weight:400;color:var(--txt-s);text-decoration:none;transition:background .2s,color .2s;" onmouseover="this.style.background='var(--r50)';this.style.color='var(--r500)'" onmouseout="this.style.background='';this.style.color='var(--txt-s)'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Se déconnecter
     </a>
   </div>
 </aside>
@@ -779,10 +931,32 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
     <div class="tb-icon" title="Notifications">
       <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     </div>
+    <!-- Theme picker -->
+    <div style="position:relative;" id="themeWrap">
+      <div class="theme-btn" id="themeBtn" onclick="toggleThemeMenu()" title="Changer le thème">🎨</div>
+      <div class="theme-dropdown" id="themeDropdown">
+        <div class="theme-opt active" id="opt-clair" onclick="setTheme('clair')">
+          <span class="theme-swatch" style="background:linear-gradient(135deg,#fce8f0,#f2d8e4);"></span>
+          Rose clair
+        </div>
+        <div class="theme-opt" id="opt-sombre" onclick="setTheme('sombre')">
+          <span class="theme-swatch" style="background:linear-gradient(135deg,#2a1535,#5e2f47);"></span>
+          Sombre
+        </div>
+        <div class="theme-opt" id="opt-lavande" onclick="setTheme('lavande')">
+          <span class="theme-swatch" style="background:linear-gradient(135deg,#b4a0ff,#7c5cfc);"></span>
+          Lavande
+        </div>
+        <div class="theme-opt" id="opt-nature" onclick="setTheme('nature')">
+          <span class="theme-swatch" style="background:linear-gradient(135deg,#82c4a0,#4a9068);"></span>
+          Nature
+        </div>
+      </div>
+    </div>
     <div class="tb-icon" title="Paramètres" onclick="showSection('profil',null)">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </div>
-    <div class="tb-av">A</div>
+    <div class="tb-av">{% if user.first_name %}{{ user.first_name|slice:":1"|upper }}{% elif profile %}{{ profile.username_anonyme|slice:":1"|upper }}{% else %}?{% endif %}</div>
   </div>
 </header>
 
@@ -795,7 +969,7 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
     <div class="welcome-card">
       <div class="wc-left">
         <div class="wc-greeting">Bon retour,</div>
-        <div class="wc-name">Bonjour, <em>{{ user.username|default:"Anonyme·e" }}</em> 🌸</div>
+        <div class="wc-name">Bonjour, <em>{% if profile %}{{ profile.username_anonyme }}{% elif user.first_name %}{{ user.first_name }}{% else %}Anonyme·e{% endif %}</em> 🌸</div>
         <div class="wc-msg">Comment vas-tu aujourd'hui ? SANA est là pour t'écouter, t'accompagner et célébrer chaque petit pas.</div>
       </div>
       <div class="wc-right">
@@ -808,24 +982,44 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
     <div class="mood-bar">
       <span class="mood-bar-label">Comment te sens-tu ?</span>
       <div class="mood-emojis">
-        <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😔')">😔</button>
-        <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😟')">😟</button>
-        <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😐')">😐</button>
-        <button class="mood-emoji-btn" onclick="selectMoodHome(this,'🙂')">🙂</button>
-        <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😊')">😊</button>
+        <button class="mood-emoji-btn" onclick="quickSaveMood(this,'tres_mal')">😔</button>
+        <button class="mood-emoji-btn" onclick="quickSaveMood(this,'pas_bien')">😟</button>
+        <button class="mood-emoji-btn" onclick="quickSaveMood(this,'neutre')">😐</button>
+        <button class="mood-emoji-btn" onclick="quickSaveMood(this,'bien')">🙂</button>
+        <button class="mood-emoji-btn" onclick="quickSaveMood(this,'tres_bien')">😊</button>
       </div>
       <span class="mood-saved" id="moodSaved">✓ Humeur enregistrée</span>
     </div>
 
-    <!-- Badges strip -->
+    <!-- Badges strip — calculés depuis les vraies données -->
     <div class="badges-strip">
       <span style="font-size:.72rem;font-weight:500;color:var(--txt-m);white-space:nowrap;">Mes badges</span>
+      {# Badge 1: Premier pas — toujours débloqué si inscrit #}
       <div class="badge-item"><div class="badge-icon unlocked">🌱</div><span class="badge-lbl">Premier pas</span></div>
-      <div class="badge-item"><div class="badge-icon unlocked">💬</div><span class="badge-lbl">Première session</span></div>
+      {# Badge 2: 7 jours #}
+      {% if days_on_sana >= 7 %}
       <div class="badge-item"><div class="badge-icon unlocked">🌸</div><span class="badge-lbl">7 jours</span></div>
+      {% else %}
+      <div class="badge-item"><div class="badge-icon locked" title="Reviens dans {{ 7|add:"-"|add:days_on_sana }} jours">🌸</div><span class="badge-lbl">7 jours</span></div>
+      {% endif %}
+      {# Badge 3: Humeur — a enregistré au moins une humeur #}
+      {% if mood_count_week > 0 %}
+      <div class="badge-item"><div class="badge-icon unlocked">📊</div><span class="badge-lbl">Introspection</span></div>
+      {% else %}
+      <div class="badge-item"><div class="badge-icon locked">📊</div><span class="badge-lbl">Introspection</span></div>
+      {% endif %}
+      {# Badge 4: Communauté — a publié au moins un post #}
+      {% if user_posts_count > 0 %}
+      <div class="badge-item"><div class="badge-icon unlocked">🤝</div><span class="badge-lbl">Communauté</span></div>
+      {% else %}
+      <div class="badge-item"><div class="badge-icon locked">🤝</div><span class="badge-lbl">Communauté</span></div>
+      {% endif %}
+      {# Badge 5: 30 jours #}
+      {% if days_on_sana >= 30 %}
+      <div class="badge-item"><div class="badge-icon unlocked">⭐</div><span class="badge-lbl">30 jours</span></div>
+      {% else %}
       <div class="badge-item"><div class="badge-icon locked">⭐</div><span class="badge-lbl">30 jours</span></div>
-      <div class="badge-item"><div class="badge-icon locked">🏆</div><span class="badge-lbl">Mentor</span></div>
-      <div class="badge-item"><div class="badge-icon locked">🎯</div><span class="badge-lbl">Objectif</span></div>
+      {% endif %}
       <button class="btn-sm btn-outline-sm" style="margin-left:auto;white-space:nowrap;" onclick="showSection('badges',null)">Tous →</button>
     </div>
 
@@ -858,8 +1052,8 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
       </div>
       <div class="quick-card qc-6" onclick="showSection('pro',null)">
         <span class="qc-icon">👩‍⚕️</span>
-        <div class="qc-title">Dr. Kouamé</div>
-        <div class="qc-sub">Prends rendez-vous ou envoie un message.</div>
+        <div class="qc-title">Mon professionnel</div>
+        <div class="qc-sub">Consulte ton espace de suivi professionnel.</div>
       </div>
     </div>
 
@@ -868,41 +1062,34 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
       <!-- Professionnel -->
       <div class="pro-card">
         <div class="eyebrow">Mon professionnel</div>
-        <div class="pro-header">
-          <div class="pro-av">👩‍⚕️</div>
-          <div>
-            <div class="pro-name">Dr. Amina Kouamé</div>
-            <div class="pro-spec">Psychologue clinicienne · Abidjan</div>
-            <div class="pro-badge"><span class="pro-status-dot"></span>Disponible aujourd'hui</div>
-          </div>
-        </div>
-        <div class="pro-actions">
-          <button class="btn-sm btn-primary-sm" onclick="showSection('pro',null)">💬 Message</button>
-          <button class="btn-sm btn-outline-sm" onclick="showSection('pro',null)">📅 RDV</button>
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 12px;text-align:center;gap:10px;">
+          <div style="font-size:2.4rem;opacity:.35;">👩‍⚕️</div>
+          <div style="font-size:.88rem;font-weight:500;color:var(--p950);">Aucun professionnel assigné</div>
+          <div style="font-size:.75rem;color:var(--txt-s);line-height:1.6;">La fonctionnalité de suivi professionnel sera disponible prochainement.</div>
         </div>
       </div>
 
       <!-- Ressources -->
       <div class="ressources-card">
-        <div class="eyebrow">Ressources recommandées</div>
-        <div class="ressource-item">
+        <div class="eyebrow">Ressources disponibles</div>
+        <div class="ressource-item" onclick="showSection('ressources',null)" style="cursor:pointer;">
           <div class="ri-icon ri-1">🧘</div>
-          <div><div class="ri-title">Respiration 4-7-8</div><div class="ri-sub">Exercice · 5 min</div></div>
+          <div><div class="ri-title">Exercices de respiration</div><div class="ri-sub">Activité guidée · Section ressources</div></div>
           <span class="ri-arr">→</span>
         </div>
-        <div class="ressource-item">
-          <div class="ri-icon ri-2">📖</div>
-          <div><div class="ri-title">Comprendre l'anxiété</div><div class="ri-sub">Article · 4 min</div></div>
+        <div class="ressource-item" onclick="showSection('humeur',null)" style="cursor:pointer;">
+          <div class="ri-icon ri-2">📊</div>
+          <div><div class="ri-title">Suivi de mon humeur</div><div class="ri-sub">Enregistrer l'humeur du jour</div></div>
           <span class="ri-arr">→</span>
         </div>
-        <div class="ressource-item">
-          <div class="ri-icon ri-3">🌙</div>
-          <div><div class="ri-title">Méditation du soir</div><div class="ri-sub">Audio · 8 min</div></div>
+        <div class="ressource-item" onclick="showSection('communaute',null)" style="cursor:pointer;">
+          <div class="ri-icon ri-3">🤝</div>
+          <div><div class="ri-title">Communauté de soutien</div><div class="ri-sub">Partager ou lire des témoignages</div></div>
           <span class="ri-arr">→</span>
         </div>
-        <div class="ressource-item">
-          <div class="ri-icon ri-4">🎮</div>
-          <div><div class="ri-title">Jeu : Pleine conscience</div><div class="ri-sub">Activité · 10 min</div></div>
+        <div class="ressource-item" onclick="showSection('sensibilisation',null)" style="cursor:pointer;">
+          <div class="ri-icon ri-4">💡</div>
+          <div><div class="ri-title">Briser les tabous</div><div class="ri-sub">Mythes & réalités sur la santé mentale</div></div>
           <span class="ri-arr">→</span>
         </div>
       </div>
@@ -967,15 +1154,9 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
     <div class="humeur-grid">
       <div class="chart-card">
         <div class="chart-card-title">Semaine en cours</div>
-        <div class="chart-card-sub">Du Lundi 13 au Dimanche 19 Mars 2026</div>
+        <div class="chart-card-sub" id="weekLabel">Chargement...</div>
         <div class="bar-chart" id="barChart">
-          <div class="bar-col"><div class="bar" style="height:45%"></div><div class="bar-day">Lun</div><div class="bar-val">😐</div></div>
-          <div class="bar-col"><div class="bar" style="height:30%"></div><div class="bar-day">Mar</div><div class="bar-val">😟</div></div>
-          <div class="bar-col"><div class="bar" style="height:60%"></div><div class="bar-day">Mer</div><div class="bar-val">🙂</div></div>
-          <div class="bar-col"><div class="bar" style="height:55%"></div><div class="bar-day">Jeu</div><div class="bar-val">🙂</div></div>
-          <div class="bar-col"><div class="bar" style="height:75%"></div><div class="bar-day">Ven</div><div class="bar-val">😊</div></div>
-          <div class="bar-col"><div class="bar" style="height:65%"></div><div class="bar-day">Sam</div><div class="bar-val">🙂</div></div>
-          <div class="bar-col"><div class="bar" style="height:80%"></div><div class="bar-day">Dim</div><div class="bar-val">😊</div></div>
+          <!-- rendered by JS from mood_data -->
         </div>
         <div class="mood-legend">
           <div class="ml-item"><div class="ml-dot" style="background:var(--r500)"></div>Bonne humeur</div>
@@ -986,27 +1167,28 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
 
       <div>
         <div class="mood-stats" style="margin-bottom:16px;">
-          <div class="mood-stat-card"><div class="msc-num">😊</div><div class="msc-label">Humeur dominante</div></div>
-          <div class="mood-stat-card"><div class="msc-num">5/7</div><div class="msc-label">Jours enregistrés</div></div>
-          <div class="mood-stat-card"><div class="msc-num">+12%</div><div class="msc-label">vs semaine passée</div></div>
-          <div class="mood-stat-card"><div class="msc-num">3</div><div class="msc-label">Sessions chat</div></div>
+          <div class="mood-stat-card"><div class="msc-num" id="statDominant">—</div><div class="msc-label">Humeur dominante</div></div>
+          <div class="mood-stat-card"><div class="msc-num" id="statDays">{{ mood_count_week }}/7</div><div class="msc-label">Jours enregistrés</div></div>
+          <div class="mood-stat-card"><div class="msc-num">{{ groups_joined_count }}</div><div class="msc-label">Groupes rejoints</div></div>
+          <div class="mood-stat-card"><div class="msc-num">{{ user_posts_count }}</div><div class="msc-label">Posts publiés</div></div>
         </div>
 
         <div class="chart-card">
           <div class="chart-card-title">Enregistrer maintenant</div>
           <div class="chart-card-sub">Comment te sens-tu à cet instant ?</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😔')" style="width:52px;height:52px;">😔</button>
-            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😟')" style="width:52px;height:52px;">😟</button>
-            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😐')" style="width:52px;height:52px;">😐</button>
-            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'🙂')" style="width:52px;height:52px;">🙂</button>
-            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😊')" style="width:52px;height:52px;">😊</button>
+            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'tres_mal')" data-mood="tres_mal" style="width:52px;height:52px;">😔</button>
+            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'pas_bien')" data-mood="pas_bien" style="width:52px;height:52px;">😟</button>
+            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'neutre')" data-mood="neutre" style="width:52px;height:52px;">😐</button>
+            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'bien')" data-mood="bien" style="width:52px;height:52px;">🙂</button>
+            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'tres_bien')" data-mood="tres_bien" style="width:52px;height:52px;">😊</button>
           </div>
           <div style="margin-top:14px;font-size:.78rem;color:var(--txt-s);font-weight:300;">
             Note facultative
           </div>
-          <textarea style="width:100%;margin-top:6px;border:1.5px solid rgba(194,110,138,.18);border-radius:12px;padding:10px;font-family:'Jost',sans-serif;font-size:.82rem;resize:none;outline:none;background:var(--blush);color:var(--txt);" rows="3" placeholder="Qu'est-ce qui influence ton humeur aujourd'hui ?"></textarea>
-          <button class="btn-sm btn-primary-sm" style="margin-top:10px;width:100%;">Enregistrer</button>
+          <textarea id="moodNote" style="width:100%;margin-top:6px;border:1.5px solid rgba(194,110,138,.18);border-radius:12px;padding:10px;font-family:'Jost',sans-serif;font-size:.82rem;resize:none;outline:none;background:var(--blush);color:var(--txt);" rows="3" placeholder="Qu'est-ce qui influence ton humeur aujourd'hui ?"></textarea>
+          <div id="moodSaveMsg" style="display:none;font-size:.72rem;color:var(--sage);margin-top:6px;">✓ Humeur enregistrée !</div>
+          <button class="btn-sm btn-primary-sm" style="margin-top:10px;width:100%;" onclick="saveMoodNow()">Enregistrer</button>
         </div>
       </div>
     </div>
@@ -1018,81 +1200,71 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
     <div class="sec-sub">Partage anonymement, lis des témoignages, ne sois plus seul·e</div>
 
     <div class="comm-layout">
-      <div class="post-feed">
-        <div class="post-card">
+      <div class="post-feed" id="dashPostFeed">
+        {% for post in posts %}
+        {% with anon=post.author.profile.username_anonyme|default:"Anonyme·e" %}
+        <div class="post-card" id="post-{{ post.id }}">
           <div class="post-header">
-            <div class="post-av post-av-1">A</div>
+            <div class="post-av post-av-{{ forloop.counter|divisibleby:3|yesno:"3," }}{{ forloop.counter|divisibleby:2|yesno:"2,1" }}">{{ anon|first|upper }}</div>
             <div>
-              <div class="post-anon">Anonyme·e <span class="post-tag">Anxiété</span></div>
-              <div class="post-meta">🇨🇮 Abidjan · il y a 2h</div>
+              <div class="post-anon">{{ anon }} <span class="post-tag">{{ post.get_tag_display }}</span></div>
+              <div class="post-meta">{{ post.created_at|timesince }} ago</div>
             </div>
           </div>
-          <div class="post-text">J'ai enfin osé en parler à ma mère hier soir. C'était terrifiant mais elle a été plus compréhensive que je ne le pensais. Merci à cette communauté qui m'a donné le courage. 🌸</div>
+          <div class="post-text">{{ post.content }}</div>
           <div class="post-actions">
-            <button class="post-btn" onclick="toggleLike(this)">❤️ <span>24</span></button>
-            <button class="post-btn">💬 <span>8</span></button>
+            <button class="post-btn {% if post.id in user_liked_ids %}liked{% endif %}"
+                    id="like-btn-{{ post.id }}"
+                    onclick="dashToggleLike({{ post.id }}, this)">
+              ❤️ <span id="like-count-{{ post.id }}">{{ post.likes.count }}</span>
+            </button>
+            <button class="post-btn">💬 <span>0</span></button>
             <button class="post-btn">🤝 Soutenir</button>
           </div>
         </div>
-
-        <div class="post-card">
-          <div class="post-header">
-            <div class="post-av post-av-2">B</div>
-            <div>
-              <div class="post-anon">Anonyme·e <span class="post-tag">Étudiants</span></div>
-              <div class="post-meta">🇨🇮 Bouaké · il y a 5h</div>
-            </div>
-          </div>
-          <div class="post-text">La pression des examens devient insupportable. Je dors 4h par nuit depuis 3 semaines. Est-ce que quelqu'un a des conseils pour gérer ce niveau de stress ?</div>
-          <div class="post-actions">
-            <button class="post-btn">❤️ <span>17</span></button>
-            <button class="post-btn">💬 <span>12</span></button>
-            <button class="post-btn">🤝 Soutenir</button>
-          </div>
+        {% endwith %}
+        {% empty %}
+        <div style="text-align:center;padding:40px;color:var(--txt-s);">
+          <div style="font-size:2rem;margin-bottom:10px;">💬</div>
+          <p style="font-size:.85rem;">Aucun post pour l'instant.<br>Sois le premier à partager !</p>
         </div>
-
-        <div class="post-card">
-          <div class="post-header">
-            <div class="post-av post-av-3">C</div>
-            <div>
-              <div class="post-anon">Anonyme·e <span class="post-tag">Burn-out</span></div>
-              <div class="post-meta">🇨🇮 San-Pédro · il y a 1j</div>
-            </div>
-          </div>
-          <div class="post-text">3 mois après mon burn-out, je recommence à cuisiner, à lire, à sourire. La guérison c'est lent mais elle est réelle. Si tu traverses quelque chose de difficile : tiens bon. 💚</div>
-          <div class="post-actions">
-            <button class="post-btn liked">❤️ <span>41</span></button>
-            <button class="post-btn">💬 <span>19</span></button>
-            <button class="post-btn">🤝 Soutenir</button>
-          </div>
-        </div>
+        {% endfor %}
       </div>
 
       <div class="comm-sidebar">
         <div class="write-card">
           <div class="eyebrow">Partager anonymement</div>
-          <textarea class="write-input" rows="4" placeholder="Qu'est-ce qui se passe pour toi en ce moment ?"></textarea>
+          <textarea class="write-input" id="dashWriteContent" rows="4" placeholder="Qu'est-ce qui se passe pour toi en ce moment ?"></textarea>
+          <div style="margin-bottom:8px;">
+            <select id="dashWriteTag" style="width:100%;padding:7px 10px;border:1.5px solid rgba(194,110,138,.18);border-radius:10px;font-family:'Jost',sans-serif;font-size:.78rem;background:var(--blush);color:var(--txt-m);outline:none;cursor:pointer;">
+              <option value="autre">Autre</option>
+              <option value="anxiete">Anxiété</option>
+              <option value="depression">Dépression</option>
+              <option value="burnout">Burn-out</option>
+              <option value="deuil">Deuil</option>
+              <option value="examens">Étudiants</option>
+              <option value="famille">Famille</option>
+              <option value="travail">Travail</option>
+              <option value="guerison">Guérison</option>
+            </select>
+          </div>
           <div class="write-footer">
             <span class="write-anon-tag">🔒 Totalement anonyme</span>
-            <button class="btn-post">Publier</button>
+            <button class="btn-post" onclick="dashPublishPost()">Publier</button>
           </div>
         </div>
 
         <div class="card" style="padding:clamp(16px,2.5vw,22px);">
           <div class="eyebrow">Tendances</div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+            {% for tag_data in tag_counts %}
             <div style="display:flex;justify-content:space-between;font-size:.78rem;">
-              <span style="color:var(--txt-m);">#anxiété</span><span style="color:var(--r500);font-weight:500;">48 posts</span>
+              <span style="color:var(--txt-m);">#{{ tag_data.tag }}</span>
+              <span style="color:var(--r500);font-weight:500;">{{ tag_data.count }} post{{ tag_data.count|pluralize }}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:.78rem;">
-              <span style="color:var(--txt-m);">#examens</span><span style="color:var(--r500);font-weight:500;">31 posts</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:.78rem;">
-              <span style="color:var(--txt-m);">#guérison</span><span style="color:var(--r500);font-weight:500;">26 posts</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:.78rem;">
-              <span style="color:var(--txt-m);">#burnout</span><span style="color:var(--r500);font-weight:500;">19 posts</span>
-            </div>
+            {% empty %}
+            <div style="font-size:.78rem;color:var(--txt-s);text-align:center;padding:10px 0;">Aucune tendance pour l'instant.</div>
+            {% endfor %}
           </div>
         </div>
       </div>
@@ -1104,61 +1276,32 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
     <div class="sec-title">Groupes <em>Thématiques</em></div>
     <div class="sec-sub">Rejoins un espace de soutien adapté à ce que tu vis</div>
 
-    <div class="groups-grid">
-      <div class="group-card gc-1">
-        <span class="group-icon">😰</span>
-        <div class="group-name">Anxiété & Stress</div>
-        <div class="group-desc">Un espace pour parler de l'anxiété du quotidien, partager des techniques de gestion et s'entraider.</div>
+    <div class="groups-grid" id="dashGroupsGrid">
+      {% for group in groups %}
+      <div class="group-card gc-{{ forloop.counter }}">
+        <span class="group-icon">{{ group.icon }}</span>
+        <div class="group-name">{{ group.name }}</div>
+        <div class="group-desc">{{ group.description|default:"Groupe de soutien"|truncatechars:90 }}</div>
         <div class="group-meta">
-          <span class="group-members">👥 142 membres</span>
-          <button class="group-join joined">✓ Rejoint</button>
+          <span class="group-members" id="dgm-count-{{ group.id }}">👥 {{ group.member_count }} membre{{ group.member_count|pluralize }}</span>
+          <button class="group-join {% if group.id in user_group_ids %}joined{% endif %}"
+                  id="dgm-btn-{{ group.id }}"
+                  onclick="dashToggleGroup({{ group.id }}, this)">
+            {% if group.id in user_group_ids %}✓ Rejoint{% else %}Rejoindre{% endif %}
+          </button>
         </div>
       </div>
-      <div class="group-card gc-2">
-        <span class="group-icon">🔥</span>
-        <div class="group-name">Burn-out & Épuisement</div>
-        <div class="group-desc">Pour ceux qui vivent ou ont vécu un burn-out professionnel ou émotionnel. Reconstruction collective.</div>
-        <div class="group-meta">
-          <span class="group-members">👥 87 membres</span>
-          <button class="group-join" onclick="this.classList.add('joined');this.textContent='✓ Rejoint'">Rejoindre</button>
-        </div>
+      {% empty %}
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--txt-s);">
+        <div style="font-size:2rem;margin-bottom:10px;">👥</div>
+        <p style="font-size:.85rem;">Aucun groupe pour l'instant.<br>Sois le premier à en créer un sur la <a href="{% url 'sanasource:group_page' %}" style="color:var(--r500);">page groupes</a> !</p>
       </div>
-      <div class="group-card gc-3">
-        <span class="group-icon">🕊️</span>
-        <div class="group-name">Deuil & Perte</div>
-        <div class="group-desc">Un espace bienveillant pour traverser ensemble les périodes de deuil, qu'il soit lié à un décès ou une rupture.</div>
-        <div class="group-meta">
-          <span class="group-members">👥 53 membres</span>
-          <button class="group-join" onclick="this.classList.add('joined');this.textContent='✓ Rejoint'">Rejoindre</button>
-        </div>
-      </div>
-      <div class="group-card gc-4">
-        <span class="group-icon">🎓</span>
-        <div class="group-name">Étudiants CI</div>
-        <div class="group-desc">Pression académique, orientation, vie en cité universitaire — un groupe pensé pour les étudiants ivoiriens.</div>
-        <div class="group-meta">
-          <span class="group-members">👥 218 membres</span>
-          <button class="group-join joined">✓ Rejoint</button>
-        </div>
-      </div>
-      <div class="group-card gc-5">
-        <span class="group-icon">👩‍👧</span>
-        <div class="group-name">Parentalité</div>
-        <div class="group-desc">Pour les parents qui jonglent avec l'éducation des enfants et leur propre bien-être mental.</div>
-        <div class="group-meta">
-          <span class="group-members">👥 76 membres</span>
-          <button class="group-join" onclick="this.classList.add('joined');this.textContent='✓ Rejoint'">Rejoindre</button>
-        </div>
-      </div>
-      <div class="group-card gc-6">
-        <span class="group-icon">💼</span>
-        <div class="group-name">Vie professionnelle</div>
-        <div class="group-desc">Harcèlement au travail, manque de reconnaissance, équilibre pro/perso — parlons-en ensemble.</div>
-        <div class="group-meta">
-          <span class="group-members">👥 94 membres</span>
-          <button class="group-join" onclick="this.classList.add('joined');this.textContent='✓ Rejoint'">Rejoindre</button>
-        </div>
-      </div>
+      {% endfor %}
+    </div>
+    <div style="text-align:center;margin-top:20px;">
+      <a href="{% url 'sanasource:group_page' %}" style="display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:100px;background:var(--r50);color:var(--r500);font-size:.78rem;font-weight:500;text-decoration:none;border:1px solid rgba(194,110,138,.2);transition:all .2s;" onmouseover="this.style.background='var(--r100)'" onmouseout="this.style.background='var(--r50)'">
+        💬 Voir tous les groupes et discuter
+      </a>
     </div>
   </div>
 
@@ -1176,16 +1319,13 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
 
     <!-- Blog -->
     <div id="tab-blog" class="rtab-content active">
-      <div class="blog-grid">
-        <div class="blog-card">
-          <div class="blog-img bc-img-1">🧠</div>
-          <div class="blog-body">
-            <div class="blog-cat">Santé mentale</div>
-            <div class="blog-title">Comprendre l'anxiété en contexte africain</div>
-            <div class="blog-excerpt">L'anxiété prend des formes culturellement spécifiques. Comment la reconnaître et la surmonter ici, à Abidjan...</div>
-            <div class="blog-footer"><span class="blog-time">14 Mars 2026 · 6 min</span><span class="blog-read">Lire →</span></div>
-          </div>
-        </div>
+      <div style="text-align:center;padding:clamp(40px,6vw,60px) 20px;">
+        <div style="font-size:3rem;margin-bottom:14px;opacity:.3;">📖</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:300;font-style:italic;color:var(--p950);margin-bottom:8px;">Blog bientôt disponible</div>
+        <p style="font-size:.82rem;color:var(--txt-s);line-height:1.75;max-width:380px;margin:0 auto;">Des articles sur la santé mentale adaptés au contexte ivoirien sont en cours de rédaction. Reviens bientôt !</p>
+      </div>
+      <!-- PLACEHOLDER — à supprimer quand le blog aura un modèle Django -->
+      <div class="blog-grid" style="display:none;">
         <div class="blog-card">
           <div class="blog-img bc-img-2">🌿</div>
           <div class="blog-body">
@@ -1232,35 +1372,15 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
           </div>
         </div>
       </div>
+      <!-- /PLACEHOLDER -->
     </div>
 
     <!-- Conférences -->
     <div id="tab-conf" class="rtab-content">
-      <div class="conf-list">
-        <div class="conf-card">
-          <div class="conf-date-box"><div class="conf-day">22</div><div class="conf-month">Mars</div></div>
-          <div class="conf-info">
-            <div class="conf-title">Santé mentale et résilience en Afrique de l'Ouest</div>
-            <div class="conf-speaker">Dr. Amina Kouamé · Psychologue clinicienne, Abidjan</div>
-          </div>
-          <span class="conf-badge conf-live">🔴 En direct</span>
-        </div>
-        <div class="conf-card">
-          <div class="conf-date-box"><div class="conf-day">28</div><div class="conf-month">Mars</div></div>
-          <div class="conf-info">
-            <div class="conf-title">Gérer l'anxiété au quotidien : outils pratiques</div>
-            <div class="conf-speaker">Dr. Kofi Mensah · Psychiatre, CHNU Cocody</div>
-          </div>
-          <span class="conf-badge conf-soon">Bientôt</span>
-        </div>
-        <div class="conf-card">
-          <div class="conf-date-box"><div class="conf-day">5</div><div class="conf-month">Avr</div></div>
-          <div class="conf-info">
-            <div class="conf-title">Parentalité bienveillante et santé émotionnelle des enfants</div>
-            <div class="conf-speaker">Mme. Fatoumata Diallo · Thérapeute familiale</div>
-          </div>
-          <span class="conf-badge conf-soon">Bientôt</span>
-        </div>
+      <div style="text-align:center;padding:clamp(40px,6vw,60px) 20px;">
+        <div style="font-size:3rem;margin-bottom:14px;opacity:.3;">🎙️</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:300;font-style:italic;color:var(--p950);margin-bottom:8px;">Conférences bientôt disponibles</div>
+        <p style="font-size:.82rem;color:var(--txt-s);line-height:1.75;max-width:380px;margin:0 auto;">Des conférences avec des professionnels de santé mentale ivoiriens seront planifiées prochainement.</p>
       </div>
     </div>
 
@@ -1334,65 +1454,14 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
   <!-- ══ MON PROFESSIONNEL ══ -->
   <div id="sec-pro" class="section">
     <div class="sec-title">Mon <em>Professionnel</em></div>
-    <div class="sec-sub">Ton suivi personnalisé avec Dr. Kouamé</div>
+    <div class="sec-sub">Suivi personnalisé avec un spécialiste de santé mentale</div>
 
-    <div class="pro-layout">
-      <div class="pro-profile-card">
-        <div class="pro-big-av">👩‍⚕️</div>
-        <div class="pro-big-name">Dr. Amina Kouamé</div>
-        <div class="pro-big-spec">Psychologue clinicienne</div>
-        <div class="pro-chips">
-          <span class="chip">Anxiété</span>
-          <span class="chip">Burn-out</span>
-          <span class="chip">Deuil</span>
-          <span class="chip">TCC</span>
-        </div>
-        <div class="pro-stats">
-          <div class="pro-stat"><div class="ps-num">8</div><div class="ps-lbl">Séances</div></div>
-          <div class="pro-stat"><div class="ps-num">3</div><div class="ps-lbl">Mois suivie</div></div>
-          <div class="pro-stat"><div class="ps-num">4.9</div><div class="ps-lbl">Note</div></div>
-        </div>
-        <div class="pro-big-actions">
-          <button class="btn-sm btn-primary-sm">💬 Message</button>
-          <button class="btn-sm btn-outline-sm">📅 RDV</button>
-        </div>
-      </div>
-
-      <div class="pro-right">
-        <div class="agenda-card">
-          <div class="chart-card-title">Prochains rendez-vous</div>
-          <div class="rdv-list">
-            <div class="rdv-item">
-              <div class="rdv-time">22 Mars</div>
-              <div class="rdv-info"><div class="rdv-title">Séance de suivi</div><div class="rdv-type">Vidéo · 14h00 – 15h00</div></div>
-              <span class="rdv-badge rdv-upcoming">À venir</span>
-            </div>
-            <div class="rdv-item">
-              <div class="rdv-time">5 Avr</div>
-              <div class="rdv-info"><div class="rdv-title">Bilan mensuel</div><div class="rdv-type">Vidéo · 10h00 – 11h00</div></div>
-              <span class="rdv-badge rdv-upcoming">À venir</span>
-            </div>
-            <div class="rdv-item">
-              <div class="rdv-time">5 Mars</div>
-              <div class="rdv-info"><div class="rdv-title">Séance de suivi</div><div class="rdv-type">Vidéo · 14h00 – 15h00</div></div>
-              <span class="rdv-badge rdv-done">✓ Fait</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="agenda-card">
-          <div class="chart-card-title">Notes de séance</div>
-          <div style="font-size:.82rem;color:var(--txt-m);line-height:1.75;font-weight:300;margin-top:10px;">
-            <div style="background:var(--blush);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
-              <div style="font-size:.62rem;color:var(--txt-s);margin-bottom:4px;">5 Mars 2026</div>
-              Bonne progression sur les techniques de respiration. Continuer les exercices quotidiens. Aborder la gestion des conflits familiaux lors de la prochaine séance.
-            </div>
-            <div style="background:var(--blush);border-radius:12px;padding:12px 14px;">
-              <div style="font-size:.62rem;color:var(--txt-s);margin-bottom:4px;">12 Fév 2026</div>
-              Première séance. Identification des déclencheurs d'anxiété. Objectif : tenir un journal de bord émotionnel pendant 4 semaines.
-            </div>
-          </div>
-        </div>
+    <div class="card" style="padding:clamp(40px,6vw,60px);text-align:center;max-width:520px;margin:0 auto;">
+      <div style="font-size:3.5rem;margin-bottom:16px;opacity:.35;">👩‍⚕️</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:300;font-style:italic;color:var(--p950);margin-bottom:10px;">Aucun professionnel assigné</div>
+      <p style="font-size:.84rem;color:var(--txt-s);line-height:1.75;margin-bottom:24px;">La mise en relation avec des professionnels de santé mentale sera disponible prochainement. Cette fonctionnalité est en cours de développement.</p>
+      <div style="background:var(--blush);border-radius:14px;padding:16px;font-size:.8rem;color:var(--txt-m);line-height:1.7;">
+        <strong>En attendant</strong>, tu peux parler à SANA (notre IA d'écoute), rejoindre des groupes de soutien, ou appeler le <strong>185</strong> (SAMU CI) en cas d'urgence.
       </div>
     </div>
   </div>
@@ -1402,59 +1471,118 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
     <div class="sec-title">Mes <em>Badges</em></div>
     <div class="sec-sub">Chaque badge célèbre un pas sur ton chemin</div>
 
+    {# Badges computed from real data #}
+    {% with unlocked_count=1|add:days_on_sana|divisibleby:7|yesno:"1,0"|add:mood_count_week|add:user_posts_count|add:groups_joined_count %}
     <div class="badges-layout">
       <div class="badges-section-card">
-        <div class="eyebrow">Débloqués (3)</div>
+        <div class="eyebrow">Débloqués</div>
         <div class="badges-grid-full">
+          {# Premier pas — toujours débloqué #}
           <div class="badge-full-item">
             <div class="badge-full-icon bfi-unlocked">🌱</div>
             <div class="badge-full-name">Premier pas</div>
             <div class="badge-full-desc">Inscription sur SANA</div>
           </div>
+          {# Introspection — au moins un enregistrement d'humeur #}
+          {% if mood_count_week > 0 %}
           <div class="badge-full-item">
-            <div class="badge-full-icon bfi-unlocked">💬</div>
-            <div class="badge-full-name">Première session</div>
-            <div class="badge-full-desc">Premier chat avec SANA</div>
+            <div class="badge-full-icon bfi-unlocked">📊</div>
+            <div class="badge-full-name">Introspection</div>
+            <div class="badge-full-desc">Premier enregistrement d'humeur</div>
           </div>
+          {% endif %}
+          {# Communauté — au moins un post publié #}
+          {% if user_posts_count > 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">🤝</div>
+            <div class="badge-full-name">Voix de la communauté</div>
+            <div class="badge-full-desc">Premier post publié</div>
+          </div>
+          {% endif %}
+          {# Mentor — 10 posts publiés #}
+          {% if user_posts_count >= 10 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">🏆</div>
+            <div class="badge-full-name">Mentor</div>
+            <div class="badge-full-desc">10 posts communautaires</div>
+          </div>
+          {% endif %}
+          {# 7 jours #}
+          {% if days_on_sana >= 7 %}
           <div class="badge-full-item">
             <div class="badge-full-icon bfi-unlocked">🌸</div>
             <div class="badge-full-name">7 jours</div>
             <div class="badge-full-desc">Une semaine sur la plateforme</div>
           </div>
+          {% endif %}
+          {# 30 jours #}
+          {% if days_on_sana >= 30 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">⭐</div>
+            <div class="badge-full-name">30 jours</div>
+            <div class="badge-full-desc">Un mois d'engagement</div>
+          </div>
+          {% endif %}
+          {# Groupe — a rejoint au moins un groupe #}
+          {% if groups_joined_count > 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">👥</div>
+            <div class="badge-full-name">Ensemble</div>
+            <div class="badge-full-desc">A rejoint un groupe de soutien</div>
+          </div>
+          {% endif %}
         </div>
       </div>
 
       <div class="badges-section-card">
-        <div class="eyebrow">À débloquer (5)</div>
+        <div class="eyebrow">À débloquer</div>
         <div class="badges-grid-full">
+          {% if mood_count_week == 0 %}
           <div class="badge-full-item">
-            <div class="badge-full-icon bfi-locked">⭐</div>
-            <div class="badge-full-name">30 jours</div>
-            <div class="badge-full-desc">Un mois d'engagement</div>
+            <div class="badge-full-icon bfi-locked">📊</div>
+            <div class="badge-full-name">Introspection</div>
+            <div class="badge-full-desc">Enregistre ta première humeur</div>
           </div>
+          {% endif %}
+          {% if user_posts_count == 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">🤝</div>
+            <div class="badge-full-name">Voix de la communauté</div>
+            <div class="badge-full-desc">Publie ton premier post</div>
+          </div>
+          {% endif %}
+          {% if user_posts_count < 10 %}
           <div class="badge-full-item">
             <div class="badge-full-icon bfi-locked">🏆</div>
             <div class="badge-full-name">Mentor</div>
-            <div class="badge-full-desc">10 posts communautaires</div>
+            <div class="badge-full-desc">{{ user_posts_count }}/10 posts publiés</div>
           </div>
+          {% endif %}
+          {% if days_on_sana < 7 %}
           <div class="badge-full-item">
-            <div class="badge-full-icon bfi-locked">🎯</div>
-            <div class="badge-full-name">Objectif atteint</div>
-            <div class="badge-full-desc">Compléter un parcours</div>
+            <div class="badge-full-icon bfi-locked">🌸</div>
+            <div class="badge-full-name">7 jours</div>
+            <div class="badge-full-desc">{{ days_on_sana }}/7 jours sur SANA</div>
           </div>
+          {% endif %}
+          {% if days_on_sana < 30 %}
           <div class="badge-full-item">
-            <div class="badge-full-icon bfi-locked">🧘</div>
-            <div class="badge-full-name">Zen</div>
-            <div class="badge-full-desc">7 méditations complétées</div>
+            <div class="badge-full-icon bfi-locked">⭐</div>
+            <div class="badge-full-name">30 jours</div>
+            <div class="badge-full-desc">{{ days_on_sana }}/30 jours sur SANA</div>
           </div>
+          {% endif %}
+          {% if groups_joined_count == 0 %}
           <div class="badge-full-item">
-            <div class="badge-full-icon bfi-locked">❤️</div>
-            <div class="badge-full-name">Soutien</div>
-            <div class="badge-full-desc">50 réactions dans la communauté</div>
+            <div class="badge-full-icon bfi-locked">👥</div>
+            <div class="badge-full-name">Ensemble</div>
+            <div class="badge-full-desc">Rejoins un groupe de soutien</div>
           </div>
+          {% endif %}
         </div>
       </div>
     </div>
+    {% endwith %}
   </div>
 
   <!-- ══ MON PROFIL ══ -->
@@ -1465,34 +1593,80 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
     <div class="profil-layout">
       <div class="profil-card">
         <div class="profil-av-wrap">
-          <div class="profil-av">🌸</div>
+          <div class="profil-av">{% if user.first_name %}{{ user.first_name|slice:":1"|upper }}{% else %}🌸{% endif %}</div>
           <div class="profil-av-edit">✏️</div>
         </div>
-        <div class="profil-username">{{ user.username|default:"Anonyme·e" }}</div>
-        <div class="profil-since">Membre depuis Mars 2026</div>
+        <div class="profil-username">{% if profile %}@{{ profile.username_anonyme }}{% else %}Anonyme·e{% endif %}</div>
+        <div class="profil-since">Membre depuis {% if profile %}{{ profile.date_inscription|date:"F Y" }}{% else %}—{% endif %}</div>
         <div class="profil-fields">
           <div class="profil-field">
-            <div class="pf-label">Pseudonyme</div>
-            <div class="pf-value">{{ user.username|default:"Anonyme·e" }}</div>
+            <div class="pf-label">Prénom</div>
+            <div class="pf-value">{{ user.first_name|default:"—" }}{% if user.last_name %} {{ user.last_name }}{% endif %}</div>
+          </div>
+          <div class="profil-field">
+            <div class="pf-label">Nom anonyme</div>
+            <div class="pf-value">{% if profile %}{{ profile.username_anonyme }}{% else %}—{% endif %}</div>
           </div>
           <div class="profil-field">
             <div class="pf-label">Email</div>
-            <div class="pf-value">{{ user.email|default:"●●●●@●●●.com" }}</div>
+            <div class="pf-value">{{ user.email|default:"—" }}</div>
           </div>
+          {% if profile and profile.age %}
           <div class="profil-field">
-            <div class="pf-label">Localisation</div>
-            <div class="pf-value">🇨🇮 Côte d'Ivoire</div>
+            <div class="pf-label">Âge</div>
+            <div class="pf-value">{{ profile.age }} ans</div>
           </div>
+          {% endif %}
+          {% if profile and profile.ville %}
           <div class="profil-field">
-            <div class="pf-label">Sessions chat</div>
-            <div class="pf-value">3 sessions</div>
+            <div class="pf-label">Ville</div>
+            <div class="pf-value">🇨🇮 {{ profile.ville }}</div>
           </div>
+          {% endif %}
+          {% if profile and profile.genre %}
           <div class="profil-field">
-            <div class="pf-label">Streak humeur</div>
-            <div class="pf-value">🔥 5 jours consécutifs</div>
+            <div class="pf-label">Genre</div>
+            <div class="pf-value">{{ profile.get_genre_display }}</div>
           </div>
+          {% endif %}
+          {% if profile and profile.situation %}
+          <div class="profil-field">
+            <div class="pf-label">Situation</div>
+            <div class="pf-value">{{ profile.get_situation_display }}</div>
+          </div>
+          {% endif %}
+          {% if profile and profile.theme_couleur %}
+          <div class="profil-field">
+            <div class="pf-label">Thème</div>
+            <div class="pf-value">{{ profile.get_theme_couleur_display }}</div>
+          </div>
+          {% endif %}
+          {% if profile and profile.objectif_principal %}
+          <div class="profil-field">
+            <div class="pf-label">Mon objectif</div>
+            <div class="pf-value">{{ profile.objectif_principal }}</div>
+          </div>
+          {% endif %}
+          {% if profile and profile.principales_difficultes %}
+          <div class="profil-field">
+            <div class="pf-label">Difficultés</div>
+            <div class="pf-value" style="font-size:.8rem;">{{ profile.principales_difficultes|join:" · " }}</div>
+          </div>
+          {% endif %}
+          {% if profile %}
+          <div class="profil-field">
+            <div class="pf-label">Niveau de détresse initial</div>
+            <div class="pf-value">{{ profile.niveau_urgence }}/5 — {{ profile.get_niveau_urgence_display }}</div>
+          </div>
+          {% if profile.a_deja_consulte is not None %}
+          <div class="profil-field">
+            <div class="pf-label">Déjà consulté un pro ?</div>
+            <div class="pf-value">{% if profile.a_deja_consulte %}Oui{% else %}Non{% endif %}</div>
+          </div>
+          {% endif %}
+          {% endif %}
           <button class="btn-sm btn-outline-sm" style="margin-top:8px;">Modifier mon profil</button>
-          <a href="{% url 'sanasource:login' %}" class="btn-sm btn-primary-sm" style="margin-top:6px;text-align:center;text-decoration:none;">Se déconnecter</a>
+          <a href="{% url 'sanasource:logout' %}" class="btn-sm btn-primary-sm" style="margin-top:6px;text-align:center;text-decoration:none;">Se déconnecter</a>
         </div>
       </div>
 
@@ -1536,6 +1710,250 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
     </div>
   </div>
 
+
+  <!-- ══ MON PARCOURS ══ -->
+  <div id="sec-parcours" class="section">
+    <div class="sec-title">Mon <em>Parcours</em></div>
+    <div class="sec-sub">Ton chemin vers le mieux-être — chaque jour compte</div>
+
+    <div class="grid-2" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      <div class="card" style="padding:clamp(20px,3vw,30px);">
+        <div class="eyebrow">Statistiques</div>
+        <div class="mood-stats" style="margin-top:14px;">
+          <div class="mood-stat-card"><div class="msc-num">{{ days_on_sana|default:"0" }}</div><div class="msc-label">Jours sur SANA</div></div>
+          <div class="mood-stat-card"><div class="msc-num">{{ mood_count_week }}</div><div class="msc-label">Humeurs cette semaine</div></div>
+          <div class="mood-stat-card"><div class="msc-num">{{ user_posts_count }}</div><div class="msc-label">Posts publiés</div></div>
+          <div class="mood-stat-card"><div class="msc-num">{{ groups_joined_count }}</div><div class="msc-label">Groupes rejoints</div></div>
+        </div>
+      </div>
+      <div class="card" style="padding:clamp(20px,3vw,30px);">
+        <div class="eyebrow">Objectif en cours</div>
+        <div style="margin-top:14px;">
+          {% if profile and profile.objectif_principal %}
+          <div style="font-family:'Playfair Display',serif;font-size:clamp(1rem,2vw,1.2rem);font-style:italic;color:var(--p950);margin-bottom:10px;">« {{ profile.objectif_principal }} »</div>
+          {% else %}
+          <div style="font-size:.88rem;color:var(--txt-s);">Aucun objectif défini pour l'instant.</div>
+          {% endif %}
+          <div style="margin-top:16px;">
+            <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--txt-s);margin-bottom:6px;"><span>Progression</span><span>35%</span></div>
+            <div style="background:var(--blush);border-radius:100px;height:8px;"><div style="background:linear-gradient(to right,var(--r500),var(--r300));border-radius:100px;height:8px;width:35%;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:clamp(20px,3vw,28px);margin-bottom:clamp(16px,2.5vw,24px);">
+      <div class="eyebrow">Timeline de ton parcours</div>
+      <div style="margin-top:16px;display:flex;flex-direction:column;gap:0;">
+        <div style="display:flex;gap:16px;padding-bottom:20px;position:relative;">
+          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--r500),var(--p700));display:flex;align-items:center;justify-content:center;font-size:.9rem;color:white;z-index:1;">🌱</div>
+            <div style="flex:1;width:2px;background:rgba(194,110,138,.15);margin-top:4px;"></div>
+          </div>
+          <div style="padding-top:5px;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Inscription sur SANA</div><div style="font-size:.68rem;color:var(--txt-s);margin-top:2px;">{% if profile %}{{ profile.date_inscription|date:"d F Y" }}{% else %}—{% endif %} · Premier pas courageux</div></div>
+        </div>
+        <div style="display:flex;gap:16px;padding-bottom:20px;position:relative;">
+          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--r500),var(--p700));display:flex;align-items:center;justify-content:center;font-size:.9rem;color:white;z-index:1;">💬</div>
+            <div style="flex:1;width:2px;background:rgba(194,110,138,.15);margin-top:4px;"></div>
+          </div>
+          <div style="padding-top:5px;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Première conversation avec SANA</div><div style="font-size:.68rem;color:var(--txt-s);margin-top:2px;">Il y a quelques jours · Tu as osé parler</div></div>
+        </div>
+        <div style="display:flex;gap:16px;padding-bottom:20px;">
+          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--blush);border:2px dashed rgba(194,110,138,.3);display:flex;align-items:center;justify-content:center;font-size:.9rem;z-index:1;">🩺</div>
+          </div>
+          <div style="padding-top:5px;"><div style="font-size:.82rem;font-weight:500;color:var(--txt-s);">Premier rendez-vous professionnel</div><div style="font-size:.68rem;color:var(--txt-s);margin-top:2px;">À débloquer · Quand tu te sentiras prêt·e</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:clamp(20px,3vw,28px);">
+      <div class="eyebrow">Prochaines étapes suggérées</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blush);border-radius:12px;cursor:pointer;" onclick="showSection('humeur',null)">
+          <span style="font-size:1.2rem;">📊</span>
+          <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Enregistrer ton humeur aujourd'hui</div><div style="font-size:.68rem;color:var(--txt-s);">Maintenir le streak 🔥</div></div>
+          <span style="color:var(--r500);font-size:.8rem;">→</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blush);border-radius:12px;cursor:pointer;" onclick="showSection('ressources',null)">
+          <span style="font-size:1.2rem;">🧘</span>
+          <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Faire un exercice de respiration</div><div style="font-size:.68rem;color:var(--txt-s);">5 minutes · Recommandé pour toi</div></div>
+          <span style="color:var(--r500);font-size:.8rem;">→</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blush);border-radius:12px;cursor:pointer;" onclick="showSection('journal',null)">
+          <span style="font-size:1.2rem;">📓</span>
+          <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Écrire dans ton journal</div><div style="font-size:.68rem;color:var(--txt-s);">Poser tes pensées du jour</div></div>
+          <span style="color:var(--r500);font-size:.8rem;">→</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MON JOURNAL ══ -->
+  <div id="sec-journal" class="section">
+    <div class="sec-title">Mon <em>Journal</em></div>
+    <div class="sec-sub">Ton espace privé — confidentiel, uniquement pour toi</div>
+
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:clamp(14px,2vw,20px);" id="journalLayout">
+      <div>
+        <div class="card" style="padding:clamp(18px,3vw,28px);margin-bottom:14px;">
+          <div class="eyebrow">Nouvelle entrée — {{ "today"|date:"d F Y" }}</div>
+          <div style="margin-top:12px;">
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+              <button class="post-btn" onclick="setJournalMood(this,'😄')">😄</button>
+              <button class="post-btn" onclick="setJournalMood(this,'🙂')">🙂</button>
+              <button class="post-btn" onclick="setJournalMood(this,'😐')">😐</button>
+              <button class="post-btn" onclick="setJournalMood(this,'😟')">😟</button>
+              <button class="post-btn" onclick="setJournalMood(this,'😢')">😢</button>
+              <span id="journalMoodLabel" style="font-size:.72rem;color:var(--txt-s);align-self:center;margin-left:4px;"></span>
+            </div>
+            <input type="text" id="journalTitle" placeholder="Un titre (optionnel)..." style="width:100%;border:1.5px solid rgba(194,110,138,.18);border-radius:10px;padding:10px 14px;font-family:'Jost',sans-serif;font-size:.88rem;background:var(--blush);color:var(--txt);outline:none;margin-bottom:10px;transition:border-color .3s;" onfocus="this.style.borderColor='var(--r500)'" onblur="this.style.borderColor='rgba(194,110,138,.18)'"/>
+            <textarea id="journalContent" rows="8" placeholder="Comment tu te sens ? Qu'est-ce qui s'est passé aujourd'hui ? Pas de jugement ici, c'est ton espace..." style="width:100%;border:1.5px solid rgba(194,110,138,.18);border-radius:12px;padding:12px 14px;font-family:'Jost',sans-serif;font-size:.88rem;resize:vertical;outline:none;background:var(--blush);color:var(--txt);line-height:1.7;transition:border-color .3s;" onfocus="this.style.borderColor='var(--r500)'" onblur="this.style.borderColor='rgba(194,110,138,.18)'"></textarea>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+              <span style="font-size:.65rem;color:var(--txt-s);">🔒 Privé · Jamais partagé</span>
+              <button class="btn-sm btn-primary-sm" onclick="saveJournalEntry()" style="padding:10px 20px;">Enregistrer</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Entrées précédentes -->
+        <div class="eyebrow" style="margin-bottom:10px;">Entrées précédentes</div>
+        <div style="display:flex;flex-direction:column;gap:10px;" id="journalEntries">
+          <div class="card" style="padding:clamp(14px,2.5vw,20px);cursor:pointer;" onclick="this.querySelector('.je-body').style.display=this.querySelector('.je-body').style.display==='none'?'block':'none'">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:1.1rem;">🙂</span>
+              <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Une journée plutôt bien</div><div style="font-size:.65rem;color:var(--txt-s);">Hier · 18 Mars 2026</div></div>
+              <span style="color:var(--txt-s);font-size:.8rem;">▼</span>
+            </div>
+            <div class="je-body" style="display:none;margin-top:10px;font-size:.82rem;color:var(--txt-m);line-height:1.75;font-weight:300;">J'ai réussi à finir le rapport que je reportais depuis une semaine. Sentiment de fierté. La respiration du matin aide vraiment à commencer la journée plus sereinement.</div>
+          </div>
+          <div class="card" style="padding:clamp(14px,2.5vw,20px);cursor:pointer;" onclick="this.querySelector('.je-body').style.display=this.querySelector('.je-body').style.display==='none'?'block':'none'">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:1.1rem;">😐</span>
+              <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Journée mitigée</div><div style="font-size:.65rem;color:var(--txt-s);">17 Mars 2026</div></div>
+              <span style="color:var(--txt-s);font-size:.8rem;">▼</span>
+            </div>
+            <div class="je-body" style="display:none;margin-top:10px;font-size:.82rem;color:var(--txt-m);line-height:1.75;font-weight:300;">Quelques tensions au travail. J'ai l'impression de ne pas être entendu. Mais j'ai parlé à SANA et ça m'a aidé à mettre les mots dessus.</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="padding:clamp(16px,2.5vw,22px);margin-bottom:12px;">
+          <div class="eyebrow">Prompts du jour</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+            <div style="background:var(--blush);border-radius:10px;padding:10px 12px;font-size:.78rem;color:var(--txt-m);cursor:pointer;transition:background .2s;" onclick="document.getElementById('journalContent').value='Aujourd\'hui, quelque chose qui m\'a rendu heureux·se : '" onmouseover="this.style.background='var(--r50)'" onmouseout="this.style.background='var(--blush)'">
+              💛 Qu'est-ce qui t'a rendu heureux·se aujourd'hui ?
+            </div>
+            <div style="background:var(--blush);border-radius:10px;padding:10px 12px;font-size:.78rem;color:var(--txt-m);cursor:pointer;transition:background .2s;" onclick="document.getElementById('journalContent').value='Une chose difficile que j\'ai vécue et ce que j\'en retiens : '" onmouseover="this.style.background='var(--r50)'" onmouseout="this.style.background='var(--blush)'">
+              🌱 Une chose difficile et ce que tu en retiens ?
+            </div>
+            <div style="background:var(--blush);border-radius:10px;padding:10px 12px;font-size:.78rem;color:var(--txt-m);cursor:pointer;transition:background .2s;" onclick="document.getElementById('journalContent').value='Ce dont j\'ai besoin en ce moment : '" onmouseover="this.style.background='var(--r50)'" onmouseout="this.style.background='var(--blush)'">
+              🤍 De quoi as-tu besoin en ce moment ?
+            </div>
+            <div style="background:var(--blush);border-radius:10px;padding:10px 12px;font-size:.78rem;color:var(--txt-m);cursor:pointer;transition:background .2s;" onclick="document.getElementById('journalContent').value='3 choses pour lesquelles je suis reconnaissant·e : 1. '" onmouseover="this.style.background='var(--r50)'" onmouseout="this.style.background='var(--blush)'">
+              🙏 3 choses pour lesquelles tu es reconnaissant·e
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding:clamp(16px,2.5vw,22px);">
+          <div class="eyebrow">Ce mois-ci</div>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;"><span style="color:var(--txt-m);">Entrées écrites</span><span style="color:var(--p950);font-weight:500;">8</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;"><span style="color:var(--txt-m);">Humeur dominante</span><span>🙂</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;"><span style="color:var(--txt-m);">Streak d'écriture</span><span style="color:var(--p950);font-weight:500;">🔥 3 jours</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SENSIBILISATION ══ -->
+  <div id="sec-sensibilisation" class="section">
+    <div class="sec-title">Briser les <em>Tabous</em></div>
+    <div class="sec-sub">La santé mentale est une force, pas une faiblesse — parlons-en</div>
+
+    <!-- Bannière choc -->
+    <div style="background:linear-gradient(135deg,var(--p950),var(--p700));border-radius:clamp(20px,3vw,28px);padding:clamp(24px,4vw,40px);margin-bottom:clamp(16px,2.5vw,24px);position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;background:radial-gradient(circle at 80% 50%,rgba(194,110,138,.2),transparent 60%);pointer-events:none;"></div>
+      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:3px;color:rgba(253,243,247,.45);margin-bottom:8px;">Côte d'Ivoire · 2026</div>
+      <div style="font-family:'Playfair Display',serif;font-size:clamp(1.4rem,3vw,2rem);font-weight:300;color:var(--r100);margin-bottom:10px;line-height:1.3;">1 Ivoirien sur 5 souffrira<br>d'un trouble mental dans sa vie.</div>
+      <div style="font-size:clamp(.8rem,1.6vw,.9rem);color:rgba(253,243,247,.65);max-width:500px;line-height:1.7;font-weight:300;">Pourtant, moins de 10 % consultent un professionnel. La stigmatisation tue. SANA est là pour changer ça — ensemble.</div>
+    </div>
+
+    <!-- Mythes vs Réalités -->
+    <div class="eyebrow" style="margin-bottom:12px;">Mythes & Réalités</div>
+    <div class="grid-2" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      <div class="card" style="padding:clamp(18px,3vw,26px);border-left:3px solid #e54a4a;">
+        <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:3px;color:#e54a4a;margin-bottom:10px;font-weight:600;">❌ Mythe</div>
+        <div style="font-family:'Playfair Display',serif;font-size:clamp(.95rem,1.8vw,1.1rem);color:var(--p950);margin-bottom:8px;">"La dépression, c'est de la faiblesse. Prie et ça passera."</div>
+        <div style="font-size:.78rem;color:var(--txt-s);font-weight:300;line-height:1.7;">Ce mythe pousse des milliers d'Ivoiriens à souffrir en silence et à ne pas chercher d'aide médicale appropriée.</div>
+      </div>
+      <div class="card" style="padding:clamp(18px,3vw,26px);border-left:3px solid var(--sage);">
+        <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:3px;color:var(--sage);margin-bottom:10px;font-weight:600;">✓ Réalité</div>
+        <div style="font-family:'Playfair Display',serif;font-size:clamp(.95rem,1.8vw,1.1rem);color:var(--p950);margin-bottom:8px;">La dépression est une maladie médicale, comme le diabète ou le paludisme.</div>
+        <div style="font-size:.78rem;color:var(--txt-s);font-weight:300;line-height:1.7;">Elle a des causes biologiques, psychologiques et sociales. Elle se traite. Chercher de l'aide est un acte de courage, pas de faiblesse.</div>
+      </div>
+      <div class="card" style="padding:clamp(18px,3vw,26px);border-left:3px solid #e54a4a;">
+        <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:3px;color:#e54a4a;margin-bottom:10px;font-weight:600;">❌ Mythe</div>
+        <div style="font-family:'Playfair Display',serif;font-size:clamp(.95rem,1.8vw,1.1rem);color:var(--p950);margin-bottom:8px;">"En parler va m'attirer la honte sur ma famille."</div>
+        <div style="font-size:.78rem;color:var(--txt-s);font-weight:300;line-height:1.7;">La peur du jugement familial est l'une des principales raisons pour lesquelles les Africains ne consultent pas.</div>
+      </div>
+      <div class="card" style="padding:clamp(18px,3vw,26px);border-left:3px solid var(--sage);">
+        <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:3px;color:var(--sage);margin-bottom:10px;font-weight:600;">✓ Réalité</div>
+        <div style="font-family:'Playfair Display',serif;font-size:clamp(.95rem,1.8vw,1.1rem);color:var(--p950);margin-bottom:8px;">Prendre soin de soi protège toute ta famille.</div>
+        <div style="font-size:.78rem;color:var(--txt-s);font-weight:300;line-height:1.7;">Un parent en bonne santé mentale est un meilleur parent. Guérir n'est pas trahir — c'est aimer mieux.</div>
+      </div>
+    </div>
+
+    <!-- Ressources CI -->
+    <div class="eyebrow" style="margin-bottom:12px;">Ressources en Côte d'Ivoire</div>
+    <div class="grid-3" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      <div class="card" style="padding:clamp(16px,2.5vw,22px);text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🏥</div>
+        <div style="font-size:.85rem;font-weight:600;color:var(--p950);margin-bottom:4px;">CHNU de Cocody</div>
+        <div style="font-size:.72rem;color:var(--txt-s);font-weight:300;">Service psychiatrie · Abidjan</div>
+        <div style="margin-top:10px;font-size:.72rem;color:var(--r500);">Consultations disponibles</div>
+      </div>
+      <div class="card" style="padding:clamp(16px,2.5vw,22px);text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">📞</div>
+        <div style="font-size:.85rem;font-weight:600;color:var(--p950);margin-bottom:4px;">SAMU Social</div>
+        <div style="font-size:.72rem;color:var(--txt-s);font-weight:300;">Numéro national : 185</div>
+        <div style="margin-top:10px;font-size:.72rem;color:var(--r500);">24h/24 · Gratuit</div>
+      </div>
+      <div class="card" style="padding:clamp(16px,2.5vw,22px);text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🌍</div>
+        <div style="font-size:.85rem;font-weight:600;color:var(--p950);margin-bottom:4px;">OMS Afrique</div>
+        <div style="font-size:.72rem;color:var(--txt-s);font-weight:300;">Ressources en santé mentale</div>
+        <div style="margin-top:10px;font-size:.72rem;color:var(--r500);">who.int/fr/africa</div>
+      </div>
+    </div>
+
+    <!-- Comment aider quelqu'un -->
+    <div class="card" style="padding:clamp(20px,3vw,32px);">
+      <div class="eyebrow">Comment aider quelqu'un autour de toi ?</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:16px;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--r50);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">👂</div>
+          <div><div style="font-size:.82rem;font-weight:600;color:var(--p950);margin-bottom:3px;">Écoute sans juger</div><div style="font-size:.72rem;color:var(--txt-s);line-height:1.6;">Ne minimise pas. "Je suis là" vaut mieux que des conseils non demandés.</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--sage-p);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">🤝</div>
+          <div><div style="font-size:.82rem;font-weight:600;color:var(--p950);margin-bottom:3px;">Propose une aide concrète</div><div style="font-size:.72rem;color:var(--txt-s);line-height:1.6;">Accompagner à un RDV, cuisiner, appeler régulièrement — les petits gestes comptent.</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--amber-p);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">⚠️</div>
+          <div><div style="font-size:.82rem;font-weight:600;color:var(--p950);margin-bottom:3px;">Signes d'alerte à connaître</div><div style="font-size:.72rem;color:var(--txt-s);line-height:1.6;">Isolement soudain, changements de comportement, idées noires — prends-les au sérieux.</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--blue-p);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">💙</div>
+          <div><div style="font-size:.82rem;font-weight:600;color:var(--p950);margin-bottom:3px;">Prends soin de toi aussi</div><div style="font-size:.72rem;color:var(--txt-s);line-height:1.6;">Aider quelqu'un qui souffre est éprouvant. Tes propres limites sont légitimes.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <!-- MOBILE BOTTOM NAV -->
@@ -1570,12 +1988,32 @@ body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);over
   </div>
 </nav>
 
+<!-- SOS MODAL -->
+<div id="sosModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:white;border-radius:28px;padding:clamp(24px,4vw,40px);max-width:420px;width:100%;text-align:center;animation:secIn .3s ease;">
+    <div style="font-size:3.5rem;margin-bottom:12px;">🆘</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:300;color:#c0392b;margin-bottom:8px;">Aide immédiate</div>
+    <p style="font-size:.88rem;color:#6b4a58;line-height:1.7;margin-bottom:20px;">Tu n'es pas seul·e. Si tu traverses une crise, des professionnels sont disponibles maintenant pour t'aider.</p>
+    <div style="background:#fef2f2;border-radius:16px;padding:20px;margin-bottom:20px;">
+      <div style="font-size:2.8rem;font-weight:900;color:#c0392b;font-family:'Playfair Display',serif;">📞 185</div>
+      <div style="font-size:.9rem;font-weight:600;color:#c0392b;margin-top:4px;">SAMU Côte d'Ivoire</div>
+      <div style="font-size:.75rem;color:#9e6b7e;margin-top:4px;">Disponible 24h/24 · Gratuit · Confidentiel</div>
+    </div>
+    <p style="font-size:.8rem;color:#9a7585;margin-bottom:20px;">Ton professionnel assigné sera également notifié si tu es en situation d'urgence.</p>
+    <div style="display:flex;gap:10px;">
+      <button onclick="closeSOS()" style="flex:1;padding:12px;border:1.5px solid rgba(194,110,138,.25);border-radius:100px;background:white;font-family:'Jost',sans-serif;font-size:.82rem;color:#9a7585;cursor:pointer;">Fermer</button>
+      <a href="tel:185" style="flex:1;padding:12px;background:linear-gradient(135deg,#c0392b,#e74c3c);border-radius:100px;font-family:'Jost',sans-serif;font-size:.82rem;color:white;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;">Appeler le 185</a>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── SECTION NAV ──
 const sectionMap = {
   accueil:'Accueil', chat:'Chat SANA', humeur:'Mon Humeur',
   communaute:'Communauté', groupes:'Groupes', ressources:'Blog & Ressources',
-  pro:'Mon Professionnel', badges:'Mes Badges', profil:'Mon Profil'
+  pro:'Mon Professionnel', badges:'Mes Badges', profil:'Mon Profil',
+  parcours:'Mon Parcours', journal:'Mon Journal', sensibilisation:'Sensibilisation'
 };
 
 function showSection(id, trigger){
@@ -1618,12 +2056,11 @@ function closeSidebar(){
   document.getElementById('wcDay').textContent=days[d.getDay()]+' · '+months[d.getMonth()]+' '+d.getFullYear();
 })();
 
-// ── MOOD HOME ──
-function selectMoodHome(btn, emoji){
-  btn.closest('.mood-emojis, div').querySelectorAll('.mood-emoji-btn').forEach(b=>b.classList.remove('active'));
+// ── MOOD HOME (overridden below by saveMoodNow) ──
+function selectMoodHome(btn, moodVal){
+  btn.closest('div').querySelectorAll('.mood-emoji-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  const saved=document.getElementById('moodSaved');
-  if(saved){saved.classList.add('show');setTimeout(()=>saved.classList.remove('show'),2500);}
+  dashSelectedMood = moodVal;
 }
 function selectMoodChat(btn, emoji){
   btn.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.5');
@@ -1631,7 +2068,7 @@ function selectMoodChat(btn, emoji){
   setTimeout(()=>{btn.parentElement.querySelectorAll('button').forEach(b=>{b.style.opacity='';b.style.transform='';});}, 800);
 }
 
-// ── LIKE ──
+// ── LIKE (legacy, kept for compatibility) ──
 function toggleLike(btn){
   btn.classList.toggle('liked');
   const sp=btn.querySelector('span');
@@ -1714,6 +2151,263 @@ function scrollDashChat(){
   const c=document.getElementById('dashChatMessages');
   requestAnimationFrame(()=>{c.scrollTop=c.scrollHeight;});
 }
+
+// ── SOS MODAL ──
+function openSOS(){
+  const m=document.getElementById('sosModal');
+  m.style.display='flex';
+  document.body.style.overflow='hidden';
+}
+function closeSOS(){
+  document.getElementById('sosModal').style.display='none';
+  document.body.style.overflow='';
+}
+document.getElementById('sosModal').addEventListener('click',function(e){
+  if(e.target===this) closeSOS();
+});
+
+// ── JOURNAL ──
+let journalMoodSelected='';
+function setJournalMood(btn, emoji){
+  document.querySelectorAll('#journalLayout .post-btn').forEach(b=>{b.classList.remove('liked');});
+  btn.classList.add('liked');
+  journalMoodSelected=emoji;
+  const labels={'😄':'Très bien','🙂':'Bien','😐':'Moyen','😟':'Difficile','😢':'Mal'};
+  document.getElementById('journalMoodLabel').textContent='— '+labels[emoji];
+}
+function saveJournalEntry(){
+  const title=document.getElementById('journalTitle').value.trim();
+  const content=document.getElementById('journalContent').value.trim();
+  if(!content){document.getElementById('journalContent').focus();return;}
+  const mood=journalMoodSelected||'📓';
+  const today=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  const entry=document.createElement('div');
+  entry.className='card';
+  entry.style.cssText='padding:clamp(14px,2.5vw,20px);cursor:pointer;margin-bottom:10px;';
+  entry.innerHTML=`<div style="display:flex;align-items:center;gap:10px;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+    <span style="font-size:1.1rem;">${mood}</span>
+    <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">${title||'Entrée du '+today}</div><div style="font-size:.65rem;color:var(--txt-s);">Aujourd'hui · ${today}</div></div>
+    <span style="color:var(--txt-s);font-size:.8rem;">▼</span>
+  </div>
+  <div style="display:none;margin-top:10px;font-size:.82rem;color:var(--txt-m);line-height:1.75;font-weight:300;">${content}</div>`;
+  document.getElementById('journalEntries').prepend(entry);
+  document.getElementById('journalTitle').value='';
+  document.getElementById('journalContent').value='';
+  document.getElementById('journalMoodLabel').textContent='';
+  journalMoodSelected='';
+  document.querySelectorAll('#journalLayout .post-btn').forEach(b=>b.classList.remove('liked'));
+}
+
+// ── JOURNAL LAYOUT RESPONSIVE ──
+function adjustJournalLayout(){
+  const l=document.getElementById('journalLayout');
+  if(l) l.style.gridTemplateColumns=window.innerWidth<900?'1fr':'1fr 300px';
+}
+window.addEventListener('resize',adjustJournalLayout);
+adjustJournalLayout();
+
+// ── MOOD DATA FROM DB ──
+const MOOD_DATA = {{ mood_data|safe }};
+const MOOD_DAYS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+function renderMoodChart() {
+  const chart = document.getElementById('barChart');
+  if (!chart) return;
+  // Build a map: weekday → last entry for that day
+  const dayMap = {};
+  MOOD_DATA.forEach(e => { dayMap[e.day] = e; });
+  let html = '';
+  for (let d = 0; d < 7; d++) {
+    const entry = dayMap[d];
+    const h = entry ? Math.max(8, entry.score) + '%' : '4%';
+    const emoji = entry ? entry.emoji : '';
+    const opacity = entry ? '1' : '0.25';
+    html += `<div class="bar-col">
+      <div class="bar" style="height:${h};opacity:${opacity}"></div>
+      <div class="bar-day">${MOOD_DAYS[d]}</div>
+      <div class="bar-val">${emoji}</div>
+    </div>`;
+  }
+  chart.innerHTML = html;
+
+  // Compute week label
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0=Sun
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = d => `${d.getDate()} ${MONTHS_FR[d.getMonth()].slice(0,4)}`;
+  const wl = document.getElementById('weekLabel');
+  if (wl) wl.textContent = `Du ${fmt(monday)} au ${fmt(sunday)} ${sunday.getFullYear()}`;
+
+  // Compute dominant mood
+  const counts = {};
+  MOOD_DATA.forEach(e => { counts[e.emoji] = (counts[e.emoji] || 0) + 1; });
+  const dominant = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
+  const sd = document.getElementById('statDominant');
+  if (sd) sd.textContent = dominant ? dominant[0] : '—';
+}
+renderMoodChart();
+
+// Quick mood save from accueil bar
+function quickSaveMood(btn, moodVal) {
+  btn.closest('div').querySelectorAll('.mood-emoji-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  fetch('/api/humeur/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+    body: JSON.stringify({mood: moodVal, note: ''}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) return;
+    const saved = document.getElementById('moodSaved');
+    if (saved) { saved.classList.add('show'); setTimeout(() => saved.classList.remove('show'), 2500); }
+    const pyDay = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+    MOOD_DATA.push({day: pyDay, score: data.score, emoji: data.emoji});
+    renderMoodChart();
+    const countEl = document.getElementById('statDays');
+    if (countEl) countEl.textContent = MOOD_DATA.length + '/7';
+  });
+}
+
+let dashSelectedMood = '';
+function selectMoodHome(btn, moodVal) {
+  btn.closest('div').querySelectorAll('.mood-emoji-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  dashSelectedMood = moodVal;
+}
+
+function saveMoodNow() {
+  if (!dashSelectedMood) {
+    alert('Sélectionne une humeur d\'abord.');
+    return;
+  }
+  const note = (document.getElementById('moodNote') || {}).value || '';
+  fetch('/api/humeur/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+    body: JSON.stringify({mood: dashSelectedMood, note}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) return;
+    const msg = document.getElementById('moodSaveMsg');
+    if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display='none', 2500); }
+    // Add to chart data and re-render
+    const today = new Date().getDay();
+    // JS: 0=Sun,1=Mon...6=Sat → Python: 0=Mon...6=Sun
+    const pyDay = today === 0 ? 6 : today - 1;
+    MOOD_DATA.push({day: pyDay, score: data.score, emoji: data.emoji});
+    renderMoodChart();
+    dashSelectedMood = '';
+    document.querySelectorAll('.mood-emoji-btn').forEach(b => b.classList.remove('active'));
+    if (document.getElementById('moodNote')) document.getElementById('moodNote').value = '';
+  });
+}
+
+// ── COMMUNITY AJAX ──
+function dashToggleLike(postId, btn) {
+  fetch('/api/communaute/' + postId + '/like/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'X-CSRFToken': getCsrf()},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) return;
+    btn.classList.toggle('liked', data.is_liked);
+    const countEl = document.getElementById('like-count-' + postId);
+    if (countEl) countEl.textContent = data.like_count;
+  });
+}
+
+function dashPublishPost() {
+  const content = (document.getElementById('dashWriteContent') || {}).value || '';
+  const tag = (document.getElementById('dashWriteTag') || {}).value || 'autre';
+  if (!content.trim()) { document.getElementById('dashWriteContent').focus(); return; }
+  fetch('/api/communaute/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+    body: JSON.stringify({content: content.trim(), tag}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    document.getElementById('dashWriteContent').value = '';
+    const feed = document.getElementById('dashPostFeed');
+    const card = document.createElement('div');
+    card.className = 'post-card';
+    card.id = 'post-' + data.id;
+    card.innerHTML =
+      '<div class="post-header">' +
+        '<div class="post-av post-av-1">' + (data.initial || 'A') + '</div>' +
+        '<div>' +
+          '<div class="post-anon">' + escHtml(data.anon) + ' <span class="post-tag">' + escHtml(data.tag_label) + '</span></div>' +
+          '<div class="post-meta">À l\'instant</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="post-text">' + escHtml(data.content) + '</div>' +
+      '<div class="post-actions">' +
+        '<button class="post-btn" id="like-btn-' + data.id + '" onclick="dashToggleLike(' + data.id + ', this)">❤️ <span id="like-count-' + data.id + '">0</span></button>' +
+        '<button class="post-btn">💬 <span>0</span></button>' +
+        '<button class="post-btn">🤝 Soutenir</button>' +
+      '</div>';
+    feed.prepend(card);
+  });
+}
+
+// ── GROUPS AJAX (DASHBOARD) ──
+function dashToggleGroup(groupId, btn) {
+  fetch('/api/groupes/' + groupId + '/membres/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'X-CSRFToken': getCsrf()},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) return;
+    btn.classList.toggle('joined', data.is_member);
+    btn.textContent = data.is_member ? '✓ Rejoint' : 'Rejoindre';
+    const countEl = document.getElementById('dgm-count-' + groupId);
+    if (countEl) countEl.textContent = '👥 ' + data.member_count + ' membre' + (data.member_count !== 1 ? 's' : '');
+  });
+}
+
+function escHtml(str) {
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── THEME SWITCHER ──
+const THEMES=['clair','sombre','lavande','nature'];
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme', t==='clair'?'':t);
+  localStorage.setItem('sana-theme',t);
+  THEMES.forEach(n=>{
+    const el=document.getElementById('opt-'+n);
+    if(el) el.classList.toggle('active',n===t);
+  });
+  document.getElementById('themeDropdown').classList.remove('open');
+}
+function toggleThemeMenu(){
+  document.getElementById('themeDropdown').classList.toggle('open');
+}
+// Close dropdown on outside click
+document.addEventListener('click',function(e){
+  const wrap=document.getElementById('themeWrap');
+  if(wrap && !wrap.contains(e.target)) document.getElementById('themeDropdown').classList.remove('open');
+});
+// Restore saved theme
+(function(){
+  const saved=localStorage.getItem('sana-theme')||'clair';
+  if(saved&&saved!=='clair') setTheme(saved);
+  else{ THEMES.forEach(n=>{ const el=document.getElementById('opt-'+n); if(el) el.classList.toggle('active',n==='clair'); }); }
+})();
 </script>
 </body>
 </html>
