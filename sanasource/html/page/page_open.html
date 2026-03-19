@@ -1,0 +1,757 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANA — Bienvenue</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Outfit:wght@200;300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --rose-deep: #c17a96;
+            --rose-mid: #d4a0b8;
+            --rose-light: #f2d0de;
+            --rose-pale: #fce8f0;
+            --plum: #7a3d5a;
+            --plum-soft: #a06080;
+            --ivory: #fdf6f9;
+            --white-glass: rgba(255,255,255,0.52);
+            --border-glass: rgba(255,255,255,0.75);
+        }
+
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #fce8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: none;
+            position: relative;
+        }
+
+        /* ===== CUSTOM CURSOR ===== */
+        .cur-dot {
+            width: 7px; height: 7px;
+            background: var(--rose-deep);
+            border-radius: 50%;
+            position: fixed; top: 0; left: 0;
+            pointer-events: none; z-index: 9999;
+            transition: transform 0.05s;
+        }
+        .cur-ring {
+            width: 36px; height: 36px;
+            border: 1.5px solid rgba(193,122,150,0.45);
+            border-radius: 50%;
+            position: fixed; top: 0; left: 0;
+            pointer-events: none; z-index: 9998;
+        }
+        @media (hover: none) {
+            .cur-dot, .cur-ring { display: none; }
+            body { cursor: auto; }
+        }
+
+        /* ===== AURORA BACKGROUND ===== */
+        .aurora {
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 10%, rgba(255,182,205,0.55) 0%, transparent 60%),
+                radial-gradient(ellipse 70% 70% at 80% 80%, rgba(220,150,180,0.4) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 50% at 50% 50%, rgba(252,220,235,0.35) 0%, transparent 65%),
+                linear-gradient(160deg, #fce8f0 0%, #f9d6e6 40%, #f2c8da 100%);
+            animation: auroraShift 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes auroraShift {
+            0% { filter: hue-rotate(0deg) brightness(1); }
+            50% { filter: hue-rotate(8deg) brightness(1.03); }
+            100% { filter: hue-rotate(-5deg) brightness(0.98); }
+        }
+
+        /* ===== NOISE TEXTURE ===== */
+        .noise {
+            position: fixed; inset: 0; z-index: 1; pointer-events: none;
+            opacity: 0.28;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
+            background-size: 180px 180px;
+        }
+
+        /* ===== FLOATING SHAPES ===== */
+        .shapes { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            mix-blend-mode: multiply;
+            animation: shapeFloat linear infinite;
+            opacity: 0;
+        }
+
+        @keyframes shapeFloat {
+            0%   { opacity: 0; transform: translateY(110vh) scale(0) rotate(0deg); }
+            8%   { opacity: 1; }
+            90%  { opacity: 0.5; }
+            100% { opacity: 0; transform: translateY(-10vh) scale(1.2) rotate(270deg); }
+        }
+
+        /* ===== CANVAS ===== */
+        #bgCanvas { position: fixed; inset: 0; z-index: 0; }
+
+        /* ===== MAIN CARD ===== */
+        .card {
+            position: relative; z-index: 10;
+            width: min(500px, 93vw);
+            text-align: center;
+            opacity: 0;
+            animation: cardEnter 1.4s 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes cardEnter {
+            from { opacity: 0; transform: translateY(40px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ===== GLASS PANEL ===== */
+        .glass {
+            background: var(--white-glass);
+            backdrop-filter: blur(28px) saturate(1.4);
+            -webkit-backdrop-filter: blur(28px) saturate(1.4);
+            border: 1px solid var(--border-glass);
+            border-radius: 40px;
+            padding: clamp(32px, 6vw, 52px) clamp(24px, 5vw, 44px);
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,0.55) inset,
+                0 2px 0 rgba(255,255,255,0.9) inset,
+                0 32px 80px rgba(160,96,128,0.18),
+                0 8px 24px rgba(193,122,150,0.12),
+                0 0 0 0.5px rgba(193,122,150,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Glass shimmer */
+        .glass::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -60%;
+            width: 40%; height: 100%;
+            background: linear-gradient(105deg, transparent, rgba(255,255,255,0.25), transparent);
+            animation: shimmer 6s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { left: -60%; opacity: 0; }
+            40% { opacity: 1; }
+            50% { left: 120%; opacity: 0; }
+        }
+
+        /* Inner glow line at top */
+        .glass::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 20%; right: 20%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+            pointer-events: none;
+        }
+
+        /* ===== AVATAR ===== */
+        .img-wrap {
+            width: clamp(110px, 26vw, 160px);
+            height: clamp(110px, 26vw, 160px);
+            margin: 0 auto clamp(18px, 4vw, 28px);
+            position: relative;
+        }
+
+        /* Rotating dashed ring */
+        .img-ring-rotate {
+            position: absolute;
+            inset: -14px;
+            border-radius: 50%;
+            border: 1px dashed rgba(193,122,150,0.3);
+            animation: rotateSlow 20s linear infinite;
+        }
+
+        @keyframes rotateSlow { to { transform: rotate(360deg); } }
+
+        .img-ring-pulse {
+            position: absolute; inset: -6px;
+            border-radius: 50%;
+            border: 1px solid rgba(193,122,150,0.2);
+            animation: pulseRing 3.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseRing {
+            0%, 100% { inset: -6px; opacity: 0.4; }
+            50%       { inset: -12px; opacity: 0.9; }
+        }
+
+        .img-wrap img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
+            position: relative;
+            z-index: 2;
+            box-shadow:
+                0 0 0 3px rgba(255,255,255,0.8),
+                0 0 0 4px rgba(193,122,150,0.25),
+                0 16px 48px rgba(100,40,70,0.35);
+            animation: avatarFloat 7s ease-in-out infinite;
+        }
+
+        @keyframes avatarFloat {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(-9px); }
+        }
+
+        /* ===== BRAND ===== */
+        .brand-name {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(3.4rem, 11vw, 5.8rem);
+            font-weight: 300;
+            font-style: italic;
+            color: var(--plum);
+            letter-spacing: clamp(10px, 3vw, 22px);
+            line-height: 1;
+            margin-bottom: 4px;
+            /* Subtle text gradient */
+            background: linear-gradient(135deg, var(--plum) 0%, var(--rose-deep) 60%, var(--plum-soft) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand-sub {
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(0.65rem, 2vw, 0.78rem);
+            font-weight: 300;
+            color: var(--plum-soft);
+            letter-spacing: clamp(4px, 1.2vw, 8px);
+            text-transform: uppercase;
+            margin-bottom: clamp(20px, 4vw, 32px);
+            opacity: 0.75;
+        }
+
+        /* ===== DIVIDER ===== */
+        .divider {
+            width: 60px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--rose-deep), transparent);
+            margin: 0 auto clamp(16px, 3vw, 24px);
+            opacity: 0.5;
+        }
+
+        /* ===== QUOTE ===== */
+        .quote-wrap {
+            min-height: clamp(90px, 20vw, 128px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: clamp(20px, 4vw, 32px);
+            padding: clamp(16px, 3vw, 24px) clamp(8px, 2vw, 16px);
+            position: relative;
+        }
+
+        /* Decorative quote marks */
+        .quote-open, .quote-close {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2.5rem, 7vw, 4rem);
+            line-height: 1;
+            pointer-events: none;
+            position: absolute;
+            color: rgba(193,122,150,0.15);
+            font-style: italic;
+        }
+        .quote-open { top: 4px; left: 4px; }
+        .quote-close { bottom: 4px; right: 4px; transform: rotate(180deg); }
+
+        .quote-text {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(0.9rem, 2.6vw, 1.1rem);
+            font-style: italic;
+            font-weight: 300;
+            color: var(--plum);
+            line-height: 1.75;
+            max-width: 360px;
+            margin: 0 auto;
+            transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .quote-text.fade { opacity: 0; transform: translateY(8px); }
+
+        .quote-author {
+            font-size: clamp(0.6rem, 1.6vw, 0.7rem);
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 3.5px;
+            color: var(--rose-deep);
+            opacity: 0.65;
+            margin-top: 12px;
+            transition: opacity 0.6s ease;
+        }
+
+        .quote-author.fade { opacity: 0; }
+
+        /* ===== BREATH ===== */
+        .breath-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: clamp(18px, 3.5vw, 28px);
+        }
+
+        .breath-track {
+            flex: 1;
+            height: 2px;
+            background: rgba(193,122,150,0.12);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .breath-track-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--rose-light), var(--rose-deep));
+            animation: breathTrack 8s ease-in-out infinite;
+            transform-origin: left;
+        }
+
+        @keyframes breathTrack {
+            0%, 100% { width: 5%; }
+            40%       { width: 100%; }
+            60%       { width: 100%; }
+        }
+
+        .breath-orb {
+            width: clamp(40px, 9vw, 54px);
+            height: clamp(40px, 9vw, 54px);
+            border-radius: 50%;
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(193,122,150,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .breath-orb::before {
+            content: '';
+            width: 60%; height: 60%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(193,122,150,0.7), rgba(122,61,90,0.3));
+            animation: breathAnim 8s ease-in-out infinite;
+        }
+
+        @keyframes breathAnim {
+            0%, 100% { transform: scale(0.55); opacity: 0.5; }
+            40%       { transform: scale(1.6); opacity: 1; }
+            60%       { transform: scale(1.6); opacity: 0.85; }
+        }
+
+        .breath-label {
+            font-size: clamp(0.58rem, 1.5vw, 0.67rem);
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--plum-soft);
+            opacity: 0.6;
+            transition: opacity 0.45s ease;
+            flex: 1;
+            text-align: right;
+        }
+
+        /* ===== PROGRESS ===== */
+        .progress-wrap {
+            margin-bottom: clamp(18px, 3.5vw, 26px);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 2px;
+            background: rgba(193,122,150,0.12);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--plum) 0%, var(--rose-deep) 50%, rgba(255,192,203,0.9) 100%);
+            border-radius: 2px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(193,122,150,0.5);
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .timer-label {
+            font-size: clamp(0.58rem, 1.4vw, 0.66rem);
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: var(--plum-soft);
+            opacity: 0.5;
+        }
+
+        .timer-num {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1rem, 3vw, 1.25rem);
+            color: var(--rose-deep);
+            opacity: 0.75;
+            font-weight: 300;
+            font-style: italic;
+        }
+
+        /* ===== BUTTON ===== */
+        .enter-btn {
+            position: relative;
+            background: transparent;
+            border: 1px solid rgba(193,122,150,0.35);
+            color: var(--plum);
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(0.72rem, 1.8vw, 0.83rem);
+            font-weight: 400;
+            letter-spacing: clamp(2.5px, 0.6vw, 5px);
+            text-transform: uppercase;
+            padding: clamp(15px, 3vw, 19px) clamp(28px, 6vw, 52px);
+            border-radius: 100px;
+            cursor: pointer;
+            width: 100%;
+            overflow: hidden;
+            transition: border-color 0.35s ease, transform 0.35s ease, box-shadow 0.35s ease;
+        }
+
+        /* Liquid fill on hover */
+        .enter-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,192,203,0.28) 0%, rgba(242,192,215,0.18) 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            border-radius: 100px;
+        }
+
+        /* Top gloss line */
+        .enter-btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 20%; right: 20%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .enter-btn:hover::before,
+        .enter-btn:focus::before { opacity: 1; }
+
+        .enter-btn:hover::after,
+        .enter-btn:focus::after { opacity: 1; }
+
+        .enter-btn:hover {
+            border-color: rgba(193,122,150,0.6);
+            transform: translateY(-3px);
+            box-shadow: 0 20px 50px rgba(160,96,128,0.2), 0 4px 12px rgba(193,122,150,0.15);
+        }
+
+        .enter-btn:active { transform: translateY(-1px); }
+
+        .enter-btn span { position: relative; z-index: 1; }
+
+        .btn-ornament {
+            display: inline-block;
+            margin: 0 10px;
+            opacity: 0.5;
+            font-size: 0.6em;
+            vertical-align: middle;
+            letter-spacing: 0;
+        }
+
+        /* ===== PAGE EXIT ===== */
+        .page-exit {
+            animation: pageExit 1.4s cubic-bezier(0.4, 0, 1, 1) forwards;
+        }
+
+        @keyframes pageExit {
+            0%   { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.04); }
+        }
+
+        body.exit-bg {
+            animation: bgExit 1.4s ease forwards;
+        }
+
+        @keyframes bgExit {
+            to { background: #fce8f0; }
+        }
+
+        /* ===== STAGGER ANIMATION FOR CARD CHILDREN ===== */
+        .glass > * {
+            opacity: 0;
+            animation: childEnter 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        .glass > *:nth-child(1) { animation-delay: 1.0s; }
+        .glass > *:nth-child(2) { animation-delay: 1.15s; }
+        .glass > *:nth-child(3) { animation-delay: 1.25s; }
+        .glass > *:nth-child(4) { animation-delay: 1.35s; }
+        .glass > *:nth-child(5) { animation-delay: 1.45s; }
+        .glass > *:nth-child(6) { animation-delay: 1.55s; }
+        .glass > *:nth-child(7) { animation-delay: 1.65s; }
+        .glass > *:nth-child(8) { animation-delay: 1.75s; }
+
+        @keyframes childEnter {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 380px) {
+            .brand-name { font-size: 2.8rem; letter-spacing: 8px; }
+            .glass { padding: 24px 18px; border-radius: 28px; }
+        }
+
+        @media (max-height: 600px) and (orientation: landscape) {
+            .img-wrap { width: 80px; height: 80px; margin-bottom: 12px; }
+            .brand-name { font-size: 2.2rem; }
+            .breath-wrap { display: none; }
+            .glass { padding: 18px 28px; }
+            .quote-wrap { min-height: 60px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="cur-dot" id="curDot"></div>
+    <div class="cur-ring" id="curRing"></div>
+
+    <div class="aurora"></div>
+    <div class="noise"></div>
+    <canvas id="bgCanvas"></canvas>
+    <div class="shapes" id="shapesWrap"></div>
+
+    <div class="card" id="mainCard">
+        <div class="glass">
+
+            <!-- Avatar -->
+            <div class="img-wrap">
+                <div class="img-ring-rotate"></div>
+                <div class="img-ring-pulse"></div>
+                <img src="{% static 'image/sana_image9.jpeg.jpeg' %}" alt="SANA bien-être">
+            </div>
+
+            <!-- Brand -->
+            <div class="brand-name">SANA</div>
+            <div class="brand-sub">soutien &amp; bien-être mental</div>
+
+            <!-- Divider -->
+            <div class="divider"></div>
+
+            <!-- Quote -->
+            <div class="quote-wrap">
+                <div class="quote-open">"</div>
+                <div class="quote-close">"</div>
+                <div class="quote-text" id="quoteText"></div>
+                <div class="quote-author" id="quoteAuthor"></div>
+            </div>
+
+            <!-- Breathing -->
+            <div class="breath-wrap">
+                <div class="breath-track">
+                    <div class="breath-track-fill"></div>
+                </div>
+                <div class="breath-orb"></div>
+                <div class="breath-label" id="breathLabel">Respirez...</div>
+            </div>
+
+            <!-- Progress -->
+            <div class="progress-wrap">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-info">
+                    <span class="timer-label">Prendre un instant</span>
+                    <span class="timer-num" id="timerNum">30</span>
+                </div>
+            </div>
+
+            <!-- Button -->
+            <button class="enter-btn" id="enterBtn">
+                <span>
+                    <span class="btn-ornament">✦</span>
+                    Entrer dans SANA
+                    <span class="btn-ornament">✦</span>
+                </span>
+            </button>
+
+        </div>
+    </div>
+
+    <script>
+    // ===== CURSOR =====
+    const dot  = document.getElementById('curDot');
+    const ring = document.getElementById('curRing');
+    let mx = 0, my = 0, rx = 0, ry = 0;
+
+    document.addEventListener('mousemove', e => {
+        mx = e.clientX; my = e.clientY;
+        dot.style.transform = `translate(${mx - 3.5}px, ${my - 3.5}px)`;
+    });
+    (function animRing() {
+        rx += (mx - rx - 18) * 0.09;
+        ry += (my - ry - 18) * 0.09;
+        ring.style.transform = `translate(${rx}px, ${ry}px)`;
+        requestAnimationFrame(animRing);
+    })();
+
+    // ===== CANVAS PARTICLES =====
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    let W, H;
+
+    function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const particles = Array.from({ length: 60 }, () => ({
+        x: Math.random() * innerWidth,
+        y: Math.random() * innerHeight,
+        r: Math.random() * 1.4 + 0.4,
+        opacity: Math.random() * 0.22 + 0.04,
+        speed: Math.random() * 0.12 + 0.04,
+        drift: (Math.random() - 0.5) * 0.25,
+    }));
+
+    (function loop() {
+        ctx.clearRect(0, 0, W, H);
+        for (const p of particles) {
+            p.y -= p.speed;
+            p.x += p.drift;
+            if (p.y < -5) { p.y = H + 5; p.x = Math.random() * W; }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(193,122,150,${p.opacity})`;
+            ctx.fill();
+        }
+        requestAnimationFrame(loop);
+    })();
+
+    // ===== FLOATING SHAPES =====
+    const wrap = document.getElementById('shapesWrap');
+    const shapeColors = [
+        'rgba(255,182,205,0.35)',
+        'rgba(242,208,222,0.4)',
+        'rgba(220,168,192,0.3)',
+        'rgba(255,200,215,0.25)',
+    ];
+
+    function spawnShape() {
+        const el = document.createElement('div');
+        el.className = 'shape';
+        const s = Math.random() * 16 + 8;
+        const dur = Math.random() * 14 + 16;
+        el.style.cssText = `
+            width: ${s}px; height: ${s}px;
+            left: ${Math.random() * 100}%;
+            background: ${shapeColors[Math.floor(Math.random() * shapeColors.length)]};
+            animation-duration: ${dur}s;
+            animation-delay: ${Math.random() * 6}s;
+            filter: blur(${Math.random() * 3 + 1}px);
+        `;
+        wrap.appendChild(el);
+        setTimeout(() => el.remove(), (dur + 6) * 1000);
+    }
+
+    for (let i = 0; i < 14; i++) spawnShape();
+    setInterval(spawnShape, 2800);
+
+    // ===== QUOTES =====
+    const quotes = [
+        { text: "Tu n'es pas seul·e. Ce que tu ressens est réel, et tu mérites d'être entendu·e.", author: "SANA" },
+        { text: "La santé mentale n'est pas un luxe — c'est un droit fondamental.", author: "OMS" },
+        { text: "La vulnérabilité est le berceau de la connexion et de la créativité.", author: "Brené Brown" },
+        { text: "Prendre soin de soi n'est pas de l'égoïsme. C'est de la survie.", author: "Audre Lorde" },
+        { text: "Chaque pas vers la guérison est un acte de courage immense.", author: "SANA" },
+        { text: "Tu mérites la même compassion que tu offres aux autres.", author: "Inconnu" },
+        { text: "Il faut du courage pour demander de l'aide. C'est un signe de force.", author: "SANA" },
+        { text: "La douceur envers soi-même est le début de tout changement.", author: "Inconnu" },
+    ];
+
+    let qIdx = 0;
+    const qText   = document.getElementById('quoteText');
+    const qAuthor = document.getElementById('quoteAuthor');
+
+    function showQuote(i) {
+        qText.classList.add('fade');
+        qAuthor.classList.add('fade');
+        setTimeout(() => {
+            qText.textContent   = quotes[i].text;
+            qAuthor.textContent = '— ' + quotes[i].author;
+            qText.classList.remove('fade');
+            qAuthor.classList.remove('fade');
+        }, 650);
+    }
+
+    showQuote(0);
+    setInterval(() => { qIdx = (qIdx + 1) % quotes.length; showQuote(qIdx); }, 5000);
+
+    // ===== BREATHING LABELS =====
+    const breathLabel   = document.getElementById('breathLabel');
+    const breathCycle   = ['Inspirez...', 'Retenez...', 'Expirez...', 'Retenez...'];
+    const breathDurations = [3200, 1600, 3200, 1600];
+    let bIdx = 0;
+
+    function nextBreath() {
+        breathLabel.style.opacity = '0';
+        setTimeout(() => {
+            breathLabel.textContent = breathCycle[bIdx];
+            breathLabel.style.opacity = '0.6';
+            bIdx = (bIdx + 1) % breathCycle.length;
+            setTimeout(nextBreath, breathDurations[bIdx]);
+        }, 450);
+    }
+    setTimeout(nextBreath, 1400);
+
+    // ===== TIMER =====
+    const DURATION = 30;
+    let timeLeft = DURATION;
+    const progressFill = document.getElementById('progressFill');
+    const timerNum     = document.getElementById('timerNum');
+
+    const ticker = setInterval(() => {
+        timeLeft--;
+        progressFill.style.width = ((DURATION - timeLeft) / DURATION * 100) + '%';
+        timerNum.textContent = timeLeft;
+        if (timeLeft <= 0) { clearInterval(ticker); redirect(); }
+    }, 1000);
+
+    // ===== REDIRECT =====
+    function redirect() {
+        clearInterval(ticker);
+        document.body.classList.add('exit-bg');
+        document.getElementById('mainCard').classList.add('page-exit');
+        setTimeout(() => { window.location.href = '/accueil'; }, 1400);
+    }
+
+    document.getElementById('enterBtn').addEventListener('click', redirect);
+    </script>
+</body>
+</html>

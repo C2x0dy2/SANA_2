@@ -1,0 +1,977 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANA — Aide & Soutien</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+        :root {
+            --plum-950: #1e0d17;
+            --plum-700: #5e2f47;
+            --plum-400: #9a5e79;
+            --rose-500: #c26e8a;
+            --rose-300: #dca8bc;
+            --rose-100: #f2d8e4;
+            --rose-50:  #fce8f0;
+            --blush:    #fdf3f7;
+            --ivory:    #fefaf8;
+            --sage:     #8dab88;
+            --sage-pale:#d4e4d0;
+            --amber:    #e8a44a;
+            --text-dark:#1a0d14;
+            --text-mid: #6b4a58;
+            --text-soft:#9a7585;
+            --white:    #ffffff;
+            --glass:    rgba(255,255,255,0.75);
+            --nav-h:    60px;
+        }
+
+        html { scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
+
+        body {
+            font-family:'Jost', sans-serif;
+            background:var(--ivory);
+            color:var(--text-dark);
+            overflow-x:hidden;
+            min-height:100vh;
+        }
+
+        body::after {
+            content:''; position:fixed; inset:0; z-index:9000;
+            pointer-events:none; opacity:.12;
+            background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+            background-size:180px;
+        }
+
+        .cur-dot  { width:7px;height:7px;background:var(--rose-500);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9999; }
+        .cur-ring { width:34px;height:34px;border:1.5px solid rgba(194,110,138,.38);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9998;transition:width .25s,height .25s,border-color .25s; }
+        .cur-ring.hov { width:50px;height:50px;border-color:rgba(194,110,138,.7); }
+        @media(hover:none){.cur-dot,.cur-ring{display:none}}
+
+        .bg-mesh {
+            position:fixed;inset:0;z-index:0;pointer-events:none;
+            background:
+                radial-gradient(ellipse 70% 55% at 15% 15%,rgba(242,216,228,.5) 0%,transparent 55%),
+                radial-gradient(ellipse 50% 50% at 85% 85%,rgba(212,228,208,.3) 0%,transparent 50%),
+                var(--ivory);
+        }
+
+        /* ===== NAV ===== */
+        nav {
+            position:fixed;top:0;left:0;right:0;z-index:800;
+            height:var(--nav-h);
+            padding:0 clamp(16px,5vw,60px);
+            display:flex;align-items:center;justify-content:space-between;
+            background:rgba(254,250,248,.94);
+            backdrop-filter:blur(20px);
+            -webkit-backdrop-filter:blur(20px);
+            border-bottom:1px solid rgba(194,110,138,.1);
+        }
+        .nav-logo {
+            font-family:'Playfair Display',serif;
+            font-size:clamp(1.2rem,2.5vw,1.7rem);
+            font-weight:400;font-style:italic;
+            color:var(--plum-700);text-decoration:none;letter-spacing:3px;
+        }
+        .nav-back {
+            display:flex;align-items:center;gap:6px;
+            font-size:.72rem;font-weight:400;text-transform:uppercase;
+            letter-spacing:2px;color:var(--text-soft);text-decoration:none;
+            transition:color .3s;
+        }
+        .nav-back:hover { color:var(--rose-500); }
+        .nav-back svg { width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2; }
+
+        /* ===== STATES ===== */
+        .page { position:relative;z-index:1;min-height:100svh;padding-top:var(--nav-h); }
+        .state { display:none;width:100%; }
+        .state.active { display:block;animation:stateIn .5s cubic-bezier(.22,1,.36,1); }
+        @keyframes stateIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+        /* ============================================
+           STATE 0 — CHOIX
+        ============================================ */
+        #state-choice {
+            padding:clamp(28px,6vw,64px) clamp(16px,5vw,40px) clamp(48px,8vw,80px);
+            max-width:1100px;margin:0 auto;
+        }
+
+        .choice-header { text-align:center;margin-bottom:clamp(28px,5vw,60px); }
+
+        .eyebrow {
+            display:block;font-size:.66rem;text-transform:uppercase;
+            letter-spacing:4px;color:var(--rose-500);font-weight:500;margin-bottom:10px;
+        }
+        .choice-title {
+            font-family:'Playfair Display',serif;
+            font-size:clamp(2rem,6vw,4.5rem);
+            font-weight:300;color:var(--plum-950);line-height:1.05;
+        }
+        .choice-title em { font-style:italic;color:var(--rose-500); }
+        .choice-sub {
+            font-size:clamp(.88rem,2vw,1rem);color:var(--text-soft);
+            font-weight:300;line-height:1.75;
+            max-width:460px;margin:clamp(10px,2vw,18px) auto 0;
+        }
+
+        .choice-grid {
+            display:grid;grid-template-columns:1fr;
+            gap:clamp(12px,2vw,20px);
+        }
+        @media(min-width:640px)  { .choice-grid { grid-template-columns:1fr 1fr; } }
+        @media(min-width:900px)  { .choice-grid { grid-template-columns:repeat(3,1fr); } }
+
+        .choice-card {
+            background:var(--glass);
+            backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+            border:1px solid rgba(255,255,255,.88);
+            border-radius:clamp(20px,3.5vw,36px);
+            padding:clamp(20px,4vw,40px) clamp(18px,3.5vw,36px);
+            cursor:pointer;
+            transition:transform .4s cubic-bezier(.22,1,.36,1),box-shadow .4s;
+            position:relative;overflow:hidden;
+            box-shadow:0 6px 24px rgba(107,47,71,.07);
+            display:grid;
+            grid-template-columns:clamp(90px,25vw,130px) 1fr;
+            gap:clamp(14px,3vw,24px);
+            align-items:center;
+        }
+        @media(min-width:640px){ .choice-card { display:block; } }
+        .choice-card:hover { transform:translateY(-6px); }
+
+        .cc-bot   { border-top:3px solid var(--rose-300); }
+        .cc-bot:hover   { background:rgba(252,232,240,.85);box-shadow:0 24px 56px rgba(194,110,138,.18); }
+        .cc-human { border-top:3px solid var(--sage); }
+        .cc-human:hover { background:rgba(212,228,208,.55);box-shadow:0 24px 56px rgba(141,171,136,.18); }
+        .cc-urgent { border-top:3px solid var(--amber); }
+        .cc-urgent:hover { background:rgba(255,243,224,.7);box-shadow:0 24px 56px rgba(232,164,74,.18); }
+
+        .cc-gif {
+            width:100%;aspect-ratio:1/1;
+            border-radius:clamp(12px,2vw,20px);overflow:hidden;
+            background:rgba(0,0,0,.04);
+            display:flex;align-items:center;justify-content:center;
+            flex-shrink:0;
+        }
+        @media(min-width:640px){
+            .cc-gif { aspect-ratio:16/10;margin-bottom:clamp(16px,3vw,24px); }
+        }
+        .cc-gif img { width:100%;height:100%;object-fit:cover;display:block; }
+        .cc-gif-fallback { font-size:2.5rem; }
+
+        .cc-icon { font-size:clamp(1.5rem,3vw,2rem);margin-bottom:8px;display:block; }
+        @media(max-width:639px){ .cc-icon { display:none; } }
+
+        .choice-card h3 {
+            font-family:'Playfair Display',serif;
+            font-size:clamp(1.05rem,2.5vw,1.55rem);
+            font-weight:400;color:var(--plum-950);margin-bottom:6px;line-height:1.2;
+        }
+        .choice-card p {
+            font-size:clamp(.78rem,1.6vw,.9rem);
+            color:var(--text-mid);line-height:1.7;font-weight:300;
+            margin-bottom:clamp(12px,2vw,18px);
+        }
+        .cc-tag {
+            display:inline-flex;align-items:center;gap:5px;
+            font-size:.6rem;text-transform:uppercase;letter-spacing:2px;
+            padding:4px 11px;border-radius:100px;font-weight:500;
+        }
+        .cc-tag-bot    { background:var(--rose-50);color:var(--rose-500); }
+        .cc-tag-human  { background:var(--sage-pale);color:var(--sage); }
+        .cc-tag-urgent { background:rgba(232,164,74,.14);color:var(--amber); }
+
+        .cc-cta {
+            display:flex;align-items:center;justify-content:space-between;
+            margin-top:clamp(12px,2vw,18px);padding-top:clamp(10px,1.5vw,16px);
+            border-top:1px solid rgba(0,0,0,.06);
+            font-size:.72rem;font-weight:500;letter-spacing:1.5px;
+            text-transform:uppercase;color:var(--plum-700);
+        }
+        .cc-cta svg { width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .3s; }
+        .choice-card:hover .cc-cta svg { transform:translateX(4px); }
+
+        .emergency-strip {
+            text-align:center;
+            margin-top:clamp(20px,3.5vw,36px);
+            padding:clamp(12px,2vw,18px) clamp(16px,3vw,28px);
+            background:rgba(255,255,255,.6);backdrop-filter:blur(12px);
+            border:1px solid rgba(232,164,74,.2);border-radius:14px;
+            font-size:clamp(.72rem,1.5vw,.82rem);
+            color:var(--text-soft);font-weight:300;
+            max-width:640px;margin-left:auto;margin-right:auto;
+        }
+        .emergency-strip strong { color:var(--amber);font-weight:600; }
+        .emergency-strip a { color:var(--amber);text-decoration:none;font-weight:500; }
+
+        /* ============================================
+           STATE 1 — CHATBOT IA
+        ============================================ */
+        #state-bot { display:flex;flex-direction:column;height:calc(100svh - var(--nav-h)); }
+        #state-bot.active { display:flex; }
+
+        .chat-header {
+            flex-shrink:0;
+            display:flex;align-items:center;gap:12px;
+            padding:clamp(10px,2vw,16px) clamp(16px,4vw,28px);
+            background:var(--glass);
+            backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+            border-bottom:1px solid rgba(194,110,138,.1);
+        }
+        .chat-avatar {
+            width:clamp(40px,8vw,52px);height:clamp(40px,8vw,52px);
+            border-radius:50%;overflow:hidden;
+            border:2px solid rgba(194,110,138,.2);
+            background:var(--rose-50);flex-shrink:0;
+        }
+        .chat-avatar img { width:100%;height:100%;object-fit:cover; }
+        .chat-avatar-fallback {
+            width:100%;height:100%;
+            display:flex;align-items:center;justify-content:center;font-size:1.4rem;
+        }
+
+        .chat-info { flex:1;min-width:0; }
+        .chat-name {
+            font-family:'Playfair Display',serif;
+            font-size:clamp(.95rem,2.2vw,1.15rem);font-weight:400;
+            color:var(--plum-950);
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        .chat-status { display:flex;align-items:center;gap:5px;font-size:.65rem;color:var(--text-soft);font-weight:300; }
+        .s-dot {
+            width:6px;height:6px;border-radius:50%;background:#4caf82;
+            box-shadow:0 0 0 2px rgba(76,175,130,.2);
+            animation:sdot 2s infinite;flex-shrink:0;
+        }
+        @keyframes sdot{0%,100%{box-shadow:0 0 0 2px rgba(76,175,130,.2)}50%{box-shadow:0 0 0 5px rgba(76,175,130,.08)}}
+
+        .back-btn {
+            display:flex;align-items:center;gap:5px;
+            font-size:.68rem;text-transform:uppercase;letter-spacing:2px;
+            color:var(--text-soft);background:none;border:none;cursor:pointer;
+            transition:color .3s;padding:8px;font-family:'Jost',sans-serif;flex-shrink:0;
+        }
+        .back-btn:hover { color:var(--rose-500); }
+        .back-btn svg { width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2; }
+
+        .chat-messages {
+            flex:1;overflow-y:auto;
+            padding:clamp(16px,3vw,28px) clamp(16px,4vw,28px);
+            display:flex;flex-direction:column;gap:12px;
+            -webkit-overflow-scrolling:touch;
+            scroll-behavior:smooth;
+        }
+
+        .msg { display:flex;align-items:flex-end;gap:8px;max-width:100%; }
+        .msg.bot  { align-self:flex-start; }
+        .msg.user { align-self:flex-end;flex-direction:row-reverse; }
+        .msg { animation:msgIn .35s cubic-bezier(.22,1,.36,1); }
+        @keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+        .msg-av {
+            width:28px;height:28px;border-radius:50%;flex-shrink:0;
+            overflow:hidden;background:var(--rose-50);
+            border:1.5px solid rgba(194,110,138,.18);
+        }
+        .msg-av img { width:100%;height:100%;object-fit:cover; }
+
+        .msg-bubble {
+            max-width:min(75%,420px);
+            padding:clamp(10px,2vw,14px) clamp(12px,2.5vw,18px);
+            border-radius:18px;line-height:1.68;
+            font-size:clamp(.82rem,1.8vw,.92rem);
+            font-weight:300;word-break:break-word;
+        }
+        .msg.bot .msg-bubble {
+            background:var(--white);border:1px solid rgba(194,110,138,.12);
+            color:var(--text-dark);border-bottom-left-radius:4px;
+            box-shadow:0 2px 10px rgba(107,47,71,.06);
+        }
+        .msg.user .msg-bubble {
+            background:linear-gradient(135deg,var(--plum-700),var(--plum-950));
+            color:rgba(253,243,247,.92);border-bottom-right-radius:4px;
+        }
+
+        .typing { display:none;align-items:flex-end;gap:8px; }
+        .typing.show { display:flex; }
+        .typing-bub {
+            background:var(--white);border:1px solid rgba(194,110,138,.12);
+            padding:12px 16px;border-radius:18px;border-bottom-left-radius:4px;
+            display:flex;align-items:center;gap:4px;
+        }
+        .td { width:6px;height:6px;border-radius:50%;background:var(--rose-300);animation:tb 1.4s ease-in-out infinite; }
+        .td:nth-child(2){animation-delay:.2s}.td:nth-child(3){animation-delay:.4s}
+        @keyframes tb{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+
+        .chat-bar {
+            flex-shrink:0;
+            padding:clamp(10px,2vw,14px) clamp(12px,4vw,24px);
+            background:rgba(254,250,248,.95);
+            backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+            border-top:1px solid rgba(194,110,138,.1);
+            padding-bottom:max(clamp(10px,2vw,14px),env(safe-area-inset-bottom));
+        }
+        .chat-bar-inner { display:flex;gap:8px;align-items:center;max-width:760px;margin:0 auto; }
+        .chat-input {
+            flex:1;min-width:0;
+            background:var(--white);
+            border:1.5px solid rgba(194,110,138,.2);
+            border-radius:100px;
+            padding:clamp(11px,2vw,13px) clamp(16px,3vw,22px);
+            font-family:'Jost',sans-serif;
+            font-size:max(.85rem,16px);
+            font-weight:300;color:var(--text-dark);
+            outline:none;transition:border-color .3s,box-shadow .3s;
+        }
+        .chat-input:focus { border-color:var(--rose-500);box-shadow:0 0 0 3px rgba(194,110,138,.1); }
+        .chat-input::placeholder { color:var(--text-soft); }
+
+        .send-btn {
+            width:clamp(42px,9vw,48px);height:clamp(42px,9vw,48px);
+            border-radius:50%;background:var(--plum-950);border:none;
+            cursor:pointer;display:flex;align-items:center;justify-content:center;
+            transition:background .3s,transform .2s;flex-shrink:0;
+        }
+        .send-btn:hover { background:var(--plum-700);transform:scale(1.05); }
+        .send-btn:active { transform:scale(.96); }
+        .send-btn svg { width:17px;height:17px;stroke:white;fill:none;stroke-width:2; }
+
+        /* ============================================
+           STATE 2 — ÉCOUTANT HUMAIN
+        ============================================ */
+        #state-human {
+            padding:clamp(28px,6vw,64px) clamp(16px,5vw,40px) clamp(48px,8vw,80px);
+            max-width:680px;margin:0 auto;text-align:center;
+        }
+        .human-card {
+            background:var(--glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
+            border:1px solid rgba(255,255,255,.88);
+            border-radius:clamp(24px,4vw,44px);
+            padding:clamp(28px,6vw,60px) clamp(22px,5vw,52px);
+            box-shadow:0 14px 50px rgba(107,47,71,.1);
+        }
+        .human-gif {
+            width:clamp(130px,30vw,200px);height:clamp(130px,30vw,200px);
+            border-radius:50%;overflow:hidden;
+            margin:0 auto clamp(20px,4vw,36px);
+            border:3px solid rgba(141,171,136,.3);background:var(--sage-pale);
+        }
+        .human-gif img { width:100%;height:100%;object-fit:cover; }
+        .human-eyebrow { display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:4px;color:var(--sage);font-weight:500;margin-bottom:8px; }
+        .human-title {
+            font-family:'Playfair Display',serif;
+            font-size:clamp(1.7rem,5vw,2.8rem);font-weight:300;
+            color:var(--plum-950);line-height:1.1;margin-bottom:clamp(12px,2.5vw,20px);
+        }
+        .human-title em { font-style:italic;color:var(--sage); }
+        .human-text {
+            font-size:clamp(.85rem,1.8vw,.98rem);color:var(--text-mid);
+            line-height:1.85;font-weight:300;
+            max-width:440px;margin:0 auto clamp(22px,4vw,36px);
+        }
+        .auth-note {
+            background:var(--sage-pale);border-radius:14px;
+            padding:clamp(14px,3vw,20px) clamp(14px,3vw,22px);
+            display:flex;align-items:flex-start;gap:10px;
+            text-align:left;margin-bottom:clamp(20px,3.5vw,32px);
+        }
+        .an-icon { font-size:1.2rem;flex-shrink:0;margin-top:2px; }
+        .an-text { font-size:clamp(.78rem,1.6vw,.88rem);color:var(--text-mid);line-height:1.7;font-weight:300; }
+        .an-text strong { color:var(--plum-700);font-weight:500; }
+        .btn-sage {
+            display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;
+            background:linear-gradient(135deg,var(--sage),#6d9669);
+            color:white;border:none;border-radius:100px;
+            padding:clamp(13px,2.5vw,17px) clamp(24px,5vw,44px);
+            font-family:'Jost',sans-serif;font-size:clamp(.82rem,1.8vw,.9rem);
+            font-weight:400;letter-spacing:1.5px;cursor:pointer;text-decoration:none;transition:all .35s;
+        }
+        .btn-sage:hover { transform:translateY(-3px);box-shadow:0 14px 36px rgba(141,171,136,.35); }
+        .login-link { font-size:.72rem;color:var(--text-soft);margin-top:14px;font-weight:300;display:block; }
+        .login-link a { color:var(--sage);text-decoration:none;font-weight:500; }
+
+        /* ============================================
+           STATE 3 — URGENCE
+        ============================================ */
+        #state-urgent {
+            padding:clamp(28px,6vw,64px) clamp(16px,5vw,40px) clamp(48px,8vw,80px);
+            max-width:780px;margin:0 auto;
+        }
+        .urgent-top { text-align:center;margin-bottom:clamp(24px,4vw,44px); }
+        .urgent-gif {
+            width:clamp(110px,24vw,160px);height:clamp(110px,24vw,160px);
+            border-radius:50%;overflow:hidden;
+            margin:0 auto clamp(16px,3vw,28px);
+            background:rgba(232,164,74,.1);border:2px solid rgba(232,164,74,.22);
+        }
+        .urgent-gif img { width:100%;height:100%;object-fit:cover; }
+        .urgent-eyebrow { display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:4px;color:var(--amber);font-weight:500;margin-bottom:8px; }
+        .urgent-title {
+            font-family:'Playfair Display',serif;
+            font-size:clamp(1.7rem,5vw,2.8rem);font-weight:300;
+            color:var(--plum-950);line-height:1.1;margin-bottom:10px;
+        }
+        .urgent-title em { font-style:italic;color:var(--amber); }
+        .urgent-sub { font-size:clamp(.84rem,1.8vw,.96rem);color:var(--text-soft);font-weight:300;line-height:1.75;max-width:420px;margin:0 auto; }
+
+        .numbers-grid {
+            display:grid;grid-template-columns:1fr;
+            gap:clamp(10px,2vw,16px);margin-bottom:clamp(20px,3.5vw,36px);
+        }
+        @media(min-width:560px){ .numbers-grid { grid-template-columns:1fr 1fr; } }
+
+        .num-card {
+            background:var(--white);border:1px solid rgba(232,164,74,.14);
+            border-radius:18px;padding:clamp(16px,3vw,24px) clamp(14px,2.5vw,22px);
+            transition:transform .35s,box-shadow .35s;
+        }
+        .num-card:hover { transform:translateY(-3px);box-shadow:0 12px 32px rgba(232,164,74,.12); }
+        .num-card.primary { border-top:3px solid var(--amber); }
+        .nc-label { font-size:.6rem;text-transform:uppercase;letter-spacing:3px;color:var(--text-soft);font-weight:500;margin-bottom:6px;display:block; }
+        .nc-name { font-family:'Playfair Display',serif;font-size:clamp(.95rem,2vw,1.15rem);font-weight:400;color:var(--plum-950);margin-bottom:4px; }
+        .nc-num { font-size:clamp(1.4rem,4vw,2rem);font-weight:300;color:var(--amber);font-family:'Playfair Display',serif;font-style:italic; }
+        .nc-num a { color:inherit;text-decoration:none;display:block; }
+        .nc-num a:hover { color:var(--plum-700); }
+        .nc-note { font-size:.7rem;color:var(--text-soft);margin-top:5px;line-height:1.5;font-weight:300; }
+
+        .breathe-box {
+            background:linear-gradient(135deg,var(--rose-50),var(--blush));
+            border:1px solid rgba(194,110,138,.14);border-radius:22px;
+            padding:clamp(22px,4vw,36px);text-align:center;margin-bottom:clamp(16px,3vw,28px);
+        }
+        .breathe-title { font-family:'Playfair Display',serif;font-size:clamp(1rem,2.5vw,1.25rem);font-weight:300;color:var(--plum-950);margin-bottom:14px; }
+        .breathe-orb-wrap {
+            width:clamp(60px,10vw,80px);height:clamp(60px,10vw,80px);
+            margin:0 auto 12px;border-radius:50%;
+            border:1px solid rgba(194,110,138,.22);
+            display:flex;align-items:center;justify-content:center;
+        }
+        .breathe-orb {
+            width:55%;height:55%;border-radius:50%;
+            background:radial-gradient(circle,rgba(194,110,138,.65),rgba(107,47,71,.28));
+            animation:borb 8s ease-in-out infinite;
+        }
+        @keyframes borb{0%,100%{transform:scale(.52);opacity:.5}40%{transform:scale(1.7);opacity:1}60%{transform:scale(1.7);opacity:.85}}
+        .breathe-label { font-size:.64rem;text-transform:uppercase;letter-spacing:3px;color:var(--text-soft);font-weight:400;transition:opacity .4s; }
+
+        .urgent-sana {
+            background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+            border:1px solid rgba(255,255,255,.85);border-radius:18px;
+            padding:clamp(14px,3vw,22px) clamp(16px,3vw,24px);
+            display:flex;align-items:center;gap:14px;
+            cursor:pointer;transition:transform .3s,box-shadow .3s;
+        }
+        .urgent-sana:hover { transform:translateY(-3px);box-shadow:0 10px 28px rgba(107,47,71,.1); }
+        .us-icon { font-size:clamp(1.5rem,3.5vw,2rem);flex-shrink:0; }
+        .us-body { flex:1;min-width:0; }
+        .us-body strong { display:block;font-size:clamp(.85rem,1.8vw,.95rem);font-weight:500;color:var(--plum-950);margin-bottom:3px; }
+        .us-body span { font-size:clamp(.74rem,1.5vw,.82rem);color:var(--text-soft);font-weight:300; }
+        .us-arr { color:var(--rose-500);font-size:1.1rem;flex-shrink:0; }
+
+        /* ============================================
+           LOGIN PROMPT
+        ============================================ */
+        .login-prompt {
+            position:fixed;
+            bottom:clamp(72px,12vw,88px);left:50%;
+            transform:translateX(-50%) translateY(130px);
+            z-index:500;
+            background:var(--white);
+            border:1px solid rgba(194,110,138,.18);border-radius:22px;
+            padding:clamp(16px,3vw,24px) clamp(18px,3.5vw,28px);
+            box-shadow:0 18px 56px rgba(107,47,71,.18);
+            width:min(440px,calc(100vw - 32px));
+            transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .5s;
+            opacity:0;pointer-events:none;
+        }
+        .login-prompt.show { transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto; }
+        .lp-row { display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px; }
+        .lp-title { font-family:'Playfair Display',serif;font-size:clamp(.95rem,2vw,1.1rem);font-weight:400;color:var(--plum-950);line-height:1.3; }
+        .lp-title em { font-style:italic;color:var(--rose-500); }
+        .lp-close {
+            width:26px;height:26px;border-radius:50%;background:var(--blush);
+            border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+            font-size:.68rem;color:var(--text-soft);flex-shrink:0;
+        }
+        .lp-text { font-size:clamp(.76rem,1.6vw,.84rem);color:var(--text-soft);line-height:1.7;margin-bottom:14px;font-weight:300; }
+        .lp-btns { display:flex;gap:8px;flex-wrap:wrap; }
+        .lp-main {
+            flex:1;min-width:0;
+            background:var(--plum-950);color:var(--blush);border:none;
+            border-radius:100px;padding:11px 16px;
+            font-family:'Jost',sans-serif;font-size:.76rem;font-weight:400;
+            letter-spacing:1.5px;cursor:pointer;transition:background .3s;
+            text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;
+        }
+        .lp-main:hover { background:var(--plum-700); }
+        .lp-later {
+            background:transparent;color:var(--text-soft);
+            border:1px solid rgba(107,47,71,.14);border-radius:100px;
+            padding:11px 14px;font-family:'Jost',sans-serif;
+            font-size:.76rem;font-weight:400;cursor:pointer;transition:all .3s;white-space:nowrap;
+        }
+        .lp-later:hover { border-color:var(--rose-300);color:var(--rose-500); }
+
+        .back-top {
+            display:inline-flex;align-items:center;gap:5px;
+            font-size:.68rem;text-transform:uppercase;letter-spacing:2px;
+            color:var(--text-soft);background:none;border:none;cursor:pointer;
+            transition:color .3s;padding:0;font-family:'Jost',sans-serif;
+            margin-bottom:clamp(20px,3.5vw,32px);
+        }
+        .back-top:hover { color:var(--rose-500); }
+        .back-top svg { width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2; }
+    </style>
+</head>
+<body>
+
+    {% csrf_token %}
+
+    <div class="cur-dot" id="cDot"></div>
+    <div class="cur-ring" id="cRing"></div>
+    <div class="bg-mesh"></div>
+
+    <nav>
+        <a href="/" class="nav-logo">Sana</a>
+        <a href="/" class="nav-back">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            Accueil
+        </a>
+    </nav>
+
+    <div class="page">
+
+        <!-- ===== STATE 0 : CHOIX ===== -->
+        <div id="state-choice" class="state active">
+            <div class="choice-header">
+                <span class="eyebrow">Espace d'aide</span>
+                <h1 class="choice-title">
+                    De quoi as-tu<br>
+                    <em>besoin maintenant ?</em>
+                </h1>
+                <p class="choice-sub">Pas de jugement. Aucun compte nécessaire pour commencer.</p>
+            </div>
+
+            <div class="choice-grid">
+
+                <div class="choice-card cc-bot" onclick="goTo('bot')">
+                    <div class="cc-gif">
+                        <!-- 📌 Remplace par : src="{% static 'image/ton_gif_bot.gif' %}" -->
+                        <img src="{% static 'image/sana_image9.jpeg.jpeg' %}" alt=""
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <span class="cc-gif-fallback" style="display:none">💬</span>
+                    </div>
+                    <div class="cc-body">
+                        <span class="cc-icon">💬</span>
+                        <h3>Parler au chatbot SANA</h3>
+                        <p>Une écoute immédiate, à toute heure. SANA t'accompagne et te propose des ressources adaptées.</p>
+                        <span class="cc-tag cc-tag-bot">Sans compte · Immédiat</span>
+                        <div class="cc-cta">
+                            Commencer
+                            <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="choice-card cc-human" onclick="goTo('human')">
+                    <div class="cc-gif">
+                        <!-- 📌 Remplace par : src="{% static 'image/ton_gif_humain.gif' %}" -->
+                        <img src="{% static 'image/sana_image9.jpeg.jpeg' %}" alt=""
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <span class="cc-gif-fallback" style="display:none">🤝</span>
+                    </div>
+                    <div class="cc-body">
+                        <span class="cc-icon">🤝</span>
+                        <h3>Parler à un écoutant</h3>
+                        <p>Un bénévole formé, disponible par chat texte. Pour sentir qu'il y a une vraie personne en face.</p>
+                        <span class="cc-tag cc-tag-human">Connexion requise · Gratuit</span>
+                        <div class="cc-cta">
+                            Trouver un écoutant
+                            <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="choice-card cc-urgent" onclick="goTo('urgent')">
+                    <div class="cc-gif">
+                        <!-- 📌 Remplace par : src="{% static 'image/ton_gif_urgent.gif' %}" -->
+                        <img src="{% static 'image/sana_image9.jpeg.jpeg' %}" alt=""
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <span class="cc-gif-fallback" style="display:none">🌿</span>
+                    </div>
+                    <div class="cc-body">
+                        <span class="cc-icon">🌿</span>
+                        <h3>C'est urgent, je ne vais pas bien</h3>
+                        <p>Numéros d'urgence en Côte d'Ivoire et un exercice de respiration pour les moments les plus lourds.</p>
+                        <span class="cc-tag cc-tag-urgent">Sans compte · Direct</span>
+                        <div class="cc-cta">
+                            Voir les ressources
+                            <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="emergency-strip">
+                🚨 Danger immédiat —
+                <strong>SAMU <a href="tel:185">185</a></strong> &nbsp;·&nbsp;
+                <strong>Pompiers <a href="tel:180">180</a></strong> &nbsp;·&nbsp;
+                <strong>Police <a href="tel:170">170</a></strong>
+            </div>
+        </div>
+
+
+        <!-- ===== STATE 1 : CHATBOT ===== -->
+        <div id="state-bot" class="state">
+
+            <div class="chat-header">
+                <button class="back-btn" onclick="goTo('choice')">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                    Retour
+                </button>
+                <div class="chat-avatar" id="chatAvatar">
+                    <!-- 📌 Remplace par : src="{% static 'image/ton_gif_avatar.gif' %}" -->
+                    <img src="{% static 'image/sana_image9.jpeg.jpeg' %}" alt=""
+                         onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\'chat-avatar-fallback\'>🌸</div>'">
+                </div>
+                <div class="chat-info">
+                    <div class="chat-name">SANA — Écoute IA</div>
+                    <div class="chat-status">
+                        <div class="s-dot"></div>
+                        Disponible · Confidentiel
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="msg bot">
+                    <div class="msg-av">
+                        <img src="{% static 'image/sana_image9.jpeg.jpeg' %}" alt="" onerror="this.style.display='none'">
+                    </div>
+                    <div class="msg-bubble">
+                        Bonjour 🌸 Je suis là pour t'écouter, sans jugement et en toute confidentialité.<br><br>
+                        Comment tu te sens en ce moment ?
+                    </div>
+                </div>
+            </div>
+
+            <div class="typing" id="typingIndicator">
+                <div class="msg-av">
+                    <img src="{% static 'image/sana_image9.jpeg.jpeg' %}" alt="" onerror="this.style.display='none'">
+                </div>
+                <div class="typing-bub">
+                    <div class="td"></div><div class="td"></div><div class="td"></div>
+                </div>
+            </div>
+
+            <div class="chat-bar">
+                <div class="chat-bar-inner">
+                    <input
+                        type="text"
+                        class="chat-input"
+                        id="chatInput"
+                        placeholder="Écris ce que tu ressens..."
+                        autocomplete="off"
+                        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+                    >
+                    <button class="send-btn" onclick="sendMsg()" aria-label="Envoyer">
+                        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- ===== STATE 2 : HUMAIN ===== -->
+        <div id="state-human" class="state">
+            <button class="back-top" onclick="goTo('choice')">
+                <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                Retour
+            </button>
+            <div class="human-card">
+                <div class="human-gif">
+                    <!-- 📌 Remplace par : src="{% static 'image/ton_gif_ecoute.gif' %}" -->
+                    <img src="{% static 'image/sana_image9.jpeg.jpeg' %}" alt=""
+                         onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\'font-size:4rem;display:flex;align-items:center;justify-content:center;height:100%\'>🤝</div>'">
+                </div>
+                <span class="human-eyebrow">Écoute humaine</span>
+                <h2 class="human-title">Un humain <em>pour toi.</em></h2>
+                <p class="human-text">
+                    Nos écoutants sont des bénévoles formés, disponibles par chat texte.
+                    Pas pour donner des conseils — pour t'entendre, vraiment, sans te juger.
+                </p>
+                <div class="auth-note">
+                    <span class="an-icon">🔒</span>
+                    <div class="an-text">
+                        Pour <strong>protéger ta confidentialité</strong>, un compte gratuit est nécessaire.
+                        Tu peux utiliser un pseudonyme —
+                        <strong>personne ne connaîtra ton vrai nom</strong>.
+                    </div>
+                </div>
+                <a href="{% url 'sanasource:login' %}" class="btn-sage">
+                    Créer mon espace anonyme gratuit →
+                </a>
+                <span class="login-link">
+                    Déjà un compte ? <a href="{% url 'sanasource:login' %}">Se connecter</a>
+                </span>
+            </div>
+        </div>
+
+
+        <!-- ===== STATE 3 : URGENCE ===== -->
+        <div id="state-urgent" class="state">
+            <div class="urgent-top">
+                <button class="back-top" onclick="goTo('choice')">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                    Retour
+                </button>
+                <div class="urgent-gif">
+                    <!-- 📌 Remplace par : src="{% static 'image/ton_gif_respiration.gif' %}" -->
+                    <img src="{% static 'image/sana_image9.jpeg.jpeg' %}" alt=""
+                         onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\'font-size:4rem;display:flex;align-items:center;justify-content:center;height:100%\'>🌿</div>'">
+                </div>
+                <span class="urgent-eyebrow">Ressources d'urgence</span>
+                <h2 class="urgent-title">Tu n'es pas <em>seul·e.</em></h2>
+                <p class="urgent-sub">Ces numéros sont disponibles maintenant, gratuitement, sans inscription.</p>
+            </div>
+
+            <div class="numbers-grid">
+                <div class="num-card primary">
+                    <span class="nc-label">Urgences médicales</span>
+                    <div class="nc-name">SAMU — Côte d'Ivoire</div>
+                    <div class="nc-num"><a href="tel:185">185</a></div>
+                    <div class="nc-note">24h/24 · Gratuit · Fixe et mobile</div>
+                </div>
+                <div class="num-card primary">
+                    <span class="nc-label">Sécurité</span>
+                    <div class="nc-name">Police Nationale</div>
+                    <div class="nc-num"><a href="tel:170">170</a></div>
+                    <div class="nc-note">Urgences sécurité · 24h/24</div>
+                </div>
+                <div class="num-card">
+                    <span class="nc-label">CHU Abidjan</span>
+                    <div class="nc-name">CHU de Cocody</div>
+                    <div class="nc-num"><a href="tel:+22522484060">22 48 40 60</a></div>
+                    <div class="nc-note">Urgences psychiatriques</div>
+                </div>
+                <div class="num-card">
+                    <span class="nc-label">Secours</span>
+                    <div class="nc-name">Sapeurs-Pompiers</div>
+                    <div class="nc-num"><a href="tel:180">180</a></div>
+                    <div class="nc-note">Secours et assistance</div>
+                </div>
+            </div>
+
+            <div class="breathe-box">
+                <div class="breathe-title">Pendant que tu attends — respire avec moi</div>
+                <div class="breathe-orb-wrap"><div class="breathe-orb"></div></div>
+                <div class="breathe-label" id="breatheLabel">Inspire doucement...</div>
+            </div>
+
+            <div class="urgent-sana" onclick="goTo('bot')">
+                <span class="us-icon">💬</span>
+                <div class="us-body">
+                    <strong>Parler avec SANA maintenant</strong>
+                    <span>Chatbot disponible sans compte, immédiatement</span>
+                </div>
+                <span class="us-arr">→</span>
+            </div>
+        </div>
+
+    </div><!-- .page -->
+
+
+    <!-- LOGIN PROMPT -->
+    <div class="login-prompt" id="loginPrompt">
+        <div class="lp-row">
+            <div class="lp-title">
+                Tu veux continuer<br>
+                <em>cette conversation ?</em>
+            </div>
+            <button class="lp-close" onclick="dismissPrompt()">✕</button>
+        </div>
+        <p class="lp-text">
+            Crée ton espace gratuit pour sauvegarder nos échanges et accéder
+            à un suivi personnalisé. En 1 minute, anonymement.
+        </p>
+        <div class="lp-btns">
+            <a href="{% url 'sanasource:login' %}" class="lp-main">🌱 Créer mon espace</a>
+            <button class="lp-later" onclick="dismissPrompt()">Pas maintenant</button>
+        </div>
+    </div>
+
+
+    <script>
+    // ===== CURSOR =====
+    const cDot=document.getElementById('cDot'),cRing=document.getElementById('cRing');
+    let mx=0,my=0,rx=0,ry=0;
+    document.addEventListener('mousemove',e=>{
+        mx=e.clientX;my=e.clientY;
+        cDot.style.transform=`translate(${mx-3.5}px,${my-3.5}px)`;
+    });
+    (function ra(){
+        rx+=(mx-rx-17)*.1;ry+=(my-ry-17)*.1;
+        cRing.style.transform=`translate(${rx}px,${ry}px)`;
+        requestAnimationFrame(ra);
+    })();
+    document.addEventListener('mouseover',e=>{
+        cRing.classList.toggle('hov',!!e.target.closest('a,button,.choice-card,.urgent-sana'));
+    });
+
+    // ===== CSRF — lit le token depuis le tag {% csrf_token %} dans le DOM =====
+    function getCsrf(){
+        // Méthode 1 : input caché injecté par {% csrf_token %}
+        const input = document.querySelector('[name=csrfmiddlewaretoken]');
+        if(input) return input.value;
+        // Méthode 2 : cookie (fallback)
+        const v = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+        return v ? v.pop() : '';
+    }
+
+    // ===== STATE NAVIGATION =====
+    let current = 'choice';
+    function goTo(s){
+        if(current==='bot') document.getElementById('typingIndicator').classList.remove('show');
+        document.getElementById('state-'+current).classList.remove('active');
+        document.getElementById('state-'+s).classList.add('active');
+        current = s;
+        window.scrollTo({top:0,behavior:'smooth'});
+        if(s==='bot')    initChat();
+        if(s==='urgent') initBreathe();
+    }
+
+    // ===== CHATBOT =====
+    const CHAT_URL = '/api/chat/';
+
+    let chatHistory = [];
+    let msgCount    = 0;
+    let promptShown = false;
+    let chatReady   = false;
+    let isSending   = false;
+
+    function initChat(){
+        if(chatReady) return;
+        chatReady = true;
+        chatHistory = [{
+            role   : 'assistant',
+            content: "Bonjour 🌸 Je suis là pour t'écouter, sans jugement et en toute confidentialité. Tu n'as pas à tout expliquer d'un coup.\n\nComment tu te sens en ce moment ?"
+        }];
+    }
+
+    async function sendMsg(){
+        if(isSending) return;
+        const input = document.getElementById('chatInput');
+        const text  = input.value.trim();
+        if(!text) return;
+
+        input.value = '';
+        input.focus();
+        isSending   = true;
+
+        appendMsg('user', text);
+        chatHistory.push({role:'user', content:text});
+        msgCount++;
+
+        const typing = document.getElementById('typingIndicator');
+        typing.classList.add('show');
+        scrollDown();
+
+        try {
+            const csrf = getCsrf();
+            console.log('📤 Envoi vers', CHAT_URL, '| CSRF:', csrf ? '✅' : '❌ MANQUANT');
+
+            const res = await fetch(CHAT_URL, {
+                method : 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken' : csrf
+                },
+                body: JSON.stringify({messages: chatHistory})
+            });
+
+            console.log('📥 Status HTTP:', res.status);
+            const data = await res.json();
+            console.log('📥 Réponse:', data);
+
+            typing.classList.remove('show');
+
+            if(!res.ok){
+                console.error('❌ Erreur serveur:', data.error);
+                appendMsg('bot', "Je rencontre une petite difficulté technique. Réessaie dans quelques instants.");
+            } else {
+                const reply = data.reply || "Je suis là. Prends ton temps.";
+                appendMsg('bot', reply);
+                chatHistory.push({role:'assistant', content:reply});
+            }
+
+        } catch(e) {
+            typing.classList.remove('show');
+            console.error('❌ Erreur fetch:', e);
+            appendMsg('bot', "Je suis là, même si la connexion a vacillé. Continue à m'écrire.");
+        }
+
+        isSending = false;
+
+        if(msgCount >= 3 && !promptShown){
+            promptShown = true;
+            setTimeout(()=>document.getElementById('loginPrompt').classList.add('show'), 1500);
+        }
+    }
+
+    function appendMsg(role, text){
+        const wrap  = document.createElement('div');
+        wrap.className = `msg ${role}`;
+        const html  = text.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+        const avSrc = document.querySelector('#chatAvatar img')?.src || '';
+
+        if(role==='bot'){
+            wrap.innerHTML = `
+                <div class="msg-av"><img src="${avSrc}" alt="" onerror="this.style.display='none'"></div>
+                <div class="msg-bubble">${html}</div>`;
+        } else {
+            wrap.innerHTML = `<div class="msg-bubble">${html}</div>`;
+        }
+
+        document.getElementById('chatMessages').appendChild(wrap);
+        scrollDown();
+    }
+
+    function scrollDown(){
+        const c = document.getElementById('chatMessages');
+        requestAnimationFrame(()=>{ c.scrollTop = c.scrollHeight; });
+    }
+
+    function dismissPrompt(){
+        document.getElementById('loginPrompt').classList.remove('show');
+    }
+
+    // ===== BREATHING =====
+    const breathCycle     = ['Inspire doucement...','Retiens...','Expire lentement...','Pause...'];
+    const breathDurations = [4000,2000,4000,2000];
+    let bIdx=0, breathTimer=null;
+
+    function initBreathe(){
+        if(breathTimer) return;
+        const lbl = document.getElementById('breatheLabel');
+        lbl.style.transition = 'opacity .4s ease';
+        function next(){
+            lbl.style.opacity = '0';
+            setTimeout(()=>{
+                lbl.textContent  = breathCycle[bIdx];
+                lbl.style.opacity = '1';
+                bIdx = (bIdx+1) % breathCycle.length;
+                breathTimer = setTimeout(next, breathDurations[bIdx]);
+            }, 400);
+        }
+        breathTimer = setTimeout(next, 800);
+    }
+    </script>
+</body>
+</html>

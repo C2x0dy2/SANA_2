@@ -1,0 +1,1719 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SANA — Mon Espace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
+{% csrf_token %}
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --p950:#1e0d17;--p800:#3d1d2e;--p700:#5e2f47;--p400:#9a5e79;
+  --r500:#c26e8a;--r300:#dca8bc;--r100:#f2d8e4;--r50:#fce8f0;
+  --blush:#fdf3f7;--ivory:#fefaf8;--cream:#fef7f2;
+  --sage:#8dab88;--sage-p:#d4e4d0;
+  --amber:#e8a44a;--amber-p:#fdf0dc;
+  --blue:#6b9fd4;--blue-p:#deeaf7;
+  --txt:#1a0d14;--txt-m:#6b4a58;--txt-s:#9a7585;
+  --white:#fff;--glass:rgba(255,255,255,.78);
+  --sid:240px;--nav-h:60px;
+  --rad:20px;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--txt);overflow-x:hidden;min-height:100vh;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  position:fixed;top:0;left:0;bottom:0;width:var(--sid);z-index:300;
+  background:var(--p950);
+  display:flex;flex-direction:column;
+  transition:transform .35s cubic-bezier(.22,1,.36,1);
+}
+.sid-brand{
+  padding:24px 22px 20px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  flex-shrink:0;
+}
+.sid-logo{
+  font-family:'Playfair Display',serif;font-size:1.8rem;
+  font-weight:300;font-style:italic;color:var(--r100);
+  letter-spacing:3px;text-decoration:none;display:block;
+}
+.sid-tagline{font-size:.6rem;text-transform:uppercase;letter-spacing:3px;color:rgba(255,255,255,.3);margin-top:4px;}
+
+.sid-user{
+  padding:16px 22px;border-bottom:1px solid rgba(255,255,255,.07);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+}
+.sid-av{
+  width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,var(--r500),var(--p700));
+  display:flex;align-items:center;justify-content:center;
+  font-size:.9rem;color:white;font-weight:500;flex-shrink:0;
+}
+.sid-name{font-size:.8rem;font-weight:500;color:rgba(255,255,255,.85);}
+.sid-anon{font-size:.62rem;color:rgba(255,255,255,.35);letter-spacing:1.5px;}
+
+.sid-nav{flex:1;overflow-y:auto;padding:12px 0;}
+.sid-nav::-webkit-scrollbar{width:3px;}
+.sid-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px;}
+
+.nav-section-label{
+  font-size:.55rem;text-transform:uppercase;letter-spacing:3px;
+  color:rgba(255,255,255,.25);padding:12px 22px 4px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 22px;cursor:pointer;
+  transition:background .2s,color .2s;
+  border-left:2px solid transparent;
+  font-size:.78rem;font-weight:400;color:rgba(255,255,255,.55);
+  letter-spacing:.5px;
+}
+.nav-item:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.85);}
+.nav-item.active{
+  background:rgba(194,110,138,.12);color:var(--r300);
+  border-left-color:var(--r500);
+}
+.nav-item svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;flex-shrink:0;}
+.nav-badge{
+  margin-left:auto;background:var(--r500);color:white;
+  font-size:.55rem;padding:2px 7px;border-radius:100px;font-weight:600;
+}
+
+.sid-footer{
+  padding:16px 22px;border-top:1px solid rgba(255,255,255,.07);flex-shrink:0;
+}
+.urgence-btn{
+  display:flex;align-items:center;gap:8px;width:100%;
+  background:rgba(232,164,74,.15);border:1px solid rgba(232,164,74,.3);
+  border-radius:12px;padding:10px 14px;cursor:pointer;
+  font-family:'Jost',sans-serif;font-size:.72rem;font-weight:500;
+  color:var(--amber);transition:all .3s;text-decoration:none;
+}
+.urgence-btn:hover{background:rgba(232,164,74,.25);}
+.urgence-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;}
+
+/* ── TOP BAR ── */
+.topbar{
+  position:fixed;top:0;left:var(--sid);right:0;height:var(--nav-h);z-index:200;
+  background:rgba(254,250,248,.94);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(194,110,138,.1);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 clamp(16px,3vw,32px);
+  transition:left .35s;
+}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.burger-btn{
+  display:none;background:none;border:none;cursor:pointer;padding:6px;
+  flex-direction:column;gap:4px;
+}
+.burger-btn span{display:block;width:20px;height:1.5px;background:var(--p700);border-radius:2px;transition:all .3s;}
+.topbar-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:400;font-style:italic;color:var(--p950);}
+
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.tb-icon{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--blush);border:1px solid rgba(194,110,138,.15);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:background .3s;
+}
+.tb-icon:hover{background:var(--r50);}
+.tb-icon svg{width:16px;height:16px;stroke:var(--p700);fill:none;stroke-width:1.8;}
+.tb-av{
+  width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,var(--r500),var(--p700));
+  display:flex;align-items:center;justify-content:center;
+  font-size:.85rem;color:white;font-weight:500;cursor:pointer;
+}
+
+/* ── MAIN ── */
+.main{
+  margin-left:var(--sid);padding-top:var(--nav-h);
+  min-height:100vh;transition:margin-left .35s;
+}
+.section{display:none;padding:clamp(20px,3vw,32px) clamp(16px,3vw,32px) 80px;}
+.section.active{display:block;animation:secIn .4s cubic-bezier(.22,1,.36,1);}
+@keyframes secIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── TYPOGRAPHY ── */
+.sec-title{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,3vw,2.2rem);font-weight:300;color:var(--p950);margin-bottom:4px;}
+.sec-title em{font-style:italic;color:var(--r500);}
+.sec-sub{font-size:.8rem;color:var(--txt-s);font-weight:300;margin-bottom:clamp(20px,3vw,32px);}
+.eyebrow{font-size:.62rem;text-transform:uppercase;letter-spacing:4px;color:var(--r500);font-weight:500;display:block;margin-bottom:6px;}
+
+/* ── CARDS ── */
+.card{
+  background:var(--white);border-radius:var(--rad);
+  border:1px solid rgba(194,110,138,.08);
+  box-shadow:0 2px 16px rgba(107,47,71,.06);
+}
+.card-glass{
+  background:var(--glass);backdrop-filter:blur(16px);
+  border-radius:var(--rad);border:1px solid rgba(255,255,255,.85);
+  box-shadow:0 4px 20px rgba(107,47,71,.08);
+}
+
+/* ── GRID HELPERS ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,2vw,20px);}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,2vw,20px);}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(12px,2vw,20px);}
+.grid-6{display:grid;grid-template-columns:repeat(6,1fr);gap:clamp(10px,1.5vw,16px);}
+
+/* ══════════════════════════════════
+   SECTION 0 — ACCUEIL
+══════════════════════════════════ */
+.welcome-card{
+  background:linear-gradient(135deg,var(--p950),var(--p700));
+  border-radius:clamp(20px,3vw,32px);
+  padding:clamp(24px,4vw,40px);
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  margin-bottom:clamp(16px,2.5vw,24px);
+  position:relative;overflow:hidden;
+}
+.welcome-card::before{
+  content:'';position:absolute;width:300px;height:300px;border-radius:50%;
+  background:radial-gradient(circle,rgba(194,110,138,.18),transparent 70%);
+  top:-80px;right:-60px;pointer-events:none;
+}
+.wc-left{}
+.wc-greeting{font-size:.68rem;text-transform:uppercase;letter-spacing:3px;color:rgba(253,243,247,.45);margin-bottom:6px;}
+.wc-name{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,4vw,2.4rem);font-weight:300;color:var(--r100);margin-bottom:8px;}
+.wc-name em{font-style:italic;}
+.wc-msg{font-size:clamp(.82rem,1.5vw,.9rem);color:rgba(253,243,247,.6);font-weight:300;line-height:1.7;max-width:420px;}
+.wc-right{flex-shrink:0;text-align:center;}
+.wc-date{font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:300;font-style:italic;color:rgba(253,243,247,.2);line-height:1;}
+.wc-day{font-size:.65rem;text-transform:uppercase;letter-spacing:3px;color:rgba(253,243,247,.35);}
+
+/* Mood selector */
+.mood-bar{
+  background:var(--white);border-radius:var(--rad);
+  border:1px solid rgba(194,110,138,.08);
+  padding:clamp(16px,2.5vw,24px);
+  margin-bottom:clamp(16px,2.5vw,24px);
+  display:flex;align-items:center;gap:clamp(12px,2vw,24px);flex-wrap:wrap;
+}
+.mood-bar-label{font-size:.75rem;font-weight:500;color:var(--txt-m);white-space:nowrap;}
+.mood-emojis{display:flex;gap:8px;flex:1;}
+.mood-emoji-btn{
+  width:clamp(40px,7vw,52px);height:clamp(40px,7vw,52px);
+  border-radius:50%;border:1.5px solid rgba(194,110,138,.15);
+  background:var(--blush);cursor:pointer;font-size:clamp(1.2rem,2.5vw,1.6rem);
+  display:flex;align-items:center;justify-content:center;
+  transition:all .3s;flex-shrink:0;
+}
+.mood-emoji-btn:hover,.mood-emoji-btn.active{
+  border-color:var(--r500);background:var(--r50);transform:scale(1.12);
+}
+.mood-saved{font-size:.72rem;color:var(--sage);font-weight:400;margin-left:auto;white-space:nowrap;display:none;}
+.mood-saved.show{display:block;}
+
+/* Quick cards 6 */
+.quick-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:clamp(10px,1.8vw,16px);
+  margin-bottom:clamp(16px,2.5vw,24px);
+}
+.quick-card{
+  background:var(--white);border-radius:18px;
+  border:1px solid rgba(194,110,138,.08);
+  padding:clamp(16px,2.5vw,22px);
+  cursor:pointer;transition:transform .3s,box-shadow .3s;
+  display:flex;flex-direction:column;gap:8px;
+}
+.quick-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(107,47,71,.1);}
+.qc-icon{font-size:clamp(1.4rem,2.5vw,1.8rem);}
+.qc-title{font-size:clamp(.78rem,1.5vw,.88rem);font-weight:500;color:var(--p950);}
+.qc-sub{font-size:clamp(.66rem,1.2vw,.72rem);color:var(--txt-s);font-weight:300;line-height:1.5;}
+.qc-1{border-top:2px solid var(--r300);}
+.qc-2{border-top:2px solid var(--sage);}
+.qc-3{border-top:2px solid var(--amber);}
+.qc-4{border-top:2px solid var(--blue);}
+.qc-5{border-top:2px solid var(--r500);}
+.qc-6{border-top:2px solid var(--p400);}
+
+/* Bottom grid accueil */
+.accueil-bottom{display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,2vw,20px);}
+
+/* Pro card */
+.pro-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(18px,3vw,28px);}
+.pro-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.pro-av{
+  width:clamp(48px,8vw,60px);height:clamp(48px,8vw,60px);border-radius:50%;
+  background:linear-gradient(135deg,var(--sage-p),var(--sage));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.4rem;flex-shrink:0;
+}
+.pro-name{font-family:'Playfair Display',serif;font-size:clamp(.95rem,1.8vw,1.1rem);font-weight:400;color:var(--p950);}
+.pro-spec{font-size:.7rem;color:var(--txt-s);font-weight:300;}
+.pro-badge{display:inline-flex;align-items:center;gap:5px;background:var(--sage-p);border-radius:100px;padding:3px 10px;font-size:.6rem;color:var(--sage);font-weight:500;margin-top:4px;}
+.pro-status-dot{width:5px;height:5px;border-radius:50%;background:var(--sage);}
+.pro-actions{display:flex;gap:8px;margin-top:14px;}
+.btn-sm{
+  flex:1;padding:9px 14px;border-radius:100px;font-family:'Jost',sans-serif;
+  font-size:.72rem;font-weight:400;letter-spacing:1px;cursor:pointer;transition:all .3s;
+  display:flex;align-items:center;justify-content:center;gap:5px;border:none;
+}
+.btn-primary-sm{background:var(--p950);color:var(--blush);}
+.btn-primary-sm:hover{background:var(--p700);}
+.btn-outline-sm{background:transparent;color:var(--p700);border:1px solid rgba(107,47,71,.2);}
+.btn-outline-sm:hover{border-color:var(--r500);color:var(--r500);}
+
+/* Ressources */
+.ressources-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(18px,3vw,28px);}
+.ressource-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(194,110,138,.07);cursor:pointer;transition:background .2s;}
+.ressource-item:last-child{border-bottom:none;}
+.ressource-item:hover .ri-title{color:var(--r500);}
+.ri-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.ri-1{background:var(--r50);}
+.ri-2{background:var(--sage-p);}
+.ri-3{background:var(--amber-p);}
+.ri-4{background:var(--blue-p);}
+.ri-title{font-size:.82rem;font-weight:500;color:var(--p950);transition:color .3s;}
+.ri-sub{font-size:.68rem;color:var(--txt-s);font-weight:300;}
+.ri-arr{margin-left:auto;color:var(--txt-s);font-size:.8rem;}
+
+/* Badges strip */
+.badges-strip{
+  background:var(--white);border-radius:var(--rad);
+  border:1px solid rgba(194,110,138,.08);
+  padding:clamp(16px,2.5vw,22px);
+  margin-bottom:clamp(16px,2.5vw,24px);
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.badge-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  width:clamp(52px,9vw,64px);
+}
+.badge-icon{
+  width:clamp(40px,7vw,52px);height:clamp(40px,7vw,52px);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;
+}
+.badge-icon.unlocked{background:linear-gradient(135deg,var(--r100),var(--r50));border:2px solid var(--r300);}
+.badge-icon.locked{background:rgba(0,0,0,.05);border:2px solid rgba(0,0,0,.08);filter:grayscale(1);opacity:.4;}
+.badge-lbl{font-size:.55rem;text-align:center;color:var(--txt-s);font-weight:400;line-height:1.3;}
+
+/* ══════════════════════════════════
+   SECTION 1 — CHAT SANA
+══════════════════════════════════ */
+#sec-chat{padding-bottom:0;}
+.chat-layout{display:flex;flex-direction:column;height:calc(100svh - var(--nav-h) - 64px);}
+.chat-topbar{
+  display:flex;align-items:center;gap:12px;
+  padding:clamp(12px,2vw,18px) clamp(16px,3vw,24px);
+  background:var(--white);border-radius:var(--rad);
+  border:1px solid rgba(194,110,138,.08);
+  margin-bottom:12px;flex-shrink:0;flex-wrap:wrap;gap:10px;
+}
+.chat-av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--r100),var(--r500));display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.chat-info-top{flex:1;}
+.chat-info-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:400;color:var(--p950);}
+.chat-info-st{display:flex;align-items:center;gap:5px;font-size:.65rem;color:var(--txt-s);}
+.chat-sdot{width:6px;height:6px;border-radius:50%;background:var(--sage);animation:sdot 2s infinite;}
+@keyframes sdot{0%,100%{opacity:1}50%{opacity:.4}}
+.chat-urgence{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(232,164,74,.1);border:1px solid rgba(232,164,74,.25);
+  border-radius:100px;padding:7px 14px;font-size:.68rem;font-weight:500;
+  color:var(--amber);cursor:pointer;white-space:nowrap;transition:all .3s;
+}
+.chat-urgence:hover{background:rgba(232,164,74,.2);}
+.chat-mood-bar{display:flex;align-items:center;gap:8px;background:var(--blush);border-radius:100px;padding:6px 14px;font-size:.65rem;color:var(--txt-m);}
+.chat-mood-emojis{display:flex;gap:4px;}
+.chat-mood-emojis button{background:none;border:none;cursor:pointer;font-size:.9rem;transition:transform .2s;}
+.chat-mood-emojis button:hover{transform:scale(1.25);}
+
+.chat-messages{
+  flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;
+  padding:clamp(12px,2vw,20px);
+  background:var(--blush);border-radius:var(--rad);
+  border:1px solid rgba(194,110,138,.08);
+  -webkit-overflow-scrolling:touch;
+}
+.chat-messages::-webkit-scrollbar{width:3px;}
+.chat-messages::-webkit-scrollbar-thumb{background:rgba(194,110,138,.2);border-radius:3px;}
+
+.cmsg{display:flex;align-items:flex-end;gap:8px;animation:msgIn .3s ease;}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.cmsg.bot{align-self:flex-start;}
+.cmsg.user{align-self:flex-end;flex-direction:row-reverse;}
+.cmsg-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--r100),var(--r500));display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0;}
+.cmsg-bubble{
+  max-width:min(70%,380px);padding:10px 16px;border-radius:18px;
+  font-size:clamp(.82rem,1.6vw,.9rem);line-height:1.65;font-weight:300;word-break:break-word;
+}
+.cmsg.bot .cmsg-bubble{background:var(--white);border:1px solid rgba(194,110,138,.1);color:var(--txt);border-bottom-left-radius:4px;box-shadow:0 2px 8px rgba(107,47,71,.06);}
+.cmsg.user .cmsg-bubble{background:linear-gradient(135deg,var(--p700),var(--p950));color:rgba(253,243,247,.92);border-bottom-right-radius:4px;}
+
+.chat-typing{display:none;align-items:flex-end;gap:8px;}
+.chat-typing.show{display:flex;}
+.typing-bubble{background:var(--white);border:1px solid rgba(194,110,138,.1);padding:10px 14px;border-radius:18px;border-bottom-left-radius:4px;display:flex;gap:4px;}
+.td{width:5px;height:5px;border-radius:50%;background:var(--r300);animation:tb 1.4s ease-in-out infinite;}
+.td:nth-child(2){animation-delay:.2s}.td:nth-child(3){animation-delay:.4s}
+@keyframes tb{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-4px)}}
+
+.chat-input-wrap{
+  display:flex;gap:8px;align-items:center;
+  padding:clamp(10px,2vw,14px) 0 0;flex-shrink:0;
+}
+.chat-input{
+  flex:1;background:var(--white);border:1.5px solid rgba(194,110,138,.2);
+  border-radius:100px;padding:12px 20px;
+  font-family:'Jost',sans-serif;font-size:max(.85rem,16px);
+  font-weight:300;color:var(--txt);outline:none;
+  transition:border-color .3s,box-shadow .3s;
+}
+.chat-input:focus{border-color:var(--r500);box-shadow:0 0 0 3px rgba(194,110,138,.1);}
+.chat-input::placeholder{color:var(--txt-s);}
+.chat-send{
+  width:46px;height:46px;border-radius:50%;background:var(--p950);
+  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .3s,transform .2s;flex-shrink:0;
+}
+.chat-send:hover{background:var(--p700);transform:scale(1.05);}
+.chat-send svg{width:16px;height:16px;stroke:white;fill:none;stroke-width:2;}
+
+/* ══════════════════════════════════
+   SECTION 2 — HUMEUR
+══════════════════════════════════ */
+.humeur-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(14px,2vw,20px);}
+.chart-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(18px,3vw,28px);}
+.chart-card-title{font-family:'Playfair Display',serif;font-size:clamp(1rem,2vw,1.2rem);font-weight:400;color:var(--p950);margin-bottom:4px;}
+.chart-card-sub{font-size:.7rem;color:var(--txt-s);font-weight:300;margin-bottom:clamp(16px,2.5vw,24px);}
+.bar-chart{display:flex;align-items:flex-end;gap:clamp(8px,1.5vw,14px);height:140px;}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;}
+.bar{
+  width:100%;border-radius:8px 8px 0 0;
+  background:linear-gradient(180deg,var(--r500),var(--r100));
+  min-height:8px;transition:height .6s cubic-bezier(.22,1,.36,1);
+  position:relative;cursor:pointer;
+}
+.bar:hover{background:linear-gradient(180deg,var(--p700),var(--r500));}
+.bar-day{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--txt-s);}
+.bar-val{font-size:.65rem;font-weight:500;color:var(--p950);}
+
+.mood-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;}
+.ml-item{display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--txt-m);}
+.ml-dot{width:8px;height:8px;border-radius:50%;}
+
+.mood-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mood-stat-card{background:var(--blush);border-radius:14px;padding:16px;text-align:center;}
+.msc-num{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,2.4rem);font-weight:300;font-style:italic;color:var(--r500);}
+.msc-label{font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--txt-s);font-weight:400;}
+
+/* ══════════════════════════════════
+   SECTION 3 — COMMUNAUTÉ
+══════════════════════════════════ */
+.comm-layout{display:grid;grid-template-columns:1fr 320px;gap:clamp(14px,2vw,20px);}
+.post-feed{display:flex;flex-direction:column;gap:clamp(12px,2vw,16px);}
+.post-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(16px,2.5vw,24px);}
+.post-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.post-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:white;font-weight:500;flex-shrink:0;}
+.post-av-1{background:linear-gradient(135deg,var(--r100),var(--r500));}
+.post-av-2{background:linear-gradient(135deg,var(--sage-p),var(--sage));}
+.post-av-3{background:linear-gradient(135deg,var(--amber-p),var(--amber));}
+.post-av-4{background:linear-gradient(135deg,var(--blue-p),var(--blue));}
+.post-anon{font-size:.78rem;font-weight:500;color:var(--p950);}
+.post-meta{font-size:.62rem;color:var(--txt-s);}
+.post-tag{display:inline-block;background:var(--r50);color:var(--r500);font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;padding:2px 8px;border-radius:100px;font-weight:500;margin-left:6px;}
+.post-text{font-size:clamp(.82rem,1.6vw,.92rem);color:var(--txt-m);line-height:1.75;font-weight:300;margin-bottom:14px;}
+.post-actions{display:flex;gap:8px;align-items:center;}
+.post-btn{
+  display:flex;align-items:center;gap:5px;
+  background:var(--blush);border:1px solid rgba(194,110,138,.12);
+  border-radius:100px;padding:5px 12px;
+  font-size:.68rem;color:var(--txt-m);cursor:pointer;transition:all .3s;
+}
+.post-btn:hover{background:var(--r50);border-color:var(--r500);color:var(--r500);}
+.post-btn.liked{background:var(--r50);border-color:var(--r500);color:var(--r500);}
+
+.comm-sidebar{}
+.write-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(16px,2.5vw,22px);margin-bottom:14px;}
+.write-input{
+  width:100%;border:1.5px solid rgba(194,110,138,.18);border-radius:14px;
+  padding:12px 14px;font-family:'Jost',sans-serif;font-size:.82rem;
+  resize:none;outline:none;color:var(--txt);background:var(--blush);
+  transition:border-color .3s;
+}
+.write-input:focus{border-color:var(--r500);}
+.write-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+.write-anon-tag{font-size:.65rem;color:var(--txt-s);}
+.btn-post{
+  background:var(--p950);color:var(--blush);border:none;border-radius:100px;
+  padding:9px 18px;font-family:'Jost',sans-serif;font-size:.72rem;cursor:pointer;transition:background .3s;
+}
+.btn-post:hover{background:var(--p700);}
+
+/* ══════════════════════════════════
+   SECTION 4 — GROUPES
+══════════════════════════════════ */
+.groups-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,2vw,20px);}
+.group-card{
+  background:var(--white);border-radius:var(--rad);
+  border:1px solid rgba(194,110,138,.08);
+  padding:clamp(18px,3vw,28px);
+  cursor:pointer;transition:transform .35s,box-shadow .35s;
+  position:relative;overflow:hidden;
+}
+.group-card:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(107,47,71,.1);}
+.gc-1{border-top:3px solid var(--r500);}
+.gc-2{border-top:3px solid var(--amber);}
+.gc-3{border-top:3px solid var(--p400);}
+.gc-4{border-top:3px solid var(--sage);}
+.gc-5{border-top:3px solid var(--blue);}
+.gc-6{border-top:3px solid var(--r300);}
+.group-icon{font-size:clamp(1.8rem,3.5vw,2.4rem);margin-bottom:12px;display:block;}
+.group-name{font-family:'Playfair Display',serif;font-size:clamp(1rem,2vw,1.25rem);font-weight:400;color:var(--p950);margin-bottom:6px;}
+.group-desc{font-size:clamp(.74rem,1.4vw,.82rem);color:var(--txt-s);line-height:1.65;font-weight:300;margin-bottom:14px;}
+.group-meta{display:flex;align-items:center;gap:10px;}
+.group-members{font-size:.65rem;color:var(--txt-m);}
+.group-join{
+  margin-left:auto;background:var(--blush);border:1px solid rgba(194,110,138,.18);
+  border-radius:100px;padding:5px 14px;font-size:.65rem;color:var(--p700);cursor:pointer;
+  transition:all .3s;font-family:'Jost',sans-serif;
+}
+.group-join:hover{background:var(--r50);border-color:var(--r500);color:var(--r500);}
+.group-join.joined{background:var(--r50);border-color:var(--r500);color:var(--r500);}
+
+/* ══════════════════════════════════
+   SECTION 5 — BLOG / RESSOURCES
+══════════════════════════════════ */
+.resources-tabs{display:flex;gap:6px;margin-bottom:clamp(16px,2.5vw,24px);flex-wrap:wrap;}
+.rtab{
+  padding:8px 18px;border-radius:100px;font-size:.72rem;font-weight:400;
+  letter-spacing:1px;cursor:pointer;transition:all .3s;
+  background:var(--white);border:1px solid rgba(194,110,138,.15);color:var(--txt-m);
+}
+.rtab.active{background:var(--p950);color:var(--blush);border-color:var(--p950);}
+.rtab-content{display:none;}
+.rtab-content.active{display:block;}
+
+.blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,2vw,20px);}
+.blog-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);overflow:hidden;cursor:pointer;transition:transform .35s,box-shadow .35s;}
+.blog-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(107,47,71,.1);}
+.blog-img{height:clamp(100px,15vw,140px);display:flex;align-items:center;justify-content:center;font-size:3rem;}
+.bc-img-1{background:linear-gradient(135deg,var(--r50),var(--r100));}
+.bc-img-2{background:linear-gradient(135deg,var(--sage-p),rgba(141,171,136,.3));}
+.bc-img-3{background:linear-gradient(135deg,var(--amber-p),rgba(232,164,74,.2));}
+.bc-img-4{background:linear-gradient(135deg,var(--blue-p),rgba(107,159,212,.2));}
+.bc-img-5{background:linear-gradient(135deg,var(--blush),var(--r50));}
+.bc-img-6{background:linear-gradient(135deg,var(--cream),var(--amber-p));}
+.blog-body{padding:clamp(14px,2vw,20px);}
+.blog-cat{font-size:.58rem;text-transform:uppercase;letter-spacing:2px;color:var(--r500);font-weight:500;margin-bottom:6px;}
+.blog-title{font-family:'Playfair Display',serif;font-size:clamp(.9rem,1.8vw,1.05rem);font-weight:400;color:var(--p950);margin-bottom:6px;line-height:1.3;}
+.blog-excerpt{font-size:clamp(.72rem,1.3vw,.78rem);color:var(--txt-s);line-height:1.65;font-weight:300;}
+.blog-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid rgba(194,110,138,.07);}
+.blog-time{font-size:.6rem;color:var(--txt-s);}
+.blog-read{font-size:.62rem;color:var(--r500);font-weight:500;}
+
+/* Conférences */
+.conf-list{display:flex;flex-direction:column;gap:12px;}
+.conf-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(14px,2.5vw,22px);display:flex;align-items:center;gap:16px;}
+.conf-date-box{
+  width:clamp(52px,8vw,64px);height:clamp(52px,8vw,64px);border-radius:14px;
+  background:linear-gradient(135deg,var(--p950),var(--p700));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;
+}
+.conf-day{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:300;color:var(--r100);line-height:1;}
+.conf-month{font-size:.55rem;text-transform:uppercase;letter-spacing:2px;color:rgba(253,243,247,.45);}
+.conf-info{flex:1;}
+.conf-title{font-size:clamp(.85rem,1.7vw,.95rem);font-weight:500;color:var(--p950);margin-bottom:3px;}
+.conf-speaker{font-size:.72rem;color:var(--txt-s);}
+.conf-badge{padding:4px 12px;border-radius:100px;font-size:.6rem;font-weight:500;white-space:nowrap;}
+.conf-live{background:rgba(232,74,74,.1);color:#e54a4a;}
+.conf-soon{background:var(--sage-p);color:var(--sage);}
+
+/* Jeux thérapeutiques */
+.jeux-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,2vw,20px);}
+.jeu-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(18px,3vw,26px);text-align:center;cursor:pointer;transition:transform .35s,box-shadow .35s;}
+.jeu-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(107,47,71,.1);}
+.jeu-emoji{font-size:clamp(2rem,4vw,2.8rem);margin-bottom:10px;display:block;}
+.jeu-title{font-family:'Playfair Display',serif;font-size:clamp(.9rem,1.8vw,1.05rem);font-weight:400;color:var(--p950);margin-bottom:6px;}
+.jeu-desc{font-size:clamp(.7rem,1.3vw,.78rem);color:var(--txt-s);line-height:1.6;font-weight:300;margin-bottom:14px;}
+.jeu-duration{font-size:.62rem;color:var(--r500);font-weight:500;background:var(--r50);display:inline-block;padding:3px 10px;border-radius:100px;}
+
+/* Témoignages */
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,2vw,20px);align-items:start;}
+.testi-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(18px,3vw,28px);position:relative;}
+.testi-card::before{content:'';position:absolute;top:0;left:24px;right:24px;height:2px;background:linear-gradient(to right,var(--r300),transparent);border-radius:0 0 2px 2px;}
+.testi-card:nth-child(2){margin-top:clamp(16px,3vw,32px);}
+.testi-stars{font-size:.7rem;letter-spacing:3px;color:var(--r300);margin-bottom:10px;}
+.testi-qmark{font-family:'Playfair Display',serif;font-size:3rem;line-height:1;color:rgba(194,110,138,.1);font-style:italic;display:block;margin-bottom:-16px;}
+.testi-text{font-size:clamp(.82rem,1.6vw,.92rem);color:var(--txt-m);line-height:1.8;font-weight:300;margin-bottom:clamp(14px,2.5vw,22px);}
+.testi-person{display:flex;align-items:center;gap:10px;}
+.testi-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:500;font-size:.9rem;box-shadow:0 3px 10px rgba(194,110,138,.25);}
+.ta-1{background:linear-gradient(135deg,var(--r100),var(--r500));}
+.ta-2{background:linear-gradient(135deg,var(--sage-p),var(--sage));}
+.ta-3{background:linear-gradient(135deg,var(--amber-p),var(--amber));}
+.testi-name{font-size:.82rem;font-weight:500;color:var(--p700);}
+.testi-ctx{font-size:.65rem;color:var(--txt-s);}
+
+/* ══════════════════════════════════
+   SECTION 6 — MON PROFESSIONNEL
+══════════════════════════════════ */
+.pro-layout{display:grid;grid-template-columns:380px 1fr;gap:clamp(16px,2.5vw,24px);}
+.pro-profile-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(24px,4vw,36px);text-align:center;}
+.pro-big-av{width:clamp(80px,14vw,110px);height:clamp(80px,14vw,110px);border-radius:50%;background:linear-gradient(135deg,var(--sage-p),var(--sage));display:flex;align-items:center;justify-content:center;font-size:clamp(2rem,4vw,2.8rem);margin:0 auto 16px;}
+.pro-big-name{font-family:'Playfair Display',serif;font-size:clamp(1.3rem,2.5vw,1.7rem);font-weight:300;color:var(--p950);margin-bottom:4px;}
+.pro-big-spec{font-size:.78rem;color:var(--txt-s);font-weight:300;margin-bottom:12px;}
+.pro-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:20px;}
+.chip{font-size:.62rem;padding:4px 11px;border-radius:100px;background:var(--blush);color:var(--p700);border:1px solid rgba(194,110,138,.15);}
+.pro-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;}
+.pro-stat{background:var(--blush);border-radius:12px;padding:12px 8px;text-align:center;}
+.ps-num{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:300;font-style:italic;color:var(--r500);}
+.ps-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt-s);}
+.pro-big-actions{display:flex;gap:8px;}
+
+.pro-right{}
+.agenda-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(18px,3vw,28px);margin-bottom:14px;}
+.rdv-list{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+.rdv-item{display:flex;align-items:center;gap:12px;padding:12px;background:var(--blush);border-radius:12px;}
+.rdv-time{font-family:'Playfair Display',serif;font-size:1rem;font-weight:300;font-style:italic;color:var(--p950);white-space:nowrap;min-width:70px;}
+.rdv-info{flex:1;}
+.rdv-title{font-size:.82rem;font-weight:500;color:var(--p950);}
+.rdv-type{font-size:.68rem;color:var(--txt-s);}
+.rdv-badge{font-size:.6rem;padding:3px 10px;border-radius:100px;white-space:nowrap;}
+.rdv-upcoming{background:var(--r50);color:var(--r500);}
+.rdv-done{background:var(--sage-p);color:var(--sage);}
+
+/* ══════════════════════════════════
+   SECTION 7 — BADGES
+══════════════════════════════════ */
+.badges-layout{display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,2.5vw,24px);}
+.badges-section-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(20px,3vw,30px);}
+.badges-grid-full{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(12px,2vw,18px);margin-top:16px;}
+.badge-full-item{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;cursor:pointer;}
+.badge-full-icon{width:clamp(56px,9vw,72px);height:clamp(56px,9vw,72px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:clamp(1.4rem,2.5vw,1.8rem);transition:transform .3s;}
+.badge-full-item:hover .badge-full-icon{transform:scale(1.1);}
+.bfi-unlocked{background:linear-gradient(135deg,var(--r50),var(--r100));border:2px solid var(--r300);}
+.bfi-locked{background:rgba(0,0,0,.04);border:2px dashed rgba(0,0,0,.1);filter:grayscale(1);opacity:.4;}
+.badge-full-name{font-size:.7rem;font-weight:500;color:var(--p950);}
+.badge-full-desc{font-size:.6rem;color:var(--txt-s);line-height:1.4;}
+
+/* ══════════════════════════════════
+   SECTION 8 — MON PROFIL
+══════════════════════════════════ */
+.profil-layout{display:grid;grid-template-columns:340px 1fr;gap:clamp(16px,2.5vw,24px);}
+.profil-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(24px,4vw,36px);}
+.profil-av-wrap{position:relative;width:fit-content;margin:0 auto 16px;}
+.profil-av{width:clamp(72px,12vw,96px);height:clamp(72px,12vw,96px);border-radius:50%;background:linear-gradient(135deg,var(--r100),var(--r500));display:flex;align-items:center;justify-content:center;font-size:clamp(1.8rem,3.5vw,2.4rem);}
+.profil-av-edit{position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--p950);border:2px solid var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.65rem;color:white;}
+.profil-username{font-family:'Playfair Display',serif;font-size:clamp(1.1rem,2vw,1.3rem);font-weight:400;color:var(--p950);text-align:center;margin-bottom:2px;}
+.profil-since{font-size:.65rem;color:var(--txt-s);text-align:center;margin-bottom:16px;}
+.profil-fields{display:flex;flex-direction:column;gap:10px;}
+.profil-field{background:var(--blush);border-radius:12px;padding:12px 14px;}
+.pf-label{font-size:.58rem;text-transform:uppercase;letter-spacing:2px;color:var(--txt-s);font-weight:500;margin-bottom:3px;}
+.pf-value{font-size:.85rem;color:var(--p950);font-weight:400;}
+.profil-right{}
+.settings-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(20px,3vw,28px);margin-bottom:14px;}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(194,110,138,.07);}
+.setting-row:last-child{border-bottom:none;}
+.sr-left{}
+.sr-title{font-size:.85rem;font-weight:500;color:var(--p950);}
+.sr-desc{font-size:.7rem;color:var(--txt-s);font-weight:300;}
+.toggle{width:42px;height:22px;background:rgba(0,0,0,.1);border-radius:100px;position:relative;cursor:pointer;transition:background .3s;}
+.toggle.on{background:var(--r500);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:white;transition:transform .3s;}
+.toggle.on::after{transform:translateX(20px);}
+
+/* ══════════════════════════════════
+   MOBILE NAV (bottom bar)
+══════════════════════════════════ */
+.mobile-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:400;
+  background:rgba(30,13,23,.97);backdrop-filter:blur(20px);
+  padding:8px 0 max(8px,env(safe-area-inset-bottom));
+  flex-wrap:nowrap;overflow-x:auto;
+}
+.mn-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 12px;cursor:pointer;flex-shrink:0;
+  font-size:.52rem;text-transform:uppercase;letter-spacing:1px;
+  color:rgba(255,255,255,.4);transition:color .3s;min-width:56px;
+}
+.mn-item.active{color:var(--r300);}
+.mn-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;}
+
+/* Overlay sidebar mobile */
+.sid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:299;}
+
+/* ══════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════ */
+@media(max-width:1100px){
+  .comm-layout{grid-template-columns:1fr;}
+  .pro-layout{grid-template-columns:1fr;}
+  .profil-layout{grid-template-columns:1fr;}
+  .humeur-grid{grid-template-columns:1fr;}
+  .accueil-bottom{grid-template-columns:1fr;}
+  .quick-grid{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:900px){
+  .groups-grid{grid-template-columns:1fr 1fr;}
+  .blog-grid{grid-template-columns:1fr 1fr;}
+  .jeux-grid{grid-template-columns:1fr 1fr;}
+  .testi-grid{grid-template-columns:1fr 1fr;}
+  .testi-card:nth-child(2){margin-top:0;}
+  .testi-card:nth-child(3){display:none;}
+  .badges-layout{grid-template-columns:1fr;}
+  .badges-grid-full{grid-template-columns:repeat(4,1fr);}
+  .grid-4{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:768px){
+  :root{--sid:240px;}
+  .sidebar{transform:translateX(-100%);}
+  .sidebar.open{transform:translateX(0);}
+  .sid-overlay.open{display:block;}
+  .topbar{left:0;}
+  .main{margin-left:0;padding-bottom:72px;}
+  .burger-btn{display:flex;}
+  .mobile-nav{display:flex;}
+  .quick-grid{grid-template-columns:1fr 1fr;}
+  .groups-grid{grid-template-columns:1fr;}
+  .blog-grid{grid-template-columns:1fr;}
+  .jeux-grid{grid-template-columns:1fr 1fr;}
+  .testi-grid{grid-template-columns:1fr;}
+  .testi-card:nth-child(3){display:block;}
+  .welcome-card{flex-direction:column;}
+  .wc-right{display:none;}
+  .chat-topbar{flex-wrap:wrap;}
+}
+@media(max-width:480px){
+  .quick-grid{grid-template-columns:1fr 1fr;}
+  .jeux-grid{grid-template-columns:1fr;}
+  .badges-grid-full{grid-template-columns:repeat(3,1fr);}
+  .bar-chart{height:100px;}
+  .mood-stats{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR OVERLAY (mobile) -->
+<div class="sid-overlay" id="sidOverlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sid-brand">
+    <a href="/" class="sid-logo">Sana</a>
+    <div class="sid-tagline">Soutien & bien-être mental</div>
+  </div>
+
+  <div class="sid-user">
+    <div class="sid-av">A</div>
+    <div>
+      <div class="sid-name">{{ user.username|default:"Anonyme·e" }}</div>
+      <div class="sid-anon">Espace sécurisé</div>
+    </div>
+  </div>
+
+  <nav class="sid-nav">
+    <div class="nav-section-label">Principal</div>
+    <div class="nav-item active" onclick="showSection('accueil',this)">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Accueil
+    </div>
+    <div class="nav-item" onclick="showSection('chat',this)">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Chat SANA
+      <span class="nav-badge">IA</span>
+    </div>
+    <div class="nav-item" onclick="showSection('humeur',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+      Mon Humeur
+    </div>
+
+    <div class="nav-section-label">Communauté</div>
+    <div class="nav-item" onclick="showSection('communaute',this)">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Communauté
+    </div>
+    <div class="nav-item" onclick="showSection('groupes',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Groupes
+    </div>
+
+    <div class="nav-section-label">Ressources</div>
+    <div class="nav-item" onclick="showSection('ressources',this)">
+      <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Blog & Ressources
+    </div>
+
+    <div class="nav-section-label">Mon espace</div>
+    <div class="nav-item" onclick="showSection('pro',this)">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Mon Professionnel
+    </div>
+    <div class="nav-item" onclick="showSection('badges',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      Mes Badges
+    </div>
+    <div class="nav-item" onclick="showSection('profil',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Mon Profil
+    </div>
+  </nav>
+
+  <div class="sid-footer">
+    <a href="/help" class="urgence-btn">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Urgence — SAMU 185
+    </a>
+  </div>
+</aside>
+
+<!-- TOPBAR -->
+<header class="topbar" id="topbar">
+  <div class="topbar-left">
+    <button class="burger-btn" id="burgerBtn" onclick="toggleSidebar()">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="topbar-title" id="topbarTitle">Accueil</span>
+  </div>
+  <div class="topbar-right">
+    <div class="tb-icon" title="Notifications">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </div>
+    <div class="tb-icon" title="Paramètres" onclick="showSection('profil',null)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </div>
+    <div class="tb-av">A</div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- ══ ACCUEIL ══ -->
+  <div id="sec-accueil" class="section active">
+
+    <div class="welcome-card">
+      <div class="wc-left">
+        <div class="wc-greeting">Bon retour,</div>
+        <div class="wc-name">Bonjour, <em>{{ user.username|default:"Anonyme·e" }}</em> 🌸</div>
+        <div class="wc-msg">Comment vas-tu aujourd'hui ? SANA est là pour t'écouter, t'accompagner et célébrer chaque petit pas.</div>
+      </div>
+      <div class="wc-right">
+        <div class="wc-date" id="wcDate">19</div>
+        <div class="wc-day" id="wcDay">Mars 2026</div>
+      </div>
+    </div>
+
+    <!-- Humeur du jour -->
+    <div class="mood-bar">
+      <span class="mood-bar-label">Comment te sens-tu ?</span>
+      <div class="mood-emojis">
+        <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😔')">😔</button>
+        <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😟')">😟</button>
+        <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😐')">😐</button>
+        <button class="mood-emoji-btn" onclick="selectMoodHome(this,'🙂')">🙂</button>
+        <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😊')">😊</button>
+      </div>
+      <span class="mood-saved" id="moodSaved">✓ Humeur enregistrée</span>
+    </div>
+
+    <!-- Badges strip -->
+    <div class="badges-strip">
+      <span style="font-size:.72rem;font-weight:500;color:var(--txt-m);white-space:nowrap;">Mes badges</span>
+      <div class="badge-item"><div class="badge-icon unlocked">🌱</div><span class="badge-lbl">Premier pas</span></div>
+      <div class="badge-item"><div class="badge-icon unlocked">💬</div><span class="badge-lbl">Première session</span></div>
+      <div class="badge-item"><div class="badge-icon unlocked">🌸</div><span class="badge-lbl">7 jours</span></div>
+      <div class="badge-item"><div class="badge-icon locked">⭐</div><span class="badge-lbl">30 jours</span></div>
+      <div class="badge-item"><div class="badge-icon locked">🏆</div><span class="badge-lbl">Mentor</span></div>
+      <div class="badge-item"><div class="badge-icon locked">🎯</div><span class="badge-lbl">Objectif</span></div>
+      <button class="btn-sm btn-outline-sm" style="margin-left:auto;white-space:nowrap;" onclick="showSection('badges',null)">Tous →</button>
+    </div>
+
+    <!-- 6 quick cards -->
+    <div class="quick-grid">
+      <div class="quick-card qc-1" onclick="showSection('chat',null)">
+        <span class="qc-icon">💬</span>
+        <div class="qc-title">Parler à SANA</div>
+        <div class="qc-sub">Écoute IA disponible maintenant, sans attente.</div>
+      </div>
+      <div class="quick-card qc-2" onclick="showSection('humeur',null)">
+        <span class="qc-icon">📊</span>
+        <div class="qc-title">Mon humeur</div>
+        <div class="qc-sub">Suis ton évolution sur 7 jours.</div>
+      </div>
+      <div class="quick-card qc-3" onclick="showSection('ressources',null)">
+        <span class="qc-icon">🧘</span>
+        <div class="qc-title">Méditation</div>
+        <div class="qc-sub">Exercice guidé de 5 minutes.</div>
+      </div>
+      <div class="quick-card qc-4" onclick="showSection('communaute',null)">
+        <span class="qc-icon">🤝</span>
+        <div class="qc-title">Communauté</div>
+        <div class="qc-sub">Partage et lis des témoignages anonymes.</div>
+      </div>
+      <div class="quick-card qc-5" onclick="showSection('groupes',null)">
+        <span class="qc-icon">👥</span>
+        <div class="qc-title">Mes groupes</div>
+        <div class="qc-sub">Rejoins un groupe thématique.</div>
+      </div>
+      <div class="quick-card qc-6" onclick="showSection('pro',null)">
+        <span class="qc-icon">👩‍⚕️</span>
+        <div class="qc-title">Dr. Kouamé</div>
+        <div class="qc-sub">Prends rendez-vous ou envoie un message.</div>
+      </div>
+    </div>
+
+    <!-- Bottom grid -->
+    <div class="accueil-bottom">
+      <!-- Professionnel -->
+      <div class="pro-card">
+        <div class="eyebrow">Mon professionnel</div>
+        <div class="pro-header">
+          <div class="pro-av">👩‍⚕️</div>
+          <div>
+            <div class="pro-name">Dr. Amina Kouamé</div>
+            <div class="pro-spec">Psychologue clinicienne · Abidjan</div>
+            <div class="pro-badge"><span class="pro-status-dot"></span>Disponible aujourd'hui</div>
+          </div>
+        </div>
+        <div class="pro-actions">
+          <button class="btn-sm btn-primary-sm" onclick="showSection('pro',null)">💬 Message</button>
+          <button class="btn-sm btn-outline-sm" onclick="showSection('pro',null)">📅 RDV</button>
+        </div>
+      </div>
+
+      <!-- Ressources -->
+      <div class="ressources-card">
+        <div class="eyebrow">Ressources recommandées</div>
+        <div class="ressource-item">
+          <div class="ri-icon ri-1">🧘</div>
+          <div><div class="ri-title">Respiration 4-7-8</div><div class="ri-sub">Exercice · 5 min</div></div>
+          <span class="ri-arr">→</span>
+        </div>
+        <div class="ressource-item">
+          <div class="ri-icon ri-2">📖</div>
+          <div><div class="ri-title">Comprendre l'anxiété</div><div class="ri-sub">Article · 4 min</div></div>
+          <span class="ri-arr">→</span>
+        </div>
+        <div class="ressource-item">
+          <div class="ri-icon ri-3">🌙</div>
+          <div><div class="ri-title">Méditation du soir</div><div class="ri-sub">Audio · 8 min</div></div>
+          <span class="ri-arr">→</span>
+        </div>
+        <div class="ressource-item">
+          <div class="ri-icon ri-4">🎮</div>
+          <div><div class="ri-title">Jeu : Pleine conscience</div><div class="ri-sub">Activité · 10 min</div></div>
+          <span class="ri-arr">→</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CHAT SANA ══ -->
+  <div id="sec-chat" class="section">
+    <div class="sec-title">Chat <em>SANA</em></div>
+    <div class="sec-sub">Écoute IA confidentielle — disponible 24h/24</div>
+
+    <div class="chat-layout">
+      <div class="chat-topbar">
+        <div class="chat-av">🌸</div>
+        <div class="chat-info-top">
+          <div class="chat-info-name">SANA — Écoute IA</div>
+          <div class="chat-info-st"><span class="chat-sdot"></span>Disponible · Confidentiel · Sans jugement</div>
+        </div>
+        <div class="chat-mood-bar">
+          <span>Humeur :</span>
+          <div class="chat-mood-emojis">
+            <button onclick="selectMoodChat(this,'😔')">😔</button>
+            <button onclick="selectMoodChat(this,'😐')">😐</button>
+            <button onclick="selectMoodChat(this,'🙂')">🙂</button>
+            <button onclick="selectMoodChat(this,'😊')">😊</button>
+          </div>
+        </div>
+        <div class="chat-urgence" onclick="window.location.href='/help'">
+          ⚠️ Urgence
+        </div>
+      </div>
+
+      <div class="chat-messages" id="dashChatMessages">
+        <div class="cmsg bot">
+          <div class="cmsg-av">🌸</div>
+          <div class="cmsg-bubble">Bonjour 🌸 Je suis SANA. Je suis là pour t'écouter, sans jugement et en toute confidentialité.<br><br>Comment tu te sens aujourd'hui ?</div>
+        </div>
+      </div>
+
+      <div class="chat-typing" id="dashTyping">
+        <div class="cmsg-av">🌸</div>
+        <div class="typing-bubble">
+          <div class="td"></div><div class="td"></div><div class="td"></div>
+        </div>
+      </div>
+
+      <div class="chat-input-wrap">
+        <input type="text" class="chat-input" id="dashChatInput" placeholder="Écris ce que tu ressens..." autocomplete="off"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();dashSendMsg()}">
+        <button class="chat-send" onclick="dashSendMsg()">
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ HUMEUR ══ -->
+  <div id="sec-humeur" class="section">
+    <div class="sec-title">Mon <em>Humeur</em></div>
+    <div class="sec-sub">Suis ton évolution émotionnelle sur 7 jours</div>
+
+    <div class="humeur-grid">
+      <div class="chart-card">
+        <div class="chart-card-title">Semaine en cours</div>
+        <div class="chart-card-sub">Du Lundi 13 au Dimanche 19 Mars 2026</div>
+        <div class="bar-chart" id="barChart">
+          <div class="bar-col"><div class="bar" style="height:45%"></div><div class="bar-day">Lun</div><div class="bar-val">😐</div></div>
+          <div class="bar-col"><div class="bar" style="height:30%"></div><div class="bar-day">Mar</div><div class="bar-val">😟</div></div>
+          <div class="bar-col"><div class="bar" style="height:60%"></div><div class="bar-day">Mer</div><div class="bar-val">🙂</div></div>
+          <div class="bar-col"><div class="bar" style="height:55%"></div><div class="bar-day">Jeu</div><div class="bar-val">🙂</div></div>
+          <div class="bar-col"><div class="bar" style="height:75%"></div><div class="bar-day">Ven</div><div class="bar-val">😊</div></div>
+          <div class="bar-col"><div class="bar" style="height:65%"></div><div class="bar-day">Sam</div><div class="bar-val">🙂</div></div>
+          <div class="bar-col"><div class="bar" style="height:80%"></div><div class="bar-day">Dim</div><div class="bar-val">😊</div></div>
+        </div>
+        <div class="mood-legend">
+          <div class="ml-item"><div class="ml-dot" style="background:var(--r500)"></div>Bonne humeur</div>
+          <div class="ml-item"><div class="ml-dot" style="background:var(--r100)"></div>Neutre</div>
+          <div class="ml-item"><div class="ml-dot" style="background:var(--p400)"></div>Difficile</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="mood-stats" style="margin-bottom:16px;">
+          <div class="mood-stat-card"><div class="msc-num">😊</div><div class="msc-label">Humeur dominante</div></div>
+          <div class="mood-stat-card"><div class="msc-num">5/7</div><div class="msc-label">Jours enregistrés</div></div>
+          <div class="mood-stat-card"><div class="msc-num">+12%</div><div class="msc-label">vs semaine passée</div></div>
+          <div class="mood-stat-card"><div class="msc-num">3</div><div class="msc-label">Sessions chat</div></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-title">Enregistrer maintenant</div>
+          <div class="chart-card-sub">Comment te sens-tu à cet instant ?</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😔')" style="width:52px;height:52px;">😔</button>
+            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😟')" style="width:52px;height:52px;">😟</button>
+            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😐')" style="width:52px;height:52px;">😐</button>
+            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'🙂')" style="width:52px;height:52px;">🙂</button>
+            <button class="mood-emoji-btn" onclick="selectMoodHome(this,'😊')" style="width:52px;height:52px;">😊</button>
+          </div>
+          <div style="margin-top:14px;font-size:.78rem;color:var(--txt-s);font-weight:300;">
+            Note facultative
+          </div>
+          <textarea style="width:100%;margin-top:6px;border:1.5px solid rgba(194,110,138,.18);border-radius:12px;padding:10px;font-family:'Jost',sans-serif;font-size:.82rem;resize:none;outline:none;background:var(--blush);color:var(--txt);" rows="3" placeholder="Qu'est-ce qui influence ton humeur aujourd'hui ?"></textarea>
+          <button class="btn-sm btn-primary-sm" style="margin-top:10px;width:100%;">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COMMUNAUTÉ ══ -->
+  <div id="sec-communaute" class="section">
+    <div class="sec-title">La <em>Communauté</em></div>
+    <div class="sec-sub">Partage anonymement, lis des témoignages, ne sois plus seul·e</div>
+
+    <div class="comm-layout">
+      <div class="post-feed">
+        <div class="post-card">
+          <div class="post-header">
+            <div class="post-av post-av-1">A</div>
+            <div>
+              <div class="post-anon">Anonyme·e <span class="post-tag">Anxiété</span></div>
+              <div class="post-meta">🇨🇮 Abidjan · il y a 2h</div>
+            </div>
+          </div>
+          <div class="post-text">J'ai enfin osé en parler à ma mère hier soir. C'était terrifiant mais elle a été plus compréhensive que je ne le pensais. Merci à cette communauté qui m'a donné le courage. 🌸</div>
+          <div class="post-actions">
+            <button class="post-btn" onclick="toggleLike(this)">❤️ <span>24</span></button>
+            <button class="post-btn">💬 <span>8</span></button>
+            <button class="post-btn">🤝 Soutenir</button>
+          </div>
+        </div>
+
+        <div class="post-card">
+          <div class="post-header">
+            <div class="post-av post-av-2">B</div>
+            <div>
+              <div class="post-anon">Anonyme·e <span class="post-tag">Étudiants</span></div>
+              <div class="post-meta">🇨🇮 Bouaké · il y a 5h</div>
+            </div>
+          </div>
+          <div class="post-text">La pression des examens devient insupportable. Je dors 4h par nuit depuis 3 semaines. Est-ce que quelqu'un a des conseils pour gérer ce niveau de stress ?</div>
+          <div class="post-actions">
+            <button class="post-btn">❤️ <span>17</span></button>
+            <button class="post-btn">💬 <span>12</span></button>
+            <button class="post-btn">🤝 Soutenir</button>
+          </div>
+        </div>
+
+        <div class="post-card">
+          <div class="post-header">
+            <div class="post-av post-av-3">C</div>
+            <div>
+              <div class="post-anon">Anonyme·e <span class="post-tag">Burn-out</span></div>
+              <div class="post-meta">🇨🇮 San-Pédro · il y a 1j</div>
+            </div>
+          </div>
+          <div class="post-text">3 mois après mon burn-out, je recommence à cuisiner, à lire, à sourire. La guérison c'est lent mais elle est réelle. Si tu traverses quelque chose de difficile : tiens bon. 💚</div>
+          <div class="post-actions">
+            <button class="post-btn liked">❤️ <span>41</span></button>
+            <button class="post-btn">💬 <span>19</span></button>
+            <button class="post-btn">🤝 Soutenir</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="comm-sidebar">
+        <div class="write-card">
+          <div class="eyebrow">Partager anonymement</div>
+          <textarea class="write-input" rows="4" placeholder="Qu'est-ce qui se passe pour toi en ce moment ?"></textarea>
+          <div class="write-footer">
+            <span class="write-anon-tag">🔒 Totalement anonyme</span>
+            <button class="btn-post">Publier</button>
+          </div>
+        </div>
+
+        <div class="card" style="padding:clamp(16px,2.5vw,22px);">
+          <div class="eyebrow">Tendances</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;">
+              <span style="color:var(--txt-m);">#anxiété</span><span style="color:var(--r500);font-weight:500;">48 posts</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;">
+              <span style="color:var(--txt-m);">#examens</span><span style="color:var(--r500);font-weight:500;">31 posts</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;">
+              <span style="color:var(--txt-m);">#guérison</span><span style="color:var(--r500);font-weight:500;">26 posts</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;">
+              <span style="color:var(--txt-m);">#burnout</span><span style="color:var(--r500);font-weight:500;">19 posts</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ GROUPES ══ -->
+  <div id="sec-groupes" class="section">
+    <div class="sec-title">Groupes <em>Thématiques</em></div>
+    <div class="sec-sub">Rejoins un espace de soutien adapté à ce que tu vis</div>
+
+    <div class="groups-grid">
+      <div class="group-card gc-1">
+        <span class="group-icon">😰</span>
+        <div class="group-name">Anxiété & Stress</div>
+        <div class="group-desc">Un espace pour parler de l'anxiété du quotidien, partager des techniques de gestion et s'entraider.</div>
+        <div class="group-meta">
+          <span class="group-members">👥 142 membres</span>
+          <button class="group-join joined">✓ Rejoint</button>
+        </div>
+      </div>
+      <div class="group-card gc-2">
+        <span class="group-icon">🔥</span>
+        <div class="group-name">Burn-out & Épuisement</div>
+        <div class="group-desc">Pour ceux qui vivent ou ont vécu un burn-out professionnel ou émotionnel. Reconstruction collective.</div>
+        <div class="group-meta">
+          <span class="group-members">👥 87 membres</span>
+          <button class="group-join" onclick="this.classList.add('joined');this.textContent='✓ Rejoint'">Rejoindre</button>
+        </div>
+      </div>
+      <div class="group-card gc-3">
+        <span class="group-icon">🕊️</span>
+        <div class="group-name">Deuil & Perte</div>
+        <div class="group-desc">Un espace bienveillant pour traverser ensemble les périodes de deuil, qu'il soit lié à un décès ou une rupture.</div>
+        <div class="group-meta">
+          <span class="group-members">👥 53 membres</span>
+          <button class="group-join" onclick="this.classList.add('joined');this.textContent='✓ Rejoint'">Rejoindre</button>
+        </div>
+      </div>
+      <div class="group-card gc-4">
+        <span class="group-icon">🎓</span>
+        <div class="group-name">Étudiants CI</div>
+        <div class="group-desc">Pression académique, orientation, vie en cité universitaire — un groupe pensé pour les étudiants ivoiriens.</div>
+        <div class="group-meta">
+          <span class="group-members">👥 218 membres</span>
+          <button class="group-join joined">✓ Rejoint</button>
+        </div>
+      </div>
+      <div class="group-card gc-5">
+        <span class="group-icon">👩‍👧</span>
+        <div class="group-name">Parentalité</div>
+        <div class="group-desc">Pour les parents qui jonglent avec l'éducation des enfants et leur propre bien-être mental.</div>
+        <div class="group-meta">
+          <span class="group-members">👥 76 membres</span>
+          <button class="group-join" onclick="this.classList.add('joined');this.textContent='✓ Rejoint'">Rejoindre</button>
+        </div>
+      </div>
+      <div class="group-card gc-6">
+        <span class="group-icon">💼</span>
+        <div class="group-name">Vie professionnelle</div>
+        <div class="group-desc">Harcèlement au travail, manque de reconnaissance, équilibre pro/perso — parlons-en ensemble.</div>
+        <div class="group-meta">
+          <span class="group-members">👥 94 membres</span>
+          <button class="group-join" onclick="this.classList.add('joined');this.textContent='✓ Rejoint'">Rejoindre</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ BLOG & RESSOURCES ══ -->
+  <div id="sec-ressources" class="section">
+    <div class="sec-title">Blog & <em>Ressources</em></div>
+    <div class="sec-sub">Articles, conférences, jeux thérapeutiques et témoignages</div>
+
+    <div class="resources-tabs">
+      <div class="rtab active" onclick="switchTab(this,'tab-blog')">📖 Blog</div>
+      <div class="rtab" onclick="switchTab(this,'tab-conf')">🎙️ Conférences</div>
+      <div class="rtab" onclick="switchTab(this,'tab-jeux')">🎮 Jeux thérapeutiques</div>
+      <div class="rtab" onclick="switchTab(this,'tab-testi')">💬 Témoignages</div>
+    </div>
+
+    <!-- Blog -->
+    <div id="tab-blog" class="rtab-content active">
+      <div class="blog-grid">
+        <div class="blog-card">
+          <div class="blog-img bc-img-1">🧠</div>
+          <div class="blog-body">
+            <div class="blog-cat">Santé mentale</div>
+            <div class="blog-title">Comprendre l'anxiété en contexte africain</div>
+            <div class="blog-excerpt">L'anxiété prend des formes culturellement spécifiques. Comment la reconnaître et la surmonter ici, à Abidjan...</div>
+            <div class="blog-footer"><span class="blog-time">14 Mars 2026 · 6 min</span><span class="blog-read">Lire →</span></div>
+          </div>
+        </div>
+        <div class="blog-card">
+          <div class="blog-img bc-img-2">🌿</div>
+          <div class="blog-body">
+            <div class="blog-cat">Bien-être</div>
+            <div class="blog-title">5 pratiques de pleine conscience adaptées à nos vies</div>
+            <div class="blog-excerpt">Des techniques simples qui s'intègrent dans le quotidien ivoirien, même avec un emploi du temps chargé...</div>
+            <div class="blog-footer"><span class="blog-time">10 Mars 2026 · 4 min</span><span class="blog-read">Lire →</span></div>
+          </div>
+        </div>
+        <div class="blog-card">
+          <div class="blog-img bc-img-3">💼</div>
+          <div class="blog-body">
+            <div class="blog-cat">Travail</div>
+            <div class="blog-title">Burn-out : reconnaître les signaux avant qu'il soit trop tard</div>
+            <div class="blog-excerpt">Les signes d'alarme que l'on ignore trop souvent, et comment réagir à temps pour se protéger...</div>
+            <div class="blog-footer"><span class="blog-time">5 Mars 2026 · 7 min</span><span class="blog-read">Lire →</span></div>
+          </div>
+        </div>
+        <div class="blog-card">
+          <div class="blog-img bc-img-4">💬</div>
+          <div class="blog-body">
+            <div class="blog-cat">Relations</div>
+            <div class="blog-title">Poser des limites sans culpabilité</div>
+            <div class="blog-excerpt">Dans une culture où l'on donne souvent tout aux autres, apprendre à dire non est un acte de courage...</div>
+            <div class="blog-footer"><span class="blog-time">28 Fév 2026 · 5 min</span><span class="blog-read">Lire →</span></div>
+          </div>
+        </div>
+        <div class="blog-card">
+          <div class="blog-img bc-img-5">🎓</div>
+          <div class="blog-body">
+            <div class="blog-cat">Étudiants</div>
+            <div class="blog-title">Gérer la pression des examens : guide pratique</div>
+            <div class="blog-excerpt">Techniques éprouvées pour étudier efficacement sans sacrifier sa santé mentale en période d'examens...</div>
+            <div class="blog-footer"><span class="blog-time">20 Fév 2026 · 8 min</span><span class="blog-read">Lire →</span></div>
+          </div>
+        </div>
+        <div class="blog-card">
+          <div class="blog-img bc-img-6">🌙</div>
+          <div class="blog-body">
+            <div class="blog-cat">Sommeil</div>
+            <div class="blog-title">Dormir mieux : ce que la science dit vraiment</div>
+            <div class="blog-excerpt">Le sommeil est la base de la santé mentale. Voici ce qui fonctionne réellement pour améliorer sa qualité...</div>
+            <div class="blog-footer"><span class="blog-time">12 Fév 2026 · 5 min</span><span class="blog-read">Lire →</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conférences -->
+    <div id="tab-conf" class="rtab-content">
+      <div class="conf-list">
+        <div class="conf-card">
+          <div class="conf-date-box"><div class="conf-day">22</div><div class="conf-month">Mars</div></div>
+          <div class="conf-info">
+            <div class="conf-title">Santé mentale et résilience en Afrique de l'Ouest</div>
+            <div class="conf-speaker">Dr. Amina Kouamé · Psychologue clinicienne, Abidjan</div>
+          </div>
+          <span class="conf-badge conf-live">🔴 En direct</span>
+        </div>
+        <div class="conf-card">
+          <div class="conf-date-box"><div class="conf-day">28</div><div class="conf-month">Mars</div></div>
+          <div class="conf-info">
+            <div class="conf-title">Gérer l'anxiété au quotidien : outils pratiques</div>
+            <div class="conf-speaker">Dr. Kofi Mensah · Psychiatre, CHNU Cocody</div>
+          </div>
+          <span class="conf-badge conf-soon">Bientôt</span>
+        </div>
+        <div class="conf-card">
+          <div class="conf-date-box"><div class="conf-day">5</div><div class="conf-month">Avr</div></div>
+          <div class="conf-info">
+            <div class="conf-title">Parentalité bienveillante et santé émotionnelle des enfants</div>
+            <div class="conf-speaker">Mme. Fatoumata Diallo · Thérapeute familiale</div>
+          </div>
+          <span class="conf-badge conf-soon">Bientôt</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jeux -->
+    <div id="tab-jeux" class="rtab-content">
+      <div class="jeux-grid">
+        <div class="jeu-card">
+          <span class="jeu-emoji">🧘</span>
+          <div class="jeu-title">Respiration guidée</div>
+          <div class="jeu-desc">Exercice de cohérence cardiaque pour calmer le système nerveux en quelques minutes.</div>
+          <span class="jeu-duration">5 min</span>
+        </div>
+        <div class="jeu-card">
+          <span class="jeu-emoji">🎨</span>
+          <div class="jeu-title">Coloriage anti-stress</div>
+          <div class="jeu-desc">Mandala interactif à colorier librement pour relâcher la tension mentale.</div>
+          <span class="jeu-duration">10–20 min</span>
+        </div>
+        <div class="jeu-card">
+          <span class="jeu-emoji">🌸</span>
+          <div class="jeu-title">Journal de gratitude</div>
+          <div class="jeu-desc">Écris 3 choses positives de ta journée pour réentraîner ton cerveau vers le positif.</div>
+          <span class="jeu-duration">5 min/jour</span>
+        </div>
+        <div class="jeu-card">
+          <span class="jeu-emoji">🧩</span>
+          <div class="jeu-title">Pleine conscience</div>
+          <div class="jeu-desc">Exercice 5-4-3-2-1 pour ancrer dans le présent lors des moments d'anxiété aiguë.</div>
+          <span class="jeu-duration">3 min</span>
+        </div>
+        <div class="jeu-card">
+          <span class="jeu-emoji">💭</span>
+          <div class="jeu-title">Restructuration cognitive</div>
+          <div class="jeu-desc">Identifie et reformule les pensées négatives automatiques avec guidance interactive.</div>
+          <span class="jeu-duration">15 min</span>
+        </div>
+        <div class="jeu-card">
+          <span class="jeu-emoji">🎵</span>
+          <div class="jeu-title">Relaxation musicale</div>
+          <div class="jeu-desc">Sélection de sons naturels et de musiques apaisantes pour un moment de détente.</div>
+          <span class="jeu-duration">Libre</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Témoignages -->
+    <div id="tab-testi" class="rtab-content">
+      <div class="testi-grid">
+        <div class="testi-card">
+          <div class="testi-stars">★★★★★</div>
+          <span class="testi-qmark">"</span>
+          <div class="testi-text">Pendant des mois je n'osais parler à personne. Le harcèlement au bureau m'avait brisée. SANA m'a appris à mettre des mots sur ce que je vivais. C'est le début de ma reconstruction.</div>
+          <div class="testi-person"><div class="testi-av ta-1">L</div><div><div class="testi-name">Léa A., 24 ans</div><div class="testi-ctx">🇨🇮 Abidjan · Harcèlement pro</div></div></div>
+        </div>
+        <div class="testi-card">
+          <div class="testi-stars">★★★★★</div>
+          <span class="testi-qmark">"</span>
+          <div class="testi-text">Je pensais que mon anxiété était normale. Ici j'ai découvert des exercices simples qui m'ont vraiment aidé. La communauté — savoir que d'autres vivent la même chose, ça change tout.</div>
+          <div class="testi-person"><div class="testi-av ta-2">M</div><div><div class="testi-name">Moussa K., 22 ans</div><div class="testi-ctx">🇨🇮 Bouaké · Anxiété</div></div></div>
+        </div>
+        <div class="testi-card">
+          <div class="testi-stars">★★★★★</div>
+          <span class="testi-qmark">"</span>
+          <div class="testi-text">En tant que mère, j'avais honte de ne pas aller bien. SANA m'a redonné la permission de prendre soin de moi. Aujourd'hui je vais mieux — et mes enfants aussi.</div>
+          <div class="testi-person"><div class="testi-av ta-3">C</div><div><div class="testi-name">Cécile D., 34 ans</div><div class="testi-ctx">🇨🇮 San-Pédro · Burn-out</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MON PROFESSIONNEL ══ -->
+  <div id="sec-pro" class="section">
+    <div class="sec-title">Mon <em>Professionnel</em></div>
+    <div class="sec-sub">Ton suivi personnalisé avec Dr. Kouamé</div>
+
+    <div class="pro-layout">
+      <div class="pro-profile-card">
+        <div class="pro-big-av">👩‍⚕️</div>
+        <div class="pro-big-name">Dr. Amina Kouamé</div>
+        <div class="pro-big-spec">Psychologue clinicienne</div>
+        <div class="pro-chips">
+          <span class="chip">Anxiété</span>
+          <span class="chip">Burn-out</span>
+          <span class="chip">Deuil</span>
+          <span class="chip">TCC</span>
+        </div>
+        <div class="pro-stats">
+          <div class="pro-stat"><div class="ps-num">8</div><div class="ps-lbl">Séances</div></div>
+          <div class="pro-stat"><div class="ps-num">3</div><div class="ps-lbl">Mois suivie</div></div>
+          <div class="pro-stat"><div class="ps-num">4.9</div><div class="ps-lbl">Note</div></div>
+        </div>
+        <div class="pro-big-actions">
+          <button class="btn-sm btn-primary-sm">💬 Message</button>
+          <button class="btn-sm btn-outline-sm">📅 RDV</button>
+        </div>
+      </div>
+
+      <div class="pro-right">
+        <div class="agenda-card">
+          <div class="chart-card-title">Prochains rendez-vous</div>
+          <div class="rdv-list">
+            <div class="rdv-item">
+              <div class="rdv-time">22 Mars</div>
+              <div class="rdv-info"><div class="rdv-title">Séance de suivi</div><div class="rdv-type">Vidéo · 14h00 – 15h00</div></div>
+              <span class="rdv-badge rdv-upcoming">À venir</span>
+            </div>
+            <div class="rdv-item">
+              <div class="rdv-time">5 Avr</div>
+              <div class="rdv-info"><div class="rdv-title">Bilan mensuel</div><div class="rdv-type">Vidéo · 10h00 – 11h00</div></div>
+              <span class="rdv-badge rdv-upcoming">À venir</span>
+            </div>
+            <div class="rdv-item">
+              <div class="rdv-time">5 Mars</div>
+              <div class="rdv-info"><div class="rdv-title">Séance de suivi</div><div class="rdv-type">Vidéo · 14h00 – 15h00</div></div>
+              <span class="rdv-badge rdv-done">✓ Fait</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="agenda-card">
+          <div class="chart-card-title">Notes de séance</div>
+          <div style="font-size:.82rem;color:var(--txt-m);line-height:1.75;font-weight:300;margin-top:10px;">
+            <div style="background:var(--blush);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+              <div style="font-size:.62rem;color:var(--txt-s);margin-bottom:4px;">5 Mars 2026</div>
+              Bonne progression sur les techniques de respiration. Continuer les exercices quotidiens. Aborder la gestion des conflits familiaux lors de la prochaine séance.
+            </div>
+            <div style="background:var(--blush);border-radius:12px;padding:12px 14px;">
+              <div style="font-size:.62rem;color:var(--txt-s);margin-bottom:4px;">12 Fév 2026</div>
+              Première séance. Identification des déclencheurs d'anxiété. Objectif : tenir un journal de bord émotionnel pendant 4 semaines.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ BADGES ══ -->
+  <div id="sec-badges" class="section">
+    <div class="sec-title">Mes <em>Badges</em></div>
+    <div class="sec-sub">Chaque badge célèbre un pas sur ton chemin</div>
+
+    <div class="badges-layout">
+      <div class="badges-section-card">
+        <div class="eyebrow">Débloqués (3)</div>
+        <div class="badges-grid-full">
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">🌱</div>
+            <div class="badge-full-name">Premier pas</div>
+            <div class="badge-full-desc">Inscription sur SANA</div>
+          </div>
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">💬</div>
+            <div class="badge-full-name">Première session</div>
+            <div class="badge-full-desc">Premier chat avec SANA</div>
+          </div>
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">🌸</div>
+            <div class="badge-full-name">7 jours</div>
+            <div class="badge-full-desc">Une semaine sur la plateforme</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="badges-section-card">
+        <div class="eyebrow">À débloquer (5)</div>
+        <div class="badges-grid-full">
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">⭐</div>
+            <div class="badge-full-name">30 jours</div>
+            <div class="badge-full-desc">Un mois d'engagement</div>
+          </div>
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">🏆</div>
+            <div class="badge-full-name">Mentor</div>
+            <div class="badge-full-desc">10 posts communautaires</div>
+          </div>
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">🎯</div>
+            <div class="badge-full-name">Objectif atteint</div>
+            <div class="badge-full-desc">Compléter un parcours</div>
+          </div>
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">🧘</div>
+            <div class="badge-full-name">Zen</div>
+            <div class="badge-full-desc">7 méditations complétées</div>
+          </div>
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">❤️</div>
+            <div class="badge-full-name">Soutien</div>
+            <div class="badge-full-desc">50 réactions dans la communauté</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MON PROFIL ══ -->
+  <div id="sec-profil" class="section">
+    <div class="sec-title">Mon <em>Profil</em></div>
+    <div class="sec-sub">Tes données personnelles et paramètres</div>
+
+    <div class="profil-layout">
+      <div class="profil-card">
+        <div class="profil-av-wrap">
+          <div class="profil-av">🌸</div>
+          <div class="profil-av-edit">✏️</div>
+        </div>
+        <div class="profil-username">{{ user.username|default:"Anonyme·e" }}</div>
+        <div class="profil-since">Membre depuis Mars 2026</div>
+        <div class="profil-fields">
+          <div class="profil-field">
+            <div class="pf-label">Pseudonyme</div>
+            <div class="pf-value">{{ user.username|default:"Anonyme·e" }}</div>
+          </div>
+          <div class="profil-field">
+            <div class="pf-label">Email</div>
+            <div class="pf-value">{{ user.email|default:"●●●●@●●●.com" }}</div>
+          </div>
+          <div class="profil-field">
+            <div class="pf-label">Localisation</div>
+            <div class="pf-value">🇨🇮 Côte d'Ivoire</div>
+          </div>
+          <div class="profil-field">
+            <div class="pf-label">Sessions chat</div>
+            <div class="pf-value">3 sessions</div>
+          </div>
+          <div class="profil-field">
+            <div class="pf-label">Streak humeur</div>
+            <div class="pf-value">🔥 5 jours consécutifs</div>
+          </div>
+          <button class="btn-sm btn-outline-sm" style="margin-top:8px;">Modifier mon profil</button>
+          <a href="{% url 'sanasource:login' %}" class="btn-sm btn-primary-sm" style="margin-top:6px;text-align:center;text-decoration:none;">Se déconnecter</a>
+        </div>
+      </div>
+
+      <div class="profil-right">
+        <div class="settings-card">
+          <div class="eyebrow">Notifications</div>
+          <div class="setting-row">
+            <div class="sr-left"><div class="sr-title">Rappels d'humeur</div><div class="sr-desc">Notification quotidienne pour enregistrer ton humeur</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div class="sr-left"><div class="sr-title">Messages communauté</div><div class="sr-desc">Réponses à tes posts</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div class="sr-left"><div class="sr-title">Nouveaux articles</div><div class="sr-desc">Blog et ressources</div></div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div class="sr-left"><div class="sr-title">Rappels RDV</div><div class="sr-desc">24h avant chaque séance</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="eyebrow">Confidentialité</div>
+          <div class="setting-row">
+            <div class="sr-left"><div class="sr-title">Mode anonyme total</div><div class="sr-desc">Masquer toutes les infos identifiables</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div class="sr-left"><div class="sr-title">Partager mes progrès</div><div class="sr-desc">Avec mon professionnel assigné</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div class="sr-left"><div class="sr-title">Données analytiques</div><div class="sr-desc">Améliorer SANA (anonymisé)</div></div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-nav">
+  <div class="mn-item active" onclick="showSection('accueil',this)">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Accueil
+  </div>
+  <div class="mn-item" onclick="showSection('chat',this)">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Chat
+  </div>
+  <div class="mn-item" onclick="showSection('humeur',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+    Humeur
+  </div>
+  <div class="mn-item" onclick="showSection('communaute',this)">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Communauté
+  </div>
+  <div class="mn-item" onclick="showSection('groupes',this)">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Groupes
+  </div>
+  <div class="mn-item" onclick="showSection('ressources',this)">
+    <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    Blog
+  </div>
+  <div class="mn-item" onclick="showSection('profil',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    Profil
+  </div>
+</nav>
+
+<script>
+// ── SECTION NAV ──
+const sectionMap = {
+  accueil:'Accueil', chat:'Chat SANA', humeur:'Mon Humeur',
+  communaute:'Communauté', groupes:'Groupes', ressources:'Blog & Ressources',
+  pro:'Mon Professionnel', badges:'Mes Badges', profil:'Mon Profil'
+};
+
+function showSection(id, trigger){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.mn-item').forEach(n=>n.classList.remove('active'));
+
+  if(trigger){
+    trigger.classList.add('active');
+    // Sync sidebar + mobile nav
+    const idx = [...document.querySelectorAll('.nav-item')].indexOf(trigger);
+    const mIdx = [...document.querySelectorAll('.mn-item')].indexOf(trigger);
+    if(idx>=0) document.querySelectorAll('.mn-item')[Math.min(idx,document.querySelectorAll('.mn-item').length-1)]?.classList.add('active');
+    if(mIdx>=0) document.querySelectorAll('.nav-item')[Math.min(mIdx,document.querySelectorAll('.nav-item').length-1)]?.classList.add('active');
+  }
+
+  document.getElementById('topbarTitle').textContent = sectionMap[id] || '';
+  if(id==='chat') initDashChat();
+  closeSidebar();
+}
+
+// ── SIDEBAR MOBILE ──
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidOverlay').classList.toggle('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidOverlay').classList.remove('open');
+}
+
+// ── DATE ──
+(function(){
+  const d=new Date();
+  const days=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const months=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  document.getElementById('wcDate').textContent=d.getDate();
+  document.getElementById('wcDay').textContent=days[d.getDay()]+' · '+months[d.getMonth()]+' '+d.getFullYear();
+})();
+
+// ── MOOD HOME ──
+function selectMoodHome(btn, emoji){
+  btn.closest('.mood-emojis, div').querySelectorAll('.mood-emoji-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const saved=document.getElementById('moodSaved');
+  if(saved){saved.classList.add('show');setTimeout(()=>saved.classList.remove('show'),2500);}
+}
+function selectMoodChat(btn, emoji){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.5');
+  btn.style.opacity='1';btn.style.transform='scale(1.3)';
+  setTimeout(()=>{btn.parentElement.querySelectorAll('button').forEach(b=>{b.style.opacity='';b.style.transform='';});}, 800);
+}
+
+// ── LIKE ──
+function toggleLike(btn){
+  btn.classList.toggle('liked');
+  const sp=btn.querySelector('span');
+  sp.textContent=btn.classList.contains('liked')?parseInt(sp.textContent)+1:parseInt(sp.textContent)-1;
+}
+
+// ── TABS ──
+function switchTab(tab, contentId){
+  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.rtab-content').forEach(c=>c.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById(contentId).classList.add('active');
+}
+
+// ── CHATBOT DASHBOARD ──
+const CHAT_URL='/api/chat/';
+let dashHistory=[];
+let dashReady=false;
+let dashSending=false;
+
+function getCsrf(){
+  const inp=document.querySelector('[name=csrfmiddlewaretoken]');
+  if(inp) return inp.value;
+  const v=document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+  return v?v.pop():'';
+}
+
+function initDashChat(){
+  if(dashReady) return;
+  dashReady=true;
+  dashHistory=[{role:'assistant',content:"Bonjour 🌸 Je suis SANA. Je suis là pour t'écouter, sans jugement et en toute confidentialité.\n\nComment tu te sens aujourd'hui ?"}];
+}
+
+async function dashSendMsg(){
+  if(dashSending) return;
+  const inp=document.getElementById('dashChatInput');
+  const txt=inp.value.trim();
+  if(!txt) return;
+  inp.value='';inp.focus();dashSending=true;
+
+  appendDashMsg('user',txt);
+  dashHistory.push({role:'user',content:txt});
+
+  const typing=document.getElementById('dashTyping');
+  typing.classList.add('show');
+  scrollDashChat();
+
+  try{
+    const res=await fetch(CHAT_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body:JSON.stringify({messages:dashHistory})
+    });
+    const data=await res.json();
+    typing.classList.remove('show');
+    const reply=data.reply||"Je suis là. Prends ton temps.";
+    appendDashMsg('bot',reply);
+    dashHistory.push({role:'assistant',content:reply});
+  }catch(e){
+    typing.classList.remove('show');
+    appendDashMsg('bot',"Je suis là, même si la connexion a vacillé.");
+  }
+  dashSending=false;
+}
+
+function appendDashMsg(role,text){
+  const w=document.createElement('div');
+  w.className='cmsg '+role;
+  const html=text.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  if(role==='bot'){
+    w.innerHTML=`<div class="cmsg-av">🌸</div><div class="cmsg-bubble">${html}</div>`;
+  }else{
+    w.innerHTML=`<div class="cmsg-bubble">${html}</div>`;
+  }
+  document.getElementById('dashChatMessages').appendChild(w);
+  scrollDashChat();
+}
+
+function scrollDashChat(){
+  const c=document.getElementById('dashChatMessages');
+  requestAnimationFrame(()=>{c.scrollTop=c.scrollHeight;});
+}
+</script>
+</body>
+</html>
