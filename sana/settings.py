@@ -16,6 +16,10 @@ ALLOWED_HOSTS = [
     'localhost'
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://sana-w4ru.onrender.com',
+]
+
 
 # APPLICATIONS
 INSTALLED_APPS = [
