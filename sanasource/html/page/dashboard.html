@@ -177,6 +177,62 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 .notif-body{font-size:.7rem;color:var(--txt-m);line-height:1.4;}
 .notif-time{font-size:.62rem;color:var(--txt-s);margin-top:3px;}
 .notif-empty{text-align:center;padding:28px 16px;font-size:.78rem;color:var(--txt-s);}
+
+/* ── PUSH PERMISSION MODAL ── */
+.perm-overlay{
+  position:fixed;inset:0;background:rgba(30,13,23,.45);
+  backdrop-filter:blur(4px);z-index:2000;
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:0 0 24px;
+}
+@media(min-width:600px){.perm-overlay{align-items:center;}}
+.perm-card{
+  background:white;border-radius:24px 24px 20px 20px;
+  padding:28px 24px 24px;width:100%;max-width:420px;
+  box-shadow:0 -8px 40px rgba(0,0,0,.18);
+  animation:slideUp .4s cubic-bezier(.22,1,.36,1);
+}
+@media(min-width:600px){.perm-card{border-radius:24px;animation:fadeScale .3s ease;}}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:none;opacity:1}}
+@keyframes fadeScale{from{transform:scale(.92);opacity:0}to{transform:none;opacity:1}}
+.perm-icon-row{display:flex;justify-content:center;margin-bottom:16px;}
+.perm-big-icon{
+  width:64px;height:64px;border-radius:50%;
+  background:linear-gradient(135deg,var(--r100),var(--r300));
+  display:flex;align-items:center;justify-content:center;font-size:1.8rem;
+}
+.perm-card h3{
+  text-align:center;font-family:'Playfair Display',serif;
+  font-size:1.15rem;font-weight:400;color:var(--p950);margin-bottom:8px;
+}
+.perm-card p{
+  text-align:center;font-size:.8rem;color:var(--txt-m);
+  line-height:1.6;margin-bottom:16px;
+}
+.perm-examples{
+  background:var(--blush);border-radius:12px;padding:12px 14px;
+  margin-bottom:20px;display:flex;flex-direction:column;gap:7px;
+}
+.perm-example{font-size:.75rem;color:var(--txt-m);display:flex;align-items:center;gap:8px;}
+.perm-btn-yes{
+  width:100%;padding:13px;border:none;border-radius:14px;cursor:pointer;
+  background:linear-gradient(135deg,var(--r500),var(--p700));
+  color:white;font-family:'Jost',sans-serif;font-size:.9rem;font-weight:500;
+  margin-bottom:10px;transition:opacity .2s;
+}
+.perm-btn-yes:hover{opacity:.88;}
+.perm-btn-no{
+  width:100%;padding:10px;border:none;border-radius:14px;cursor:pointer;
+  background:none;color:var(--txt-s);font-family:'Jost',sans-serif;font-size:.78rem;
+  transition:color .2s;
+}
+.perm-btn-no:hover{color:var(--txt-m);}
+.perm-reask-btn{
+  margin-top:8px;background:none;border:1px solid rgba(194,110,138,.3);
+  border-radius:100px;padding:6px 14px;cursor:pointer;
+  font-size:.72rem;color:var(--r500);font-family:'Jost',sans-serif;
+  transition:all .2s;
+}
 .tb-av{
   width:36px;height:36px;border-radius:50%;
   background:linear-gradient(135deg,var(--r500),var(--p700));
@@ -986,13 +1042,32 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
       <div class="notif-panel" id="notifPanel">
         <div class="notif-panel-hdr">
           <span>Notifications</span>
-          <button onclick="markAllRead()">Tout marquer lu</button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="perm-reask-btn" id="enablePushBtn" onclick="showPermModal()" title="Activer les notifications push" style="display:none">📲 Activer</button>
+            <button onclick="markAllRead()">Tout marquer lu</button>
+          </div>
         </div>
         <div class="notif-list" id="notifList">
           <p class="notif-empty">Chargement…</p>
         </div>
       </div>
     </div>
+
+<!-- Push permission modal -->
+<div class="perm-overlay" id="permOverlay" style="display:none" onclick="overlayClick(event)">
+  <div class="perm-card" id="permCard">
+    <div class="perm-icon-row"><div class="perm-big-icon">🔔</div></div>
+    <h3>Recevoir des notifications</h3>
+    <p>Sois alerté(e) en temps réel — même quand tu n'es pas sur SANA, comme sur Instagram ou WhatsApp.</p>
+    <div class="perm-examples">
+      <div class="perm-example"><span>❤️</span> Quelqu'un aime ton témoignage</div>
+      <div class="perm-example"><span>💬</span> Nouveau message dans ton groupe</div>
+      <div class="perm-example"><span>👋</span> Quelqu'un rejoint ton groupe</div>
+    </div>
+    <button class="perm-btn-yes" onclick="enablePushNotifs()">Oui, j'accepte les notifications</button>
+    <button class="perm-btn-no" onclick="declinePushNotifs()">Non merci, juste dans l'appli</button>
+  </div>
+</div>
     <!-- Theme picker -->
     <div style="position:relative;" id="themeWrap">
       <div class="theme-btn" id="themeBtn" onclick="toggleThemeMenu()" title="Changer le thème">🎨</div>
@@ -2475,13 +2550,17 @@ document.addEventListener('click',function(e){
 const VAPID_PUBLIC_KEY = '{{ vapid_public_key }}';
 let notifSocket = null;
 let unreadCount = 0;
+let swRegistration = null;
 
+// ── Init ──────────────────────────────────────────────────────────────────────
 function initNotifications() {
   connectNotifSocket();
   loadNotifications();
-  registerServiceWorker();
+  registerServiceWorkerSilently();
+  checkPushStatus();
 }
 
+// ── WebSocket (temps réel quand l'appli est ouverte) ──────────────────────────
 function connectNotifSocket() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   notifSocket = new WebSocket(`${proto}://${location.host}/ws/notifications/`);
@@ -2494,6 +2573,7 @@ function connectNotifSocket() {
   notifSocket.onclose = () => setTimeout(connectNotifSocket, 5000);
 }
 
+// ── Son de notification (Web Audio API, aucun fichier nécessaire) ─────────────
 function playNotifSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2508,20 +2588,80 @@ function playNotifSound() {
   } catch(e) {}
 }
 
-async function registerServiceWorker() {
+// ── Service Worker (enregistrement silencieux, sans demander de permission) ───
+async function registerServiceWorkerSilently() {
   if (!('serviceWorker' in navigator)) return;
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js');
-    if (VAPID_PUBLIC_KEY) await subscribeToPush(reg);
+    swRegistration = await navigator.serviceWorker.register('/sw.js');
   } catch(e) {}
 }
 
-async function subscribeToPush(reg) {
-  if (!('PushManager' in window)) return;
+// ── Vérifier le statut push et adapter l'UI ───────────────────────────────────
+async function checkPushStatus() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+  const perm = Notification.permission;
+  const asked = localStorage.getItem('sana-notif-asked');
+  const enableBtn = document.getElementById('enablePushBtn');
+
+  if (perm === 'granted') {
+    // Déjà accordé → s'assurer qu'on est abonné
+    if (enableBtn) enableBtn.style.display = 'none';
+    const reg = await navigator.serviceWorker.ready;
+    await doSubscribe(reg);
+  } else if (perm === 'denied') {
+    // Bloqué → afficher bouton pour débloquer manuellement
+    if (enableBtn) enableBtn.style.display = 'flex';
+    enableBtn.textContent = '🔕 Bloqué';
+    enableBtn.title = 'Notifications bloquées. Autorise-les dans les paramètres du navigateur.';
+    enableBtn.onclick = () => alert('Les notifications sont bloquées.\n\nPour les activer :\n• Clique sur le cadenas dans la barre d\'adresse\n• Cherche "Notifications" et passe sur "Autoriser"');
+  } else {
+    // Par défaut → montrer la modale si pas encore demandé
+    if (enableBtn) enableBtn.style.display = asked ? 'flex' : 'none';
+    if (!asked) setTimeout(showPermModal, 2500);
+  }
+}
+
+// ── Modale de permission ──────────────────────────────────────────────────────
+function showPermModal() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'default') return;
+  document.getElementById('permOverlay').style.display = 'flex';
+}
+
+function overlayClick(e) {
+  if (e.target === document.getElementById('permOverlay')) declinePushNotifs();
+}
+
+async function enablePushNotifs() {
+  document.getElementById('permOverlay').style.display = 'none';
+  localStorage.setItem('sana-notif-asked', '1');
+  document.getElementById('enablePushBtn').style.display = 'none';
   try {
     const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-    const sub = await reg.pushManager.subscribe({
+    if (perm !== 'granted') {
+      document.getElementById('enablePushBtn').style.display = 'flex';
+      return;
+    }
+    if (!swRegistration) swRegistration = await navigator.serviceWorker.ready;
+    await doSubscribe(swRegistration);
+  } catch(e) {}
+}
+
+function declinePushNotifs() {
+  document.getElementById('permOverlay').style.display = 'none';
+  localStorage.setItem('sana-notif-asked', '1');
+  const btn = document.getElementById('enablePushBtn');
+  btn.style.display = 'flex';
+  btn.textContent = '📲 Activer';
+  btn.onclick = showPermModal;
+}
+
+// ── Abonnement push ───────────────────────────────────────────────────────────
+async function doSubscribe(reg) {
+  if (!('PushManager' in window) || !VAPID_PUBLIC_KEY) return;
+  try {
+    const existing = await reg.pushManager.getSubscription();
+    const sub = existing || await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     });
@@ -2540,6 +2680,7 @@ function urlBase64ToUint8Array(b64) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
+// ── Liste de notifications ────────────────────────────────────────────────────
 async function loadNotifications() {
   try {
     const res = await fetch('/api/notifications/');
@@ -2571,7 +2712,7 @@ function buildNotifEl(n) {
       <div class="notif-body">${n.body}</div>
       <div class="notif-time">${formatNotifTime(n.created_at)}</div>
     </div>`;
-  div.onclick = () => { markRead(n.id); };
+  div.onclick = () => markRead(n.id);
   return div;
 }
 
@@ -2582,6 +2723,7 @@ function prependNotif(n) {
   list.prepend(buildNotifEl({...n, read: false}));
 }
 
+// ── Panneau ───────────────────────────────────────────────────────────────────
 function toggleNotifPanel() {
   const panel = document.getElementById('notifPanel');
   const isOpen = panel.classList.toggle('open');
@@ -2630,7 +2772,7 @@ function getCsrf() {
   return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 }
 
-// Close panel on outside click
+// Fermer le panneau au clic extérieur
 document.addEventListener('click', (e) => {
   const panel = document.getElementById('notifPanel');
   const btn = document.getElementById('notifBtn');
