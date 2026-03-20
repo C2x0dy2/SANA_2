@@ -127,6 +127,56 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 }
 .tb-icon:hover{background:var(--r50);}
 .tb-icon svg{width:16px;height:16px;stroke:var(--p700);fill:none;stroke-width:1.8;}
+
+/* ── NOTIFICATIONS ── */
+.notif-wrap{position:relative;}
+.notif-badge{
+  position:absolute;top:4px;right:4px;
+  min-width:16px;height:16px;
+  background:var(--r500);color:white;
+  border-radius:100px;font-size:.58rem;font-weight:700;padding:0 4px;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid white;pointer-events:none;
+}
+.notif-panel{
+  position:absolute;top:calc(100% + 10px);right:0;
+  width:320px;background:white;
+  border:1px solid rgba(194,110,138,.15);
+  border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.12);
+  z-index:1000;display:none;flex-direction:column;
+  max-height:420px;overflow:hidden;
+}
+.notif-panel.open{display:flex;}
+.notif-panel-hdr{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 16px 10px;
+  border-bottom:1px solid rgba(194,110,138,.1);
+  font-size:.8rem;font-weight:500;color:var(--p700);flex-shrink:0;
+}
+.notif-panel-hdr button{
+  background:none;border:none;cursor:pointer;
+  font-size:.72rem;color:var(--r500);font-family:'Jost',sans-serif;
+}
+.notif-list{overflow-y:auto;flex:1;}
+.notif-list::-webkit-scrollbar{width:3px;}
+.notif-list::-webkit-scrollbar-thumb{background:rgba(194,110,138,.2);border-radius:3px;}
+.notif-item{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:11px 16px;border-bottom:1px solid rgba(194,110,138,.06);
+  cursor:pointer;transition:background .2s;
+}
+.notif-item:hover{background:var(--blush);}
+.notif-item.unread{background:var(--r50);}
+.notif-icon{
+  width:32px;height:32px;border-radius:50%;
+  background:var(--r100);display:flex;align-items:center;
+  justify-content:center;font-size:.85rem;flex-shrink:0;
+}
+.notif-content{flex:1;min-width:0;}
+.notif-title{font-size:.76rem;font-weight:500;color:var(--p950);margin-bottom:2px;}
+.notif-body{font-size:.7rem;color:var(--txt-m);line-height:1.4;}
+.notif-time{font-size:.62rem;color:var(--txt-s);margin-top:3px;}
+.notif-empty{text-align:center;padding:28px 16px;font-size:.78rem;color:var(--txt-s);}
 .tb-av{
   width:36px;height:36px;border-radius:50%;
   background:linear-gradient(135deg,var(--r500),var(--p700));
@@ -928,8 +978,20 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
     <span class="topbar-title" id="topbarTitle">Accueil</span>
   </div>
   <div class="topbar-right">
-    <div class="tb-icon" title="Notifications">
-      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <div class="notif-wrap">
+      <div class="tb-icon" id="notifBtn" title="Notifications" onclick="toggleNotifPanel()">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+      </div>
+      <div class="notif-panel" id="notifPanel">
+        <div class="notif-panel-hdr">
+          <span>Notifications</span>
+          <button onclick="markAllRead()">Tout marquer lu</button>
+        </div>
+        <div class="notif-list" id="notifList">
+          <p class="notif-empty">Chargement…</p>
+        </div>
+      </div>
     </div>
     <!-- Theme picker -->
     <div style="position:relative;" id="themeWrap">
@@ -2408,6 +2470,176 @@ document.addEventListener('click',function(e){
   if(saved&&saved!=='clair') setTheme(saved);
   else{ THEMES.forEach(n=>{ const el=document.getElementById('opt-'+n); if(el) el.classList.toggle('active',n==='clair'); }); }
 })();
+
+// ── NOTIFICATION SYSTEM ───────────────────────────────────────────────────────
+const VAPID_PUBLIC_KEY = '{{ vapid_public_key }}';
+let notifSocket = null;
+let unreadCount = 0;
+
+function initNotifications() {
+  connectNotifSocket();
+  loadNotifications();
+  registerServiceWorker();
+}
+
+function connectNotifSocket() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  notifSocket = new WebSocket(`${proto}://${location.host}/ws/notifications/`);
+  notifSocket.onmessage = (e) => {
+    const notif = JSON.parse(e.data);
+    prependNotif(notif);
+    playNotifSound();
+    updateBadge(++unreadCount);
+  };
+  notifSocket.onclose = () => setTimeout(connectNotifSocket, 5000);
+}
+
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.25);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    if (VAPID_PUBLIC_KEY) await subscribeToPush(reg);
+  } catch(e) {}
+}
+
+async function subscribeToPush(reg) {
+  if (!('PushManager' in window)) return;
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+    await fetch('/api/push/subscribe/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+      body: JSON.stringify(sub.toJSON()),
+    });
+  } catch(e) {}
+}
+
+function urlBase64ToUint8Array(b64) {
+  const padding = '='.repeat((4 - b64.length % 4) % 4);
+  const base64 = (b64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function loadNotifications() {
+  try {
+    const res = await fetch('/api/notifications/');
+    const data = await res.json();
+    const list = document.getElementById('notifList');
+    list.innerHTML = '';
+    if (!data.notifications.length) {
+      list.innerHTML = '<p class="notif-empty">Aucune notification pour l\'instant</p>';
+      return;
+    }
+    unreadCount = 0;
+    data.notifications.forEach(n => {
+      if (!n.read) unreadCount++;
+      list.appendChild(buildNotifEl(n));
+    });
+    updateBadge(unreadCount);
+  } catch(e) {}
+}
+
+function buildNotifEl(n) {
+  const icons = {like:'❤️', message:'💬', join:'👋', welcome:'🌸'};
+  const div = document.createElement('div');
+  div.className = 'notif-item' + (n.read ? '' : ' unread');
+  div.dataset.id = n.id;
+  div.innerHTML = `
+    <div class="notif-icon">${icons[n.type] || '🔔'}</div>
+    <div class="notif-content">
+      <div class="notif-title">${n.title}</div>
+      <div class="notif-body">${n.body}</div>
+      <div class="notif-time">${formatNotifTime(n.created_at)}</div>
+    </div>`;
+  div.onclick = () => { markRead(n.id); };
+  return div;
+}
+
+function prependNotif(n) {
+  const list = document.getElementById('notifList');
+  const empty = list.querySelector('.notif-empty');
+  if (empty) empty.remove();
+  list.prepend(buildNotifEl({...n, read: false}));
+}
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notifPanel');
+  const isOpen = panel.classList.toggle('open');
+  if (isOpen) loadNotifications();
+}
+
+function updateBadge(count) {
+  const badge = document.getElementById('notifBadge');
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : count;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function markRead(id) {
+  try {
+    await fetch(`/api/notifications/${id}/read/`, {method:'POST', headers:{'X-CSRFToken':getCsrf()}});
+    const el = document.querySelector(`.notif-item[data-id="${id}"]`);
+    if (el && el.classList.contains('unread')) {
+      el.classList.remove('unread');
+      updateBadge(Math.max(0, --unreadCount));
+    }
+  } catch(e) {}
+}
+
+async function markAllRead() {
+  try {
+    await fetch('/api/notifications/', {method:'PATCH', headers:{'X-CSRFToken':getCsrf()}});
+    document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+    unreadCount = 0; updateBadge(0);
+  } catch(e) {}
+}
+
+function formatNotifTime(iso) {
+  const d = new Date(iso), now = new Date();
+  const diff = Math.floor((now - d) / 60000);
+  if (diff < 1) return 'À l\'instant';
+  if (diff < 60) return `Il y a ${diff} min`;
+  if (diff < 1440) return `Il y a ${Math.floor(diff/60)} h`;
+  return d.toLocaleDateString('fr-FR');
+}
+
+function getCsrf() {
+  return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+// Close panel on outside click
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notifPanel');
+  const btn = document.getElementById('notifBtn');
+  if (panel?.classList.contains('open') && !panel.contains(e.target) && !btn?.contains(e.target)) {
+    panel.classList.remove('open');
+  }
+});
+
+document.addEventListener('DOMContentLoaded', initNotifications);
 </script>
 </body>
 </html>

@@ -15,9 +15,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
-from django.urls import include
+from django.urls import path, include
+from sanasource import views as sanasource_views
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('sw.js', sanasource_views.service_worker, name='service_worker'),
     path('', include('sanasource.urls')),
 ]

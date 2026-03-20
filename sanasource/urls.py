@@ -19,4 +19,8 @@ urlpatterns = [
     path('api/humeur/', views.save_mood, name='save_mood'),
     path('api/communaute/', views.community_post_api, name='community_post_api'),
     path('api/communaute/<int:post_id>/like/', views.toggle_like, name='toggle_like'),
+    path('api/notifications/', views.notifications_api, name='notifications_api'),
+    path('api/notifications/<int:notif_id>/read/', views.notification_read, name='notification_read'),
+    path('api/push/subscribe/', views.push_subscribe, name='push_subscribe'),
+    path('api/push/unsubscribe/', views.push_unsubscribe, name='push_unsubscribe'),
 ]

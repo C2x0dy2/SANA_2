@@ -19,6 +19,7 @@ ALLOWED_HOSTS = [
 
 # APPLICATIONS
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -26,6 +27,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'sanasource',
+    'channels',
 ]
 
 
@@ -69,8 +71,14 @@ TEMPLATES = [
 ]
 
 
-# WSGI
-WSGI_APPLICATION = 'sana.wsgi.application'
+# ASGI / Channels
+ASGI_APPLICATION = 'sana.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 
 # DATABASE — PostgreSQL en production (DATABASE_URL), SQLite en local
@@ -142,3 +150,8 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '').strip().strip('"').strip("'")
+
+# VAPID (Web Push)
+VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '').strip()
+VAPID_PUBLIC_KEY  = os.getenv('VAPID_PUBLIC_KEY', '').strip()
+VAPID_EMAIL       = os.getenv('VAPID_EMAIL', 'contact@sana.app').strip()

@@ -7,7 +7,8 @@ from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.db.models import Count
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Notification, PushSubscription
+from .notifications import send_notification
 import json
 import anthropic
 
@@ -122,6 +123,15 @@ def register_view(request):
             print(f'⚠️ UserProfile creation failed: {e}')
 
         login(request, user)
+        try:
+            send_notification(
+                user, 'welcome',
+                'Bienvenue sur SANA !',
+                'Tu es bien arrivé(e). Nous sommes là pour toi.',
+                '/dashboard/',
+            )
+        except Exception:
+            pass
         return redirect('sanasource:dashboard')
 
     return render(request, 'page/register.html')
@@ -132,6 +142,14 @@ def logout_view(request):
 
 def help_view(request):
     return render(request, 'page/help.html')
+
+
+def service_worker(request):
+    import os
+    sw_path = settings.BASE_DIR / 'sanasource' / 'static' / 'sw.js'
+    with open(sw_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    return HttpResponse(content, content_type='application/javascript')
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -296,6 +314,7 @@ def dashboard(request):
         'user_posts_count':    user_posts_count,
         'days_on_sana':        days_on_sana,
         'tag_counts':          tag_counts,
+        'vapid_public_key':    settings.VAPID_PUBLIC_KEY,
     })
 
 
@@ -357,6 +376,18 @@ def join_leave_group(request, group_id):
     else:
         group.members.add(request.user)
         is_member = True
+        if group.created_by != request.user:
+            prof = getattr(request.user, 'profile', None)
+            name = prof.username_anonyme if prof else (request.user.first_name or 'Quelqu\'un')
+            try:
+                send_notification(
+                    group.created_by, 'join',
+                    f'Quelqu\'un a rejoint {group.name}',
+                    f'{name} a rejoint ton groupe.',
+                    '/groupes/',
+                )
+            except Exception:
+                pass
     return JsonResponse({'is_member': is_member, 'member_count': group.members.count()})
 
 
@@ -400,6 +431,17 @@ def group_messages_api(request, group_id):
         msg  = GroupMessage.objects.create(group=group, sender=request.user, content=content)
         prof = getattr(request.user, 'profile', None)
         name = prof.username_anonyme if prof else (request.user.first_name or request.user.username)
+        # Notify all group members except sender
+        for member in group.members.exclude(id=request.user.id):
+            try:
+                send_notification(
+                    member, 'message',
+                    f'Nouveau message dans {group.name}',
+                    f'{name} : {content[:80]}',
+                    '/groupes/',
+                )
+            except Exception:
+                pass
         return JsonResponse({
             'id':             msg.id,
             'sender_name':    name,
@@ -479,7 +521,100 @@ def toggle_like(request, post_id):
     else:
         post.likes.add(request.user)
         is_liked = True
+        if post.author != request.user:
+            prof = getattr(request.user, 'profile', None)
+            liker_name = prof.username_anonyme if prof else (request.user.first_name or 'Quelqu\'un')
+            try:
+                send_notification(
+                    post.author, 'like',
+                    'Quelqu\'un aime ton témoignage',
+                    f'{liker_name} a aimé ton message.',
+                    '/dashboard/',
+                )
+            except Exception:
+                pass
     return JsonResponse({'is_liked': is_liked, 'like_count': post.likes.count()})
 
 def groupe(request):
-      return render(request, 'page/groupe.html')
+    return render(request, 'page/groupe.html')
+
+
+# ============================================================
+# NOTIFICATIONS
+# ============================================================
+
+def notifications_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+
+    if request.method == 'GET':
+        notifs = Notification.objects.filter(user=request.user)[:30]
+        data = [
+            {
+                'id':         n.id,
+                'type':       n.type,
+                'title':      n.title,
+                'body':       n.body,
+                'url':        n.url,
+                'read':       n.read,
+                'created_at': n.created_at.isoformat(),
+            }
+            for n in notifs
+        ]
+        return JsonResponse({'notifications': data})
+
+    if request.method == 'PATCH':
+        Notification.objects.filter(user=request.user, read=False).update(read=True)
+        return JsonResponse({'ok': True})
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def notification_read(request, notif_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    Notification.objects.filter(id=notif_id, user=request.user).update(read=True)
+    return JsonResponse({'ok': True})
+
+
+@csrf_exempt
+def push_subscribe(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    endpoint = body.get('endpoint', '')
+    p256dh   = body.get('keys', {}).get('p256dh', '')
+    auth     = body.get('keys', {}).get('auth', '')
+
+    if not endpoint or not p256dh or not auth:
+        return JsonResponse({'error': 'Données incomplètes'}, status=400)
+
+    PushSubscription.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={'user': request.user, 'p256dh': p256dh, 'auth': auth},
+    )
+    return JsonResponse({'ok': True})
+
+
+@csrf_exempt
+def push_unsubscribe(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    endpoint = body.get('endpoint', '')
+    PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
+    return JsonResponse({'ok': True})
