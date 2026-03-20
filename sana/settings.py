@@ -1,6 +1,6 @@
 from pathlib import Path
 import os
-import dj_database_url
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -76,8 +76,17 @@ WSGI_APPLICATION = 'sana.wsgi.application'
 # DATABASE — PostgreSQL en production (DATABASE_URL), SQLite en local
 DATABASE_URL = os.getenv('DATABASE_URL', '').strip()
 if DATABASE_URL:
+    _db = urlparse(DATABASE_URL)
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': _db.path.lstrip('/'),
+            'USER': _db.username,
+            'PASSWORD': _db.password,
+            'HOST': _db.hostname,
+            'PORT': _db.port or 5432,
+            'CONN_MAX_AGE': 600,
+        }
     }
 else:
     DATABASES = {
