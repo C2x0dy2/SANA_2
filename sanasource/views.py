@@ -690,6 +690,22 @@ def dm_api(request, user_id):
     return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
 
 
+def dm_page(request, user_id):
+    if not request.user.is_authenticated:
+        return redirect('sanasource:login')
+    other = get_object_or_404(User, id=user_id)
+    if other == request.user:
+        return redirect('sanasource:dashboard')
+    other_prof = getattr(other, 'profile', None)
+    other_name    = other_prof.username_anonyme if other_prof else (other.first_name or 'Anonyme')
+    other_initial = other_name[0].upper() if other_name else '?'
+    return render(request, 'page/dm_chat.html', {
+        'other_user_id': user_id,
+        'other_name':    other_name,
+        'other_initial': other_initial,
+    })
+
+
 def dm_conversations(request):
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Non authentifié'}, status=401)

@@ -818,8 +818,7 @@ function escHtml(str) {
 }
 
 function startDM(userId, name, initial) {
-  // Redirect to dashboard with DM query params — dashboard opens the chat automatically
-  window.location.href = '/dashboard/?dm=' + userId + '&dm_name=' + encodeURIComponent(name) + '&dm_initial=' + encodeURIComponent(initial || '?');
+  window.location.href = '/messages/' + userId + '/';
 }
 
 // Mobile: open left panel

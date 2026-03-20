@@ -1061,7 +1061,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       Groupes
     </div>
-    <div class="nav-item" onclick="openDMPanel()">
+    <div class="nav-item" onclick="showSection('messages',this)">
       <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Messages privés
       <span class="dm-nav-badge" id="dmNavBadge" style="display:none">0</span>
@@ -1472,7 +1472,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
             <div>
               <div class="post-anon">
             {{ anon }} <span class="post-tag">{{ post.get_tag_display }}</span>
-            {% if post.author != user %}<button class="author-dm-btn" onclick="openDMWith({{ post.author.id }},'{{ anon }}','{{ anon|first|upper }}')">💬 Message</button>{% endif %}
+            {% if post.author != user %}<button class="author-dm-btn" onclick="location.href='/messages/{{ post.author.id }}/'">💬 Message</button>{% endif %}
           </div>
               <div class="post-meta">{{ post.created_at|timesince }} ago</div>
             </div>
@@ -1534,6 +1534,15 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ MESSAGES PRIVES ══ -->
+  <div id="sec-messages" class="section">
+    <div class="sec-title">Messages <em>Privés</em></div>
+    <div class="sec-sub">Tes conversations anonymes et sécurisées</div>
+    <div id="dmConvSection" style="max-width:520px;margin:0 auto;">
+      <p style="text-align:center;padding:20px;color:var(--txt-s);font-size:.82rem;" id="dmConvLoading">Chargement…</p>
     </div>
   </div>
 
@@ -2277,9 +2286,9 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 // ── SECTION NAV ──
 const sectionMap = {
   accueil:'Accueil', chat:'Chat SANA', humeur:'Mon Humeur',
-  communaute:'Communauté', groupes:'Groupes', ressources:'Blog & Ressources',
-  pro:'Mon Professionnel', badges:'Mes Badges', profil:'Mon Profil',
-  parcours:'Mon Parcours', journal:'Mon Journal', sensibilisation:'Sensibilisation'
+  communaute:'Communauté', groupes:'Groupes', messages:'Messages Privés',
+  ressources:'Blog & Ressources', pro:'Mon Professionnel', badges:'Mes Badges',
+  profil:'Mon Profil', parcours:'Mon Parcours', journal:'Mon Journal', sensibilisation:'Sensibilisation'
 };
 
 function showSection(id, trigger){
@@ -2300,6 +2309,7 @@ function showSection(id, trigger){
 
   document.getElementById('topbarTitle').textContent = sectionMap[id] || '';
   if(id==='chat') initDashChat();
+  if(id==='messages') loadDMConversationsSection();
   closeSidebar();
 }
 
@@ -3090,6 +3100,41 @@ function updateDMBadge(count) {
   if (!badge) return;
   if (count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'inline'; }
   else badge.style.display = 'none';
+}
+
+async function loadDMConversationsSection() {
+  const container = document.getElementById('dmConvSection');
+  if (!container) return;
+  try {
+    const res = await fetch('/api/dm/');
+    const data = await res.json();
+    container.innerHTML = '';
+    if (!data.conversations.length) {
+      container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--txt-s);"><div style="font-size:2.5rem;margin-bottom:12px;opacity:.3;">💬</div><p style="font-size:.85rem;line-height:1.7;">Aucune conversation pour l\'instant.<br>Clique sur <strong>💬 Message</strong> sous un post de la communauté pour démarrer.</p></div>';
+      return;
+    }
+    updateDMBadge(data.unread_total || 0);
+    data.conversations.forEach(c => {
+      const card = document.createElement('div');
+      card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;background:white;border-radius:16px;margin-bottom:10px;cursor:pointer;border:1px solid rgba(194,110,138,.1);transition:all .2s;';
+      card.onmouseover = () => card.style.background = 'var(--blush)';
+      card.onmouseout  = () => card.style.background = 'white';
+      card.innerHTML = `
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--r300),var(--r500));display:flex;align-items:center;justify-content:center;font-size:.95rem;color:white;font-weight:500;flex-shrink:0;">${c.initial}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.85rem;font-weight:500;color:var(--p950);margin-bottom:3px;">${c.name}</div>
+          <div style="font-size:.75rem;color:var(--txt-s);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.is_me ? 'Toi : ' : ''}${c.last_msg}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:.65rem;color:var(--txt-s);margin-bottom:4px;">${c.sent_at}</div>
+          ${c.unread > 0 ? `<span style="background:var(--r500);color:white;border-radius:100px;font-size:.6rem;font-weight:700;padding:2px 7px;">${c.unread}</span>` : ''}
+        </div>`;
+      card.onclick = () => location.href = '/messages/' + c.user_id + '/';
+      container.appendChild(card);
+    });
+  } catch(e) {
+    container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--txt-s);font-size:.8rem;">Erreur de chargement.</p>';
+  }
 }
 
 async function pollDMUnread() {

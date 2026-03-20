@@ -1,8 +1,11 @@
 import json
 import base64
+import logging
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 def send_notification(user, notif_type, title, body, url='/'):
@@ -47,7 +50,9 @@ def _send_web_push(user, title, body, url):
         if not vapid_private_b64 or not vapid_email:
             return
 
-        priv_pem = base64.b64decode(vapid_private_b64)
+        # Strip any whitespace/newlines that may be introduced when copying the key
+        clean_b64 = vapid_private_b64.replace(' ', '').replace('\n', '').replace('\r', '').replace('\t', '')
+        priv_pem  = base64.b64decode(clean_b64 + '==')  # extra padding is safe
         vapid_obj = Vapid.from_pem(priv_pem)
 
         from .models import PushSubscription
@@ -65,5 +70,7 @@ def _send_web_push(user, title, body, url):
             except WebPushException as e:
                 if '410' in str(e) or '404' in str(e):
                     sub.delete()
-    except Exception:
-        pass
+                else:
+                    logger.error('WebPushException for sub %s: %s', sub.id, e)
+    except Exception as e:
+        logger.error('_send_web_push failed: %s', e, exc_info=True)
