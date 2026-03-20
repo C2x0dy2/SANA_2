@@ -23,4 +23,7 @@ urlpatterns = [
     path('api/notifications/<int:notif_id>/read/', views.notification_read, name='notification_read'),
     path('api/push/subscribe/', views.push_subscribe, name='push_subscribe'),
     path('api/push/unsubscribe/', views.push_unsubscribe, name='push_unsubscribe'),
+    path('api/notifications/unread/', views.notifications_unread_count, name='notifications_unread'),
+    path('api/dm/', views.dm_conversations, name='dm_conversations'),
+    path('api/dm/<int:user_id>/', views.dm_api, name='dm_api'),
 ]

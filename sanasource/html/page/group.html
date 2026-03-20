@@ -205,9 +205,10 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
   background:var(--r500);color:white;border-color:var(--r500);
   border-radius:18px 18px 4px 18px;
 }
-.msg-time{font-size:.58rem;color:var(--txt-s);margin-top:3px;padding-left:2px;}
-.msg-row.me .msg-time{padding-left:0;padding-right:2px;text-align:right;}
-.msg-row.me .msg-time{color:rgba(194,110,138,.6);}
+.msg-time{font-size:.58rem;color:var(--txt-s);margin-top:3px;padding-left:2px;display:flex;align-items:center;gap:3px;}
+.msg-row.me .msg-time{padding-left:0;padding-right:2px;justify-content:flex-end;color:rgba(194,110,138,.6);}
+.msg-check{font-size:.65rem;letter-spacing:-2px;opacity:.6;}
+.msg-check.seen{opacity:1;color:#5cb85c;}
 
 /* Locked overlay */
 .msg-locked{
@@ -652,7 +653,7 @@ function buildMessage(m) {
     '<div class="msg-bubble-wrap">' +
       (!m.is_me ? '<div class="msg-sender-name">' + escHtml(m.sender_name) + '</div>' : '') +
       '<div class="msg-bubble">' + escHtml(m.content) + '</div>' +
-      '<div class="msg-time">' + m.sent_at + '</div>' +
+      '<div class="msg-time">' + m.sent_at + (m.is_me ? '<span class="msg-check' + (m.seen_count > 0 ? ' seen' : '') + '">✓✓</span>' : '') + '</div>' +
     '</div>';
   return row;
 }

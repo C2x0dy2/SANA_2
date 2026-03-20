@@ -89,6 +89,7 @@ class GroupMessage(models.Model):
     group   = models.ForeignKey(SanaGroup, on_delete=models.CASCADE, related_name='messages')
     sender  = models.ForeignKey(User, on_delete=models.CASCADE, related_name='group_messages')
     content = models.TextField()
+    seen_by = models.ManyToManyField(User, related_name='seen_group_messages', blank=True)
     sent_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -98,6 +99,22 @@ class GroupMessage(models.Model):
 
     def __str__(self):
         return f'[{self.group.name}] {self.sender}: {self.content[:40]}'
+
+
+class DirectMessage(models.Model):
+    sender   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_dms')
+    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_dms')
+    content  = models.TextField()
+    read     = models.BooleanField(default=False)
+    sent_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['sent_at']
+        verbose_name        = 'Message privé'
+        verbose_name_plural = 'Messages privés'
+
+    def __str__(self):
+        return f'{self.sender} → {self.receiver}: {self.content[:40]}'
 
 
 # ── Suivi de l'humeur ─────────────────────────────────────────────────────────

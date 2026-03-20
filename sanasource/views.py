@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.db.models import Count
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Notification, PushSubscription
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Notification, PushSubscription, DirectMessage
 from .notifications import send_notification
 import json
 import anthropic
@@ -401,11 +401,18 @@ def group_messages_api(request, group_id):
         since_id = int(request.GET.get('since', 0))
         msgs = GroupMessage.objects.filter(
             group=group, id__gt=since_id
-        ).select_related('sender', 'sender__profile')[:100]
+        ).select_related('sender', 'sender__profile').prefetch_related('seen_by')[:100]
+        # Mark messages from others as seen by current user
+        ids_to_mark = [m.id for m in msgs if m.sender != request.user]
+        if ids_to_mark:
+            for m in msgs:
+                if m.sender != request.user:
+                    m.seen_by.add(request.user)
         data = []
         for m in msgs:
             prof = getattr(m.sender, 'profile', None)
             name = prof.username_anonyme if prof else (m.sender.first_name or m.sender.username)
+            seen_count = m.seen_by.exclude(id=m.sender_id).count()
             data.append({
                 'id':             m.id,
                 'sender_name':    name,
@@ -413,6 +420,7 @@ def group_messages_api(request, group_id):
                 'content':        m.content,
                 'sent_at':        m.sent_at.strftime('%H:%M'),
                 'is_me':          m.sender == request.user,
+                'seen_count':     seen_count,
             })
         return JsonResponse({'messages': data})
 
@@ -603,6 +611,111 @@ def push_subscribe(request):
         defaults={'user': request.user, 'p256dh': p256dh, 'auth': auth},
     )
     return JsonResponse({'ok': True})
+
+
+def notifications_unread_count(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'count': 0})
+    count = Notification.objects.filter(user=request.user, read=False).count()
+    return JsonResponse({'count': count})
+
+
+# ============================================================
+# MESSAGES PRIVES (DM)
+# ============================================================
+
+@csrf_exempt
+def dm_api(request, user_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    other = get_object_or_404(User, id=user_id)
+    if other == request.user:
+        return JsonResponse({'error': 'Impossible de s\'envoyer un message à soi-même'}, status=400)
+
+    if request.method == 'GET':
+        msgs = DirectMessage.objects.filter(
+            sender__in=[request.user, other],
+            receiver__in=[request.user, other],
+        ).select_related('sender', 'sender__profile').order_by('sent_at')[:100]
+        # Mark received messages as read
+        DirectMessage.objects.filter(sender=other, receiver=request.user, read=False).update(read=True)
+        my_prof    = getattr(request.user, 'profile', None)
+        other_prof = getattr(other, 'profile', None)
+        data = []
+        for m in msgs:
+            is_me = m.sender == request.user
+            data.append({
+                'id':      m.id,
+                'content': m.content,
+                'sent_at': m.sent_at.strftime('%H:%M'),
+                'is_me':   is_me,
+                'read':    m.read,
+            })
+        return JsonResponse({
+            'messages':      data,
+            'other_name':    other_prof.username_anonyme if other_prof else (other.first_name or 'Anonyme'),
+            'other_initial': (other_prof.username_anonyme[0].upper() if other_prof else (other.first_name or 'A')[0].upper()),
+        })
+
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON invalide'}, status=400)
+        content = body.get('content', '').strip()
+        if not content:
+            return JsonResponse({'error': 'Message vide'}, status=400)
+        msg = DirectMessage.objects.create(sender=request.user, receiver=other, content=content)
+        my_prof = getattr(request.user, 'profile', None)
+        my_name = my_prof.username_anonyme if my_prof else (request.user.first_name or 'Moi')
+        # Notify receiver
+        try:
+            send_notification(
+                other, 'message',
+                f'Message privé de {my_name}',
+                content[:80],
+                '/dashboard/',
+            )
+        except Exception:
+            pass
+        return JsonResponse({
+            'id':      msg.id,
+            'content': msg.content,
+            'sent_at': msg.sent_at.strftime('%H:%M'),
+            'is_me':   True,
+            'read':    False,
+        })
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+def dm_conversations(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    from django.db.models import Q, Max
+    # Get latest message per conversation partner
+    partners = User.objects.filter(
+        Q(sent_dms__receiver=request.user) | Q(received_dms__sender=request.user)
+    ).distinct()
+    convs = []
+    for p in partners:
+        last = DirectMessage.objects.filter(
+            Q(sender=request.user, receiver=p) | Q(sender=p, receiver=request.user)
+        ).order_by('-sent_at').first()
+        unread = DirectMessage.objects.filter(sender=p, receiver=request.user, read=False).count()
+        prof = getattr(p, 'profile', None)
+        convs.append({
+            'user_id':   p.id,
+            'name':      prof.username_anonyme if prof else (p.first_name or 'Anonyme'),
+            'initial':   (prof.username_anonyme[0].upper() if prof else (p.first_name or 'A')[0].upper()),
+            'last_msg':  last.content[:60] if last else '',
+            'sent_at':   last.sent_at.strftime('%H:%M') if last else '',
+            'unread':    unread,
+            'is_me':     last.sender == request.user if last else False,
+        })
+    convs.sort(key=lambda c: c['sent_at'], reverse=True)
+    dm_unread_total = sum(c['unread'] for c in convs)
+    return JsonResponse({'conversations': convs, 'unread_total': dm_unread_total})
 
 
 @csrf_exempt
