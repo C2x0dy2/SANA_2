@@ -194,6 +194,10 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 
 .msg-sender-name{font-size:.62rem;color:var(--txt-s);margin-bottom:2px;padding-left:2px;}
 .msg-row.me .msg-sender-name{padding-left:0;padding-right:2px;}
+.msg-avatar[data-uid]{cursor:pointer;transition:transform .15s,box-shadow .15s;}
+.msg-avatar[data-uid]:hover{transform:scale(1.1);box-shadow:0 2px 8px rgba(194,110,138,.35);}
+.msg-sender-name.clickable{cursor:pointer;color:var(--r500);}
+.msg-sender-name.clickable:hover{text-decoration:underline;}
 
 .msg-bubble{
   background:var(--white);padding:10px 14px;border-radius:18px 18px 18px 4px;
@@ -648,10 +652,14 @@ function fetchMessages(groupId, isInitial) {
 function buildMessage(m) {
   const row = document.createElement('div');
   row.className = 'msg-row' + (m.is_me ? ' me' : '');
+  const avatarAttrs = !m.is_me && m.sender_id
+    ? ` data-uid="${m.sender_id}" data-name="${escHtml(m.sender_name)}" data-initial="${escHtml(m.sender_initial || '?')}" title="Message privé à ${escHtml(m.sender_name)}" onclick="startDM(${m.sender_id},'${escHtml(m.sender_name)}','${escHtml(m.sender_initial || '?')}')"` : '';
+  const senderNameHtml = !m.is_me
+    ? `<div class="msg-sender-name${m.sender_id ? ' clickable' : ''}" ${m.sender_id ? `onclick="startDM(${m.sender_id},'${escHtml(m.sender_name)}','${escHtml(m.sender_initial || '?')}')"` : ''}>${escHtml(m.sender_name)}</div>` : '';
   row.innerHTML =
-    '<div class="msg-avatar">' + (m.sender_initial || '?') + '</div>' +
+    `<div class="msg-avatar"${avatarAttrs}>${escHtml(m.sender_initial || '?')}</div>` +
     '<div class="msg-bubble-wrap">' +
-      (!m.is_me ? '<div class="msg-sender-name">' + escHtml(m.sender_name) + '</div>' : '') +
+      senderNameHtml +
       '<div class="msg-bubble">' + escHtml(m.content) + '</div>' +
       '<div class="msg-time">' + m.sent_at + (m.is_me ? '<span class="msg-check' + (m.seen_count > 0 ? ' seen' : '') + '">✓✓</span>' : '') + '</div>' +
     '</div>';
@@ -807,6 +815,11 @@ function addGroupToList(g) {
 /* ── UTIL ── */
 function escHtml(str) {
   return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function startDM(userId, name, initial) {
+  // Redirect to dashboard with DM query params — dashboard opens the chat automatically
+  window.location.href = '/dashboard/?dm=' + userId + '&dm_name=' + encodeURIComponent(name) + '&dm_initial=' + encodeURIComponent(initial || '?');
 }
 
 // Mobile: open left panel

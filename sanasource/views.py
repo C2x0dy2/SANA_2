@@ -415,6 +415,7 @@ def group_messages_api(request, group_id):
             seen_count = m.seen_by.exclude(id=m.sender_id).count()
             data.append({
                 'id':             m.id,
+                'sender_id':      m.sender_id,
                 'sender_name':    name,
                 'sender_initial': name[0].upper() if name else '?',
                 'content':        m.content,

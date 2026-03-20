@@ -2936,6 +2936,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initNotifications();
   setInterval(pollUnreadCount, 30000);
   setInterval(pollDMUnread, 30000);
+  // Auto-open DM if redirected from group chat
+  const params = new URLSearchParams(location.search);
+  if (params.get('dm')) {
+    const uid     = parseInt(params.get('dm'));
+    const dmName  = params.get('dm_name')    || 'Anonyme';
+    const dmInit  = params.get('dm_initial') || '?';
+    // Clean URL without reloading
+    history.replaceState({}, '', '/dashboard/');
+    openDMWith(uid, dmName, dmInit);
+  }
 });
 
 // ── DM SYSTEM ─────────────────────────────────────────────────────────────────
