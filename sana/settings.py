@@ -93,7 +93,7 @@ if DATABASE_URL:
             'PASSWORD': _db.password,
             'HOST': _db.hostname,
             'PORT': _db.port or 5432,
-            'CONN_MAX_AGE': 600,
+            'CONN_MAX_AGE': 0,  # Close after each request — required for Supabase session pooler
         }
     }
 else:
