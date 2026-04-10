@@ -1,23 +1,31 @@
 from pathlib import Path
 import os
-from urllib.parse import urlparse
+import dj_database_url
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 # SECURITY
-SECRET_KEY = 'django-insecure-5-d-2)e7*1z0qa!s0xsh#g5^w^zhk6hj#$ror($lh8=!en#6_p'
-DEBUG = True
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-production')
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').strip().lower() in {'1', 'true', 'yes', 'on'}
 
 ALLOWED_HOSTS = [
-    'sana-w4ru.onrender.com',
-    '127.0.0.1',
-    'localhost'
+    host.strip()
+    for host in os.getenv(
+        'DJANGO_ALLOWED_HOSTS',
+        'sana-w4ru.onrender.com,127.0.0.1,localhost',
+    ).split(',')
+    if host.strip()
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://sana-w4ru.onrender.com',
+    origin.strip()
+    for origin in os.getenv(
+        'DJANGO_CSRF_TRUSTED_ORIGINS',
+        'https://sana-w4ru.onrender.com',
+    ).split(',')
+    if origin.strip()
 ]
 
 
@@ -85,20 +93,19 @@ CHANNEL_LAYERS = {
 }
 
 
-# DATABASE — PostgreSQL en production (DATABASE_URL), SQLite en local
+# DATABASE - PostgreSQL en production (DATABASE_URL), SQLite en local
 DATABASE_URL = os.getenv('DATABASE_URL', '').strip()
-if DATABASE_URL:
-    _db = urlparse(DATABASE_URL)
+USE_POSTGRES_IN_DEBUG = os.getenv('DJANGO_USE_POSTGRES_IN_DEBUG', 'False').strip().lower() in {
+    '1', 'true', 'yes', 'on'
+}
+
+if DATABASE_URL and (not DEBUG or USE_POSTGRES_IN_DEBUG):
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': _db.path.lstrip('/'),
-            'USER': _db.username,
-            'PASSWORD': _db.password,
-            'HOST': _db.hostname,
-            'PORT': _db.port or 5432,
-            'CONN_MAX_AGE': 0,  # Close after each request — required for Supabase session pooler
-        }
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=0,  # Required for Supabase session pooler
+            ssl_require=os.getenv('DB_SSL_REQUIRE', 'False').strip().lower() in {'1', 'true', 'yes', 'on'},
+        )
     }
 else:
     DATABASES = {
@@ -133,7 +140,7 @@ USE_I18N = True
 USE_TZ = True
 
 
-# STATIC FILES (TRÈS IMPORTANT 🔥)
+# STATIC FILES
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [
@@ -142,12 +149,27 @@ STATICFILES_DIRS = [
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 
 # SECURITY BONUS
-SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+
+if not DEBUG:
+    # Security settings only enforced in production.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = os.getenv('DJANGO_SECURE_SSL_REDIRECT', 'True').strip().lower() in {
+        '1', 'true', 'yes', 'on'
+    }
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # DEFAULT ID
