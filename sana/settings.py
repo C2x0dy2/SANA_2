@@ -3,6 +3,9 @@ import os
 import dj_database_url
 from dotenv import load_dotenv
 
+# ========================
+# BASE
+# ========================
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
@@ -10,18 +13,16 @@ load_dotenv(BASE_DIR / '.env')
 # SECURITY
 # ========================
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-production')
-DEBUG = os.getenv('DJANGO_DEBUG', 'True').strip().lower() in {'1', 'true', 'yes', 'on'}
 
-# ✅ MODIFICATION ICI
-ALLOWED_HOSTS = ['*']
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').strip().lower() in {
+    '1', 'true', 'yes', 'on'
+}
+
+ALLOWED_HOSTS = ['*']  # simple pour Render
 
 CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        'DJANGO_CSRF_TRUSTED_ORIGINS',
-        'https://sana-w4ru.onrender.com,https://sana-2-2.onrender.com',
-    ).split(',')
-    if origin.strip()
+    'https://sana-w4ru.onrender.com',
+    'https://sana-2-2.onrender.com',
 ]
 
 # ========================
@@ -35,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'sanasource',
     'channels',
 ]
@@ -67,9 +69,7 @@ ROOT_URLCONF = 'sana.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [
-            BASE_DIR / 'sanasource' / 'html',
-        ],
+        'DIRS': [BASE_DIR / 'sanasource' / 'html'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -93,21 +93,12 @@ CHANNEL_LAYERS = {
     },
 }
 
-# ========================
-# DATABASE
-# ========================
-DATABASE_URL = os.getenv('DATABASE_URL', '').strip()
-USE_POSTGRES_IN_DEBUG = os.getenv('DJANGO_USE_POSTGRES_IN_DEBUG', 'False').strip().lower() in {
-    '1', 'true', 'yes', 'on'
-}
 
-if DATABASE_URL and (not DEBUG or USE_POSTGRES_IN_DEBUG):
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=0,
-            ssl_require=os.getenv('DB_SSL_REQUIRE', 'False').strip().lower() in {'1', 'true', 'yes', 'on'},
-        )
+        'default': dj_database_url.parse(DATABASE_URL)
     }
 else:
     DATABASES = {
@@ -163,9 +154,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = os.getenv('DJANGO_SECURE_SSL_REDIRECT', 'True').strip().lower() in {
-        '1', 'true', 'yes', 'on'
-    }
+    SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # ========================
@@ -176,7 +165,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ========================
 # API KEYS
 # ========================
-ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '').strip().strip('"').strip("'")
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '').strip()
 
 # ========================
 # VAPID (Web Push)
