@@ -1,15 +1,15 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANA — Connexion</title>
+{% block title %}
+SANA — Connexion
+{% endblock %}
+
+{% block fonts %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-    <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+{% endblock %}
 
+{% block theme_vars %}
         :root {
             --rose-pale:      #fff5f5;
             --rose-clair:     #ffe9f3;
@@ -19,7 +19,9 @@
             --rose-fonce:     #9e6b7e;
             --texte-doux:     #8f5e75;
         }
+{% endblock %}
 
+{% block page_styles %}
         html { height: 100%; }
 
         body {
@@ -554,13 +556,14 @@
                 padding-right:  max(10px, env(safe-area-inset-right));
             }
         }
-    </style>
-</head>
-<body>
+{% endblock %}
 
+{% block background %}
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
+{% endblock %}
 
+{% block content %}
     <div class="card">
 
         <!-- IMAGE GAUCHE -->
@@ -653,7 +656,9 @@
 
         </div>
     </div>
+{% endblock %}
 
+{% block page_scripts %}
     <script>
         const togglePass = document.getElementById('togglePass');
         const passInput  = document.getElementById('password');
@@ -664,5 +669,5 @@
             togglePass.textContent = hidden ? '🙈' : '👁';
         });
     </script>
-</body>
-</html>
+{% endblock %}
+

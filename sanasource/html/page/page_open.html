@@ -1,15 +1,15 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANA — Bienvenue</title>
+{% block title %}
+SANA — Bienvenue
+{% endblock %}
+
+{% block fonts %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Outfit:wght@200;300;400;500&display=swap" rel="stylesheet">
-    <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+{% endblock %}
 
+{% block theme_vars %}
         :root {
             --rose-deep: #c17a96;
             --rose-mid: #d4a0b8;
@@ -21,7 +21,9 @@
             --white-glass: rgba(255,255,255,0.52);
             --border-glass: rgba(255,255,255,0.75);
         }
+{% endblock %}
 
+{% block page_styles %}
         html, body {
             width: 100%; height: 100%;
             overflow: hidden;
@@ -536,10 +538,9 @@
             .glass { padding: 18px 28px; }
             .quote-wrap { min-height: 60px; }
         }
-    </style>
-</head>
-<body>
+{% endblock %}
 
+{% block background %}
     <div class="cur-dot" id="curDot"></div>
     <div class="cur-ring" id="curRing"></div>
 
@@ -547,7 +548,9 @@
     <div class="noise"></div>
     <canvas id="bgCanvas"></canvas>
     <div class="shapes" id="shapesWrap"></div>
+{% endblock %}
 
+{% block content %}
     <div class="card" id="mainCard">
         <div class="glass">
 
@@ -604,7 +607,9 @@
 
         </div>
     </div>
+{% endblock %}
 
+{% block page_scripts %}
     <script>
     // ===== CURSOR =====
     const dot  = document.getElementById('curDot');
@@ -753,5 +758,5 @@
 
     document.getElementById('enterBtn').addEventListener('click', redirect);
     </script>
-</body>
-</html>
+{% endblock %}
+

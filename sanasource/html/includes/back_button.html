@@ -1,0 +1,7 @@
+{% comment %}
+Reusable back button. Params: back_href (optional — omit to use history.back()), back_label.
+{% endcomment %}
+<button class="back-btn" onclick="{% if back_href %}location.href='{{ back_href }}'{% else %}history.back(){% endif %}">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  {{ back_label }}
+</button>

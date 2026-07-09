@@ -1,0 +1,2105 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+SANA — {{ journal.title }}
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Kalam:wght@400;700&family=Patrick+Hand&family=Shadows+Into+Light&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block theme_vars %}
+:root{
+  --p950:#1e0d17;--p700:#5e2f47;--p400:#9a5e79;
+  --r500:#c26e8a;--r300:#dca8bc;--r100:#f2d8e4;--r50:#fce8f0;
+  --blush:#fdf3f7;--txt:#1a0d14;--txt-m:#6b4a58;--txt-s:#9a7585;
+  --white:#fff;--nav-h:60px;
+  --paper:#fdfaf1;--paper-line:rgba(107,47,71,.05);--ink:#2c2320;
+  --journal-color:{{ journal.color_hex }};
+}
+html,body{height:100%;overflow:hidden;}
+{% endblock %}
+
+{% block page_styles %}
+body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);display:flex;flex-direction:column;}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
+}
+[data-motion="reduced"] *,[data-motion="reduced"] *::before,[data-motion="reduced"] *::after{
+  animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;
+}
+:focus-visible{outline:2px solid var(--r500);outline-offset:2px;border-radius:4px;}
+
+/* ── TOPBAR ── */
+.topbar{
+  height:var(--nav-h);background:rgba(253,243,247,.96);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(194,110,138,.12);
+  display:flex;align-items:center;gap:10px;
+  padding:0 clamp(14px,3vw,24px);flex-shrink:0;
+}
+.back-btn{
+  display:flex;align-items:center;gap:6px;background:none;border:none;
+  cursor:pointer;font-family:'Jost',sans-serif;font-size:.78rem;color:var(--txt-m);
+  padding:6px 10px;border-radius:100px;transition:background .2s,color .2s;flex-shrink:0;
+}
+.back-btn:hover{background:var(--r50);color:var(--r500);}
+.back-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;}
+.book-identity{flex:1;display:flex;align-items:center;gap:8px;min-width:0;}
+.book-identity-icon{font-size:1.1rem;}
+.book-identity-title{font-family:'Playfair Display',serif;font-size:.95rem;font-style:italic;color:var(--p950);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.save-indicator{display:flex;align-items:center;gap:6px;font-size:.65rem;color:var(--txt-s);white-space:nowrap;flex-shrink:0;}
+.save-dot{width:6px;height:6px;border-radius:50%;background:var(--txt-s);flex-shrink:0;}
+.save-indicator.state-saving .save-dot{background:#e8a44a;animation:pulseSave 1s ease-in-out infinite;}
+.save-indicator.state-saved .save-dot{background:#4caf82;}
+.save-indicator.state-unsaved .save-dot{background:#c9975a;}
+.save-indicator.state-error .save-dot{background:#c0392b;}
+@keyframes pulseSave{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+.save-btn{
+  display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:100px;border:none;
+  background:var(--r500);color:white;font-family:'Jost',sans-serif;font-size:.72rem;font-weight:500;
+  cursor:pointer;transition:all .2s;flex-shrink:0;
+}
+.save-btn:hover{background:var(--p700);}
+
+.tb-icon-btn{
+  width:34px;height:34px;border-radius:50%;border:1px solid rgba(194,110,138,.2);background:var(--white);
+  color:var(--p700);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.95rem;
+  transition:all .2s;flex-shrink:0;
+}
+.tb-icon-btn:hover{background:var(--r50);border-color:var(--r500);color:var(--r500);}
+
+/* ── WRITE SETTINGS PANEL ── */
+.write-settings-wrap{position:relative;flex-shrink:0;}
+.write-settings-panel{
+  position:absolute;top:calc(100% + 10px);right:0;z-index:60;
+  background:var(--white);border-radius:18px;box-shadow:0 16px 44px rgba(30,13,23,.2);
+  padding:18px;width:min(280px,88vw);display:none;flex-direction:column;gap:14px;
+}
+.write-settings-panel.open{display:flex;}
+.ws-row{display:flex;flex-direction:column;gap:6px;}
+.ws-label{font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--r500);font-weight:500;}
+.ws-select{border:1px solid rgba(194,110,138,.2);border-radius:10px;padding:8px 10px;font-family:'Jost',sans-serif;font-size:.8rem;color:var(--txt);background:var(--blush);outline:none;}
+.ws-range{width:100%;accent-color:var(--r500);}
+.ws-swatches{display:flex;gap:6px;flex-wrap:wrap;}
+.ws-swatch{padding:6px 12px;border-radius:100px;font-size:.68rem;border:1.5px solid rgba(194,110,138,.2);background:var(--blush);color:var(--txt-m);cursor:pointer;transition:all .15s;}
+.ws-swatch:hover{border-color:var(--r500);}
+.ws-swatch.active{border-color:var(--r500);background:var(--r50);color:var(--r500);font-weight:500;}
+
+/* ── PAGE MENU (⋮) ── */
+.page-menu-wrap{position:relative;flex-shrink:0;}
+.page-menu-dropdown{
+  position:absolute;top:calc(100% + 10px);right:0;z-index:60;
+  background:var(--white);border-radius:16px;box-shadow:0 16px 44px rgba(30,13,23,.2);
+  padding:8px;width:min(220px,88vw);display:none;flex-direction:column;gap:2px;
+}
+.page-menu-dropdown.open{display:flex;}
+.page-menu-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:none;
+  background:none;text-align:left;font-family:'Jost',sans-serif;font-size:.8rem;color:var(--txt);
+  cursor:pointer;transition:background .15s;width:100%;
+}
+.page-menu-item:hover{background:var(--r50);}
+.page-menu-item.danger{color:#a8472f;}
+.page-menu-item.danger:hover{background:#fbe9e5;}
+.page-menu-sep{height:1px;background:rgba(107,47,71,.1);margin:5px 2px;}
+
+/* ── PAGE STATUS BADGES (archived / locked) ── */
+.page-status-badges{display:flex;gap:6px;flex-wrap:wrap;}
+.page-status-badge{
+  font-size:.62rem;padding:3px 10px;border-radius:100px;letter-spacing:.5px;
+  background:var(--r50);color:var(--r500);border:1px solid rgba(194,110,138,.25);white-space:nowrap;
+}
+.page.is-locked .page-content-editable,.page.is-locked .editor-toolbar,.page.is-locked .page-mood-row{
+  pointer-events:none;opacity:.75;
+}
+
+/* ── RELEASED PAGE PLACEHOLDER ── */
+.released-view{
+  position:absolute;inset:0;z-index:8;border-radius:inherit;display:none;
+  flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;
+  background:linear-gradient(160deg,var(--paper) 0%,var(--r50) 140%);padding:30px;
+}
+.released-view.show{display:flex;}
+.released-icon{font-size:2.6rem;filter:drop-shadow(0 3px 8px rgba(107,47,71,.2));}
+.released-title{font-family:'Playfair Display',serif;font-style:italic;font-size:1.15rem;color:var(--p950);}
+.released-date{font-size:.72rem;color:var(--txt-s);letter-spacing:.5px;}
+.released-note{font-size:.76rem;color:var(--txt-m);max-width:280px;line-height:1.7;margin-top:6px;}
+
+/* ── BOOK STAGE ── */
+.book-stage{flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:clamp(16px,3vw,32px);gap:16px;}
+.book{position:relative;width:min(640px,92vw);perspective:2000px;}
+
+.book-cover{
+  position:absolute;inset:0;z-index:5;border-radius:6px 14px 14px 6px;
+  transform-origin:left center;backface-visibility:hidden;
+  transition:transform .55s cubic-bezier(.22,1,.36,1);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  color:white;box-shadow:0 20px 50px rgba(0,0,0,.25);
+  background:linear-gradient(135deg, var(--journal-color) 0%, rgba(0,0,0,.35) 100%), var(--journal-color);
+  cursor:pointer;
+}
+.book-cover::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:linear-gradient(120deg,rgba(255,255,255,.18),transparent 55%);
+}
+.book-cover::after{
+  content:'';position:absolute;top:0;left:0;bottom:0;width:14px;
+  background:rgba(0,0,0,.28);border-radius:6px 0 0 6px;
+}
+.book-cover-icon{font-size:3rem;filter:drop-shadow(0 4px 10px rgba(0,0,0,.3));}
+.book-cover-title{font-family:'Playfair Display',serif;font-size:1.4rem;font-style:italic;font-weight:400;text-align:center;padding:0 24px;text-shadow:0 2px 8px rgba(0,0,0,.3);}
+.book-cover-hint{font-size:.68rem;letter-spacing:1.5px;text-transform:uppercase;opacity:.7;}
+.book.opening .book-cover{transform:rotateY(-150deg);}
+
+.page-viewport{position:relative;min-height:min(72vh,720px);}
+.page{
+  position:relative;background:var(--paper);border-radius:6px 14px 14px 6px;
+  box-shadow:0 12px 40px rgba(107,47,71,.14),inset -1px 0 0 rgba(0,0,0,.04);
+  padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:14px;
+  min-height:min(72vh,720px);
+  transition:background .3s ease;
+}
+.page.fading{opacity:0;transition:opacity .16s ease;}
+.page.write-dark{--paper:#211c14;--paper-line:rgba(255,255,255,.07);--ink:#ecdfc0;}
+
+/* Paper textures */
+.page.paper-lined{background-image:repeating-linear-gradient(var(--paper) 0 31px, var(--paper-line) 31px 32px);background-position:0 84px;}
+.page.paper-grid{background-image:repeating-linear-gradient(var(--paper-line) 0 1px, transparent 1px 32px),repeating-linear-gradient(90deg, var(--paper-line) 0 1px, transparent 1px 32px);}
+.page.paper-dot{background-image:radial-gradient(var(--paper-line) 1.2px, transparent 1.4px);background-size:22px 22px;}
+.page.paper-blank{background-image:none;}
+.page.paper-kraft{background-image:repeating-linear-gradient(4deg, rgba(0,0,0,.035) 0 1px, transparent 1px 5px),repeating-linear-gradient(-8deg, rgba(255,255,255,.03) 0 1px, transparent 1px 7px);}
+
+.page-flip-overlay{
+  position:absolute;inset:0;z-index:10;pointer-events:none;
+  backface-visibility:hidden;transition:transform .32s cubic-bezier(.22,1,.36,1);
+  overflow:hidden;
+}
+.page-flip-overlay::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg, rgba(30,13,23,.28), transparent 45%);
+  opacity:0;transition:opacity .32s ease;
+}
+.page-flip-overlay.flip-next{transform-origin:left center;transform:rotateY(-160deg);}
+.page-flip-overlay.flip-prev{transform-origin:right center;transform:rotateY(160deg);}
+.page-flip-overlay.flip-next::after,.page-flip-overlay.flip-prev::after{opacity:1;}
+
+.page-header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(107,47,71,.1);padding-bottom:10px;flex-wrap:wrap;}
+.page-day{font-family:'Playfair Display',serif;font-size:clamp(1.1rem,2.4vw,1.4rem);font-style:italic;color:var(--p950);}
+.page-fulldate{font-size:.7rem;color:var(--txt-s);text-transform:uppercase;letter-spacing:1.5px;margin-top:2px;}
+.page-number-badge{font-size:.62rem;color:var(--txt-s);letter-spacing:1px;margin-top:3px;}
+.page-time{font-size:.78rem;color:var(--txt-m);white-space:nowrap;}
+
+.page-mood-row{display:flex;gap:6px;}
+.mood-btn{background:none;border:1px solid transparent;border-radius:100px;padding:4px 8px;font-size:1rem;cursor:pointer;opacity:.45;transition:all .2s;}
+.mood-btn:hover{opacity:.8;background:var(--r50);}
+.mood-btn.active{opacity:1;background:var(--r50);border-color:var(--r300);}
+
+/* ── FORMATTING TOOLBAR ── */
+.editor-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:3px;padding-bottom:8px;border-bottom:1px dashed rgba(107,47,71,.14);}
+.toolbar-btn{
+  min-width:28px;height:28px;padding:0 8px;border-radius:8px;border:1px solid transparent;
+  background:none;color:var(--txt-m);font-family:'Jost',sans-serif;font-size:.76rem;font-weight:600;
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;
+}
+.toolbar-btn:hover{background:var(--r50);color:var(--r500);}
+.toolbar-btn.italic-glyph{font-style:italic;}
+.toolbar-btn.underline-glyph{text-decoration:underline;}
+.toolbar-sep{width:1px;align-self:stretch;background:rgba(107,47,71,.14);margin:2px 3px;}
+
+/* ── RICH TEXT EDITOR ── */
+.page-content-editable{
+  flex:1;outline:none;overflow-y:auto;
+  font-family:'Jost',sans-serif;font-size:.92rem;line-height:32px;color:var(--ink);
+  cursor:text;
+}
+.page-content-editable.is-empty::before{content:attr(data-placeholder);color:var(--txt-s);opacity:.55;}
+.page-content-editable h1{font-family:'Playfair Display',serif;font-size:1.35em;font-weight:500;margin:.35em 0;color:var(--p950);}
+.page-content-editable h2{font-family:'Playfair Display',serif;font-size:1.15em;font-weight:500;margin:.35em 0;color:var(--p950);}
+.page-content-editable ul,.page-content-editable ol{padding-left:1.4em;margin:.25em 0;}
+.page-content-editable blockquote{border-left:3px solid var(--r300);padding-left:12px;margin:.3em 0;color:var(--txt-m);font-style:italic;}
+.page-content-editable p,.page-content-editable div{margin:0;}
+.page-content-editable b,.page-content-editable strong{font-weight:700;}
+
+.page-content-display{white-space:pre-wrap;font-family:'Jost',sans-serif;font-size:.92rem;line-height:32px;color:var(--ink);}
+
+/* ── SCRAPBOOK LAYER ── */
+.scrapbook-layer{position:absolute;inset:0;z-index:4;pointer-events:none;}
+.scrapbook-item{
+  position:absolute;pointer-events:auto;cursor:grab;user-select:none;touch-action:none;
+}
+.scrapbook-item.dragging{cursor:grabbing;z-index:999 !important;}
+.scrapbook-item.selected{outline:2px dashed var(--r500);outline-offset:5px;border-radius:2px;}
+.scrapbook-item img{width:100%;height:auto;display:block;border-radius:4px;box-shadow:0 6px 18px rgba(30,13,23,.2);pointer-events:none;}
+.scrapbook-item audio{pointer-events:auto;width:100%;}
+.sb-glyph{line-height:1;text-align:center;filter:drop-shadow(0 3px 6px rgba(0,0,0,.2));pointer-events:none;white-space:nowrap;}
+.sb-caption{
+  margin-top:2px;text-align:center;font-size:.6rem;color:var(--txt-m);background:rgba(255,255,255,.82);
+  border-radius:100px;padding:1px 8px;white-space:nowrap;pointer-events:none;font-family:'Jost',sans-serif;
+}
+.sb-delete{
+  display:none;position:absolute;top:-10px;right:-10px;width:22px;height:22px;border-radius:50%;
+  background:#c0392b;color:#fff;border:2px solid #fff;font-size:.6rem;cursor:pointer;
+  align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:2;
+}
+.sb-resize{
+  display:none;position:absolute;bottom:-8px;right:-8px;width:18px;height:18px;border-radius:50%;
+  background:#fff;border:2px solid var(--r500);cursor:nwse-resize;z-index:2;
+}
+.sb-rotate{
+  display:none;position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:20px;height:20px;
+  border-radius:50%;background:#fff;border:2px solid var(--r500);cursor:grab;
+  align-items:center;justify-content:center;font-size:.62rem;color:var(--r500);z-index:2;
+}
+.scrapbook-item.selected .sb-delete{display:flex;}
+.scrapbook-item.selected.can-resize .sb-resize{display:block;}
+.scrapbook-item.selected.can-rotate .sb-rotate{display:flex;}
+
+/* ── SCRAPBOOK TOOLBAR (add photos / stickers / drawings / voice / weather / location) ── */
+.scrapbook-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;}
+.sbt-btn{
+  width:40px;height:40px;border-radius:50%;border:1px solid rgba(194,110,138,.2);
+  background:var(--white);color:var(--p700);font-size:1.05rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;
+}
+.sbt-btn:hover{background:var(--r50);border-color:var(--r500);transform:translateY(-1px);}
+
+.corner-hotzone{position:absolute;bottom:0;width:64px;height:64px;cursor:pointer;z-index:6;}
+.corner-prev{left:0;}
+.corner-next{right:0;}
+.corner-hotzone::after{content:'';position:absolute;bottom:0;width:0;height:0;border-style:solid;opacity:0;transition:opacity .2s;}
+.corner-next::after{right:0;border-width:0 0 28px 28px;border-color:transparent transparent rgba(0,0,0,.1) transparent;}
+.corner-prev::after{left:0;border-width:0 28px 28px 0;border-color:transparent transparent rgba(0,0,0,.1) transparent;}
+.corner-hotzone:hover::after{opacity:1;}
+
+.book-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;}
+.nav-arrow{
+  width:38px;height:38px;border-radius:50%;border:1px solid rgba(194,110,138,.2);
+  background:var(--white);color:var(--p700);font-size:1.2rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;
+}
+.nav-arrow:hover:not(:disabled){background:var(--r50);border-color:var(--r500);color:var(--r500);}
+.nav-arrow:disabled{opacity:.3;cursor:default;}
+.page-number-label{font-size:.75rem;color:var(--txt-m);white-space:nowrap;font-family:'Jost',sans-serif;}
+.jump-date-input,.jump-page-input{
+  border:1px solid rgba(194,110,138,.2);border-radius:100px;padding:8px 14px;
+  font-family:'Jost',sans-serif;font-size:.75rem;color:var(--txt-m);background:var(--white);outline:none;
+}
+.jump-page-input{width:76px;text-align:center;padding:8px 10px;}
+
+/* ── ATTACHMENT MODALS ── */
+.sb-modal-overlay{
+  position:fixed;inset:0;background:rgba(30,13,23,.5);z-index:1000;
+  display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto;
+}
+.sb-modal-overlay.open{display:flex;}
+.sb-modal-card{
+  background:var(--white);border-radius:24px;padding:clamp(20px,4vw,30px);
+  max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.22);margin:auto;
+  animation:modalIn .22s cubic-bezier(.22,1,.36,1);
+}
+@keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(8px);}to{opacity:1;transform:none;}}
+.sb-modal-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-style:italic;color:var(--p950);margin-bottom:14px;}
+.sb-modal-close{position:absolute;top:16px;right:16px;}
+
+.sb-tabs{display:flex;gap:6px;margin-bottom:14px;}
+.sb-tab{
+  flex:1;padding:8px;border-radius:100px;border:1.5px solid rgba(194,110,138,.2);background:var(--blush);
+  color:var(--txt-m);font-family:'Jost',sans-serif;font-size:.76rem;cursor:pointer;transition:all .15s;
+}
+.sb-tab.active{background:var(--r50);border-color:var(--r500);color:var(--r500);font-weight:500;}
+
+.sb-glyph-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;max-height:260px;overflow-y:auto;}
+.sb-glyph-opt{
+  aspect-ratio:1;border-radius:10px;border:1.5px solid transparent;background:var(--blush);
+  font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.sb-glyph-opt:hover{background:var(--r50);border-color:var(--r500);transform:scale(1.08);}
+
+.sb-field-label{font-size:.68rem;text-transform:uppercase;letter-spacing:2px;color:var(--r500);font-weight:500;display:block;margin:14px 0 8px;}
+.sb-text-input{
+  width:100%;border:1.5px solid rgba(194,110,138,.2);border-radius:12px;padding:10px 14px;
+  font-family:'Jost',sans-serif;font-size:.86rem;outline:none;background:var(--blush);color:var(--txt);
+}
+.sb-text-input:focus{border-color:var(--r500);}
+.sb-geo-btn{
+  margin-top:8px;display:flex;align-items:center;gap:6px;background:none;border:none;
+  color:var(--r500);font-family:'Jost',sans-serif;font-size:.76rem;cursor:pointer;padding:4px 0;
+}
+.sb-geo-btn:hover{text-decoration:underline;}
+
+.sb-canvas-wrap{border:1.5px solid rgba(194,110,138,.2);border-radius:14px;overflow:hidden;background:#fff;touch-action:none;}
+#drawCanvas{display:block;width:100%;height:auto;cursor:crosshair;}
+.sb-draw-controls{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;}
+.sb-color-row{display:flex;gap:6px;}
+.sb-color-opt{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;}
+.sb-color-opt.active{border-color:var(--p950);transform:scale(1.15);}
+.sb-brush-range{width:80px;accent-color:var(--r500);}
+
+.sb-voice-panel{text-align:center;padding:10px 0;}
+.sb-record-btn{
+  width:64px;height:64px;border-radius:50%;border:none;background:#c0392b;color:#fff;
+  font-size:1.4rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  transition:all .2s;box-shadow:0 8px 22px rgba(192,57,43,.3);
+}
+.sb-record-btn.recording{animation:recPulse 1.2s ease-in-out infinite;}
+@keyframes recPulse{0%,100%{box-shadow:0 8px 22px rgba(192,57,43,.3);}50%{box-shadow:0 8px 32px rgba(192,57,43,.6);}}
+.sb-record-timer{margin-top:10px;font-size:.85rem;color:var(--txt-m);font-family:'Jost',sans-serif;}
+.sb-voice-preview{margin-top:14px;width:100%;}
+
+.sb-modal-actions{display:flex;gap:10px;margin-top:20px;}
+.sb-modal-btn{
+  flex:1;padding:11px;border-radius:100px;font-family:'Jost',sans-serif;font-size:.82rem;
+  font-weight:500;cursor:pointer;border:none;transition:all .2s;
+}
+.sb-modal-btn-cancel{background:var(--blush);color:var(--txt-m);}
+.sb-modal-btn-cancel:hover{background:var(--r50);}
+.sb-modal-btn-primary{background:linear-gradient(135deg,var(--r500),var(--p700));color:white;}
+.sb-modal-btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(194,110,138,.3);}
+.sb-modal-btn-primary:disabled{opacity:.5;cursor:default;transform:none;box-shadow:none;}
+
+@media(max-width:640px){
+  .page{min-height:60vh;}
+  .page-viewport{min-height:60vh;}
+  .book-cover-title{font-size:1.1rem;}
+}
+@media(max-width:560px){
+  .save-btn-label{display:none;}
+  .save-btn{padding:8px;}
+  .book-identity-title{max-width:90px;}
+}
+
+/* ═══════════════════ BURN AFTER WRITING — guided pages ═══════════════════ */
+.baw-prompt{
+  font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(1.05rem,2.2vw,1.3rem);
+  color:var(--p950);line-height:1.6;padding-bottom:14px;margin-bottom:2px;
+  border-bottom:1px dashed rgba(107,47,71,.14);
+}
+.baw-continue-row{display:flex;justify-content:center;margin-top:16px;}
+.baw-continue-btn{
+  padding:11px 26px;border-radius:100px;border:none;
+  background:linear-gradient(135deg,var(--r500),var(--p700));color:#fff;
+  font-family:'Jost',sans-serif;font-size:.82rem;font-weight:500;cursor:pointer;
+  transition:all .2s;box-shadow:0 4px 16px rgba(194,110,138,.28);
+}
+.baw-continue-btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(194,110,138,.4);}
+
+/* ── Disposition dialog ── */
+.ritual-modal-overlay{
+  position:fixed;inset:0;background:rgba(30,13,23,.55);z-index:2000;
+  display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto;
+}
+.ritual-modal-overlay.open{display:flex;}
+.ritual-modal-card{
+  background:var(--white);border-radius:24px;padding:clamp(22px,4vw,32px);
+  max-width:460px;width:100%;margin:auto;box-shadow:0 30px 70px rgba(30,13,23,.28);
+  animation:modalIn .22s cubic-bezier(.22,1,.36,1);
+}
+.ritual-modal-title{font-family:'Playfair Display',serif;font-size:1.2rem;font-style:italic;color:var(--p950);margin-bottom:10px;}
+.ritual-modal-text{font-size:.85rem;color:var(--txt-m);line-height:1.75;margin-bottom:20px;}
+
+.disposition-list{display:flex;flex-direction:column;gap:8px;}
+.disposition-opt{
+  display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;
+  border:1.5px solid rgba(194,110,138,.2);background:var(--blush);color:var(--txt);
+  font-family:'Jost',sans-serif;font-size:.82rem;cursor:pointer;text-align:left;transition:all .15s;
+}
+.disposition-opt:hover{border-color:var(--r500);background:var(--r50);}
+.disposition-opt.danger{border-color:rgba(192,57,43,.25);}
+.disposition-opt.danger:hover{border-color:#c0392b;background:#fbe9e5;}
+.disposition-opt-icon{font-size:1.1rem;flex-shrink:0;}
+
+/* ── Burn ceremony stage ── */
+.ritual-stage-overlay{
+  position:fixed;inset:0;z-index:3000;background:rgba(15,8,12,.92);
+  display:none;align-items:center;justify-content:center;padding:24px;
+}
+.ritual-stage-overlay.open{display:flex;}
+.ritual-stage-wrap{position:relative;width:min(420px,88vw);perspective:900px;}
+.ritual-page{
+  position:relative;background:var(--paper);border-radius:6px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);padding:clamp(22px,4vw,32px);
+  color:var(--ink);font-family:'Jost',sans-serif;min-height:260px;
+  transform-origin:center center;will-change:transform,filter,clip-path,opacity;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;
+}
+.ritual-page-icon{font-size:2.2rem;}
+.ritual-page-label{font-family:'Playfair Display',serif;font-style:italic;font-size:1.05rem;color:var(--p950);}
+.ritual-page-excerpt{font-size:.8rem;color:var(--txt-m);font-style:italic;line-height:1.6;max-width:280px;}
+.ritual-fx-layer{position:absolute;inset:0;pointer-events:none;overflow:visible;}
+.ritual-release-msg{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;opacity:0;transition:opacity .8s ease;pointer-events:none;
+}
+.ritual-release-msg.show{opacity:1;}
+.ritual-release-msg span{
+  font-family:'Playfair Display',serif;font-style:italic;font-size:1.2rem;
+  color:#f0d8a8;text-shadow:0 0 20px rgba(232,169,74,.5);
+}
+
+/* Fire particle primitives */
+.rp-ember{position:absolute;border-radius:50%;background:radial-gradient(circle,#ffd08a 0%,#ff8c42 45%,transparent 75%);box-shadow:0 0 8px 2px rgba(255,140,66,.8);pointer-events:none;}
+.rp-ash{position:absolute;border-radius:2px;background:rgba(60,45,30,.8);pointer-events:none;}
+.rp-smoke{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(200,190,180,.35),transparent 70%);filter:blur(14px);pointer-events:none;}
+.rp-flame{position:absolute;width:16px;height:22px;pointer-events:none;background:radial-gradient(circle at 50% 80%,#fff3c4 0%,#ffb347 35%,#ff6b35 65%,transparent 80%);border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;}
+
+/* ── Print / PDF (single page export) ── */
+#pagePrintArea{display:none;}
+@media print{
+  body > *:not(#pagePrintArea){display:none !important;}
+  #pagePrintArea{
+    display:block !important;position:static;background:#fff;color:#1a120b;
+    font-family:'Jost',sans-serif;padding:40px;
+  }
+  #pagePrintArea .print-meta{font-size:.8rem;color:#666;margin-bottom:24px;}
+  #pagePrintArea .print-body{font-size:1.05rem;line-height:1.9;white-space:pre-wrap;}
+}
+{% endblock %}
+
+{% block navbar %}
+<div class="topbar">
+  <button class="back-btn" onclick="closeBook()">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    Retour
+  </button>
+  <div class="book-identity">
+    <span class="book-identity-icon">{{ journal.icon }}</span>
+    <span class="book-identity-title">{{ journal.title }}</span>
+  </div>
+  <div class="save-indicator" id="saveIndicator"><span class="save-dot"></span><span id="saveIndicatorText">Enregistré</span></div>
+  <button class="save-btn" id="saveBtn" onclick="manualSave()" title="Enregistrer (Ctrl+S)">
+    💾 <span class="save-btn-label">Enregistrer</span>
+  </button>
+  <div class="write-settings-wrap">
+    <button class="tb-icon-btn" id="writeSettingsBtn" title="Réglages d'écriture">✎</button>
+    <div class="write-settings-panel" id="writeSettingsPanel">
+      <div class="ws-row">
+        <span class="ws-label">Police</span>
+        <select class="ws-select" id="wsFont">
+          <option value="jost">Standard</option>
+          <option value="caveat">Écriture — Caveat</option>
+          <option value="kalam">Écriture — Kalam</option>
+          <option value="patrick">Écriture — Patrick Hand</option>
+          <option value="shadows">Écriture — Shadows Into Light</option>
+        </select>
+      </div>
+      <div class="ws-row">
+        <span class="ws-label">Taille du texte</span>
+        <input type="range" class="ws-range" id="wsSize" min="14" max="24" step="1">
+      </div>
+      <div class="ws-row">
+        <span class="ws-label">Interligne</span>
+        <input type="range" class="ws-range" id="wsLineHeight" min="24" max="44" step="2">
+      </div>
+      <div class="ws-row">
+        <span class="ws-label">Papier</span>
+        <div class="ws-swatches" id="wsPaperSwatches">
+          <button type="button" class="ws-swatch" data-paper="lined">Ligné</button>
+          <button type="button" class="ws-swatch" data-paper="grid">Quadrillé</button>
+          <button type="button" class="ws-swatch" data-paper="dot">Pointillé</button>
+          <button type="button" class="ws-swatch" data-paper="blank">Blanc</button>
+          <button type="button" class="ws-swatch" data-paper="kraft">Kraft</button>
+        </div>
+      </div>
+      <div class="ws-row">
+        <span class="ws-label">Thème d'écriture</span>
+        <div class="ws-swatches" id="wsThemeSwatches">
+          <button type="button" class="ws-swatch" data-theme="light">☀️ Clair</button>
+          <button type="button" class="ws-swatch" data-theme="dark">🌙 Sombre</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-menu-wrap" id="pageMenuWrap">
+    <button class="tb-icon-btn" id="pageMenuBtn" title="Actions de la page">⋮</button>
+    <div class="page-menu-dropdown" id="pageMenuDropdown">
+      <button type="button" class="page-menu-item" id="menuSaveBtn">💾 Enregistrer</button>
+      <button type="button" class="page-menu-item" id="menuArchiveBtn">🗄️ Archiver la page</button>
+      <button type="button" class="page-menu-item" id="menuLockBtn">🔒 Verrouiller la page</button>
+      <button type="button" class="page-menu-item" id="menuPdfBtn">📄 Exporter en PDF</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="book-stage">
+  <div class="book" id="book">
+    <div class="page-viewport" id="pageViewport">
+      <div class="corner-hotzone corner-prev" id="cornerPrev" title="Page précédente"></div>
+      <div class="corner-hotzone corner-next" id="cornerNext" title="Page suivante"></div>
+
+      <div class="page paper-lined" id="pageCurrent">
+        <div class="page-header">
+          <div>
+            <div class="page-day" id="pageDay">—</div>
+            <div class="page-fulldate" id="pageFullDate">—</div>
+            <div class="page-number-badge" id="pageNumberBadge">Page 1</div>
+          </div>
+          <div class="page-time" id="pageTime"></div>
+        </div>
+        <div class="page-status-badges" id="pageStatusBadges"></div>
+        <div class="baw-prompt" id="bawPrompt" style="display:none;"></div>
+        <div class="page-mood-row" id="pageMoodRow">
+          <button class="mood-btn" data-mood="tres_mal" title="Vraiment mal">😔</button>
+          <button class="mood-btn" data-mood="pas_bien" title="Pas très bien">😟</button>
+          <button class="mood-btn" data-mood="neutre" title="Neutre">😐</button>
+          <button class="mood-btn" data-mood="bien" title="Bien">🙂</button>
+          <button class="mood-btn" data-mood="tres_bien" title="Très bien">😊</button>
+        </div>
+        <div class="editor-toolbar" id="editorToolbar">
+          <button type="button" class="toolbar-btn" data-cmd="bold" title="Gras (Ctrl+B)">G</button>
+          <button type="button" class="toolbar-btn italic-glyph" data-cmd="italic" title="Italique (Ctrl+I)">I</button>
+          <button type="button" class="toolbar-btn underline-glyph" data-cmd="underline" title="Souligné (Ctrl+U)">S</button>
+          <span class="toolbar-sep"></span>
+          <button type="button" class="toolbar-btn" data-block="h1" title="Titre">H1</button>
+          <button type="button" class="toolbar-btn" data-block="h2" title="Sous-titre">H2</button>
+          <span class="toolbar-sep"></span>
+          <button type="button" class="toolbar-btn" data-cmd="insertUnorderedList" title="Liste à puces">•</button>
+          <button type="button" class="toolbar-btn" data-cmd="insertOrderedList" title="Liste numérotée">1.</button>
+          <button type="button" class="toolbar-btn" data-block="blockquote" title="Citation">”</button>
+          <span class="toolbar-sep"></span>
+          <button type="button" class="toolbar-btn" data-cmd="removeFormat" title="Effacer la mise en forme">✕</button>
+        </div>
+        <div class="page-content-editable is-empty" id="pageContentEditable" contenteditable="true" data-placeholder="Cher journal…"></div>
+
+        <div class="baw-continue-row" id="bawContinueRow" style="display:none;">
+          <button type="button" class="baw-continue-btn" id="bawContinueBtn">Continuer →</button>
+        </div>
+
+        <div class="scrapbook-layer" id="scrapbookLayer"></div>
+
+        <div class="released-view" id="releasedView">
+          <div class="released-icon" id="releasedIcon">🕊️</div>
+          <div class="released-title">Cette page a été brûlée.</div>
+          <div class="released-date" id="releasedDate"></div>
+          <div class="released-note">Ces mots sont partis en fumée — seul ce souvenir discret demeure.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="book-cover" id="bookCover" onclick="closeBook()" title="Fermer le journal">
+      <div class="book-cover-icon">{{ journal.icon }}</div>
+      <div class="book-cover-title">{{ journal.title }}</div>
+      <div class="book-cover-hint">Touche pour ouvrir</div>
+    </div>
+  </div>
+
+  <div class="scrapbook-toolbar">
+    <button type="button" class="sbt-btn" id="sbtPhoto" title="Ajouter une photo">📷</button>
+    <button type="button" class="sbt-btn" id="sbtSticker" title="Autocollants et emojis">😊</button>
+    <button type="button" class="sbt-btn" id="sbtDraw" title="Dessiner">✏️</button>
+    <button type="button" class="sbt-btn" id="sbtVoice" title="Note vocale">🎤</button>
+    <button type="button" class="sbt-btn" id="sbtWeather" title="Météo">☀️</button>
+    <button type="button" class="sbt-btn" id="sbtLocation" title="Lieu">📍</button>
+  </div>
+  <input type="file" id="photoFileInput" accept="image/*" hidden>
+
+  <div class="book-nav">
+    <button class="nav-arrow" id="arrowPrev" aria-label="Page précédente">‹</button>
+    <span class="page-number-label" id="pageNumberLabel">Page 1</span>
+    <input type="number" class="jump-page-input" id="jumpPageInput" min="1" aria-label="Aller à la page">
+    <input type="date" class="jump-date-input" id="jumpDate" aria-label="Aller à une date">
+    <button class="nav-arrow" id="arrowNext" aria-label="Page suivante">›</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Stickers & emoji picker -->
+<div class="sb-modal-overlay" id="stickerModal" onclick="if(event.target===this) closeAllAttachmentModals()">
+  <div class="sb-modal-card">
+    <div class="sb-modal-title">Autocollants & emojis</div>
+    <div class="sb-tabs">
+      <button type="button" class="sb-tab active" id="stickerTabBtn">Autocollants</button>
+      <button type="button" class="sb-tab" id="emojiTabBtn">Emojis</button>
+    </div>
+    <div class="sb-glyph-grid" id="stickerGrid"></div>
+    <div class="sb-modal-actions">
+      <button class="sb-modal-btn sb-modal-btn-cancel" onclick="closeAllAttachmentModals()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Drawing -->
+<div class="sb-modal-overlay" id="drawModal" onclick="if(event.target===this) closeAllAttachmentModals()">
+  <div class="sb-modal-card">
+    <div class="sb-modal-title">Dessiner</div>
+    <div class="sb-canvas-wrap">
+      <canvas id="drawCanvas" width="480" height="340"></canvas>
+    </div>
+    <div class="sb-draw-controls">
+      <div class="sb-color-row" id="drawColorRow"></div>
+      <input type="range" class="sb-brush-range" id="drawBrushSize" min="2" max="18" value="5">
+      <button type="button" class="sb-modal-btn sb-modal-btn-cancel" id="drawClearBtn" style="flex:none;padding:8px 14px;">Effacer</button>
+    </div>
+    <div class="sb-modal-actions">
+      <button class="sb-modal-btn sb-modal-btn-cancel" onclick="closeAllAttachmentModals()">Annuler</button>
+      <button class="sb-modal-btn sb-modal-btn-primary" id="drawSaveBtn">Ajouter au journal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Voice note -->
+<div class="sb-modal-overlay" id="voiceModal" onclick="if(event.target===this) closeAllAttachmentModals()">
+  <div class="sb-modal-card">
+    <div class="sb-modal-title">Note vocale</div>
+    <div class="sb-voice-panel">
+      <button type="button" class="sb-record-btn" id="voiceRecordBtn" title="Enregistrer">🎤</button>
+      <div class="sb-record-timer" id="voiceTimer">Touche pour enregistrer</div>
+      <audio class="sb-voice-preview" id="voicePreview" controls style="display:none;"></audio>
+    </div>
+    <div class="sb-modal-actions">
+      <button class="sb-modal-btn sb-modal-btn-cancel" onclick="closeAllAttachmentModals()">Annuler</button>
+      <button class="sb-modal-btn sb-modal-btn-primary" id="voiceSaveBtn" disabled>Ajouter au journal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Weather -->
+<div class="sb-modal-overlay" id="weatherModal" onclick="if(event.target===this) closeAllAttachmentModals()">
+  <div class="sb-modal-card">
+    <div class="sb-modal-title">Météo du jour</div>
+    <div class="sb-glyph-grid" id="weatherGrid"></div>
+    <span class="sb-field-label">Note (optionnel)</span>
+    <input type="text" class="sb-text-input" id="weatherLabelInput" placeholder="Ex : 22°C, ensoleillé" maxlength="60">
+    <div class="sb-modal-actions">
+      <button class="sb-modal-btn sb-modal-btn-cancel" onclick="closeAllAttachmentModals()">Annuler</button>
+      <button class="sb-modal-btn sb-modal-btn-primary" id="weatherSaveBtn" disabled>Ajouter au journal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Location -->
+<div class="sb-modal-overlay" id="locationModal" onclick="if(event.target===this) closeAllAttachmentModals()">
+  <div class="sb-modal-card">
+    <div class="sb-modal-title">Ajouter un lieu</div>
+    <span class="sb-field-label">Nom du lieu</span>
+    <input type="text" class="sb-text-input" id="locationLabelInput" placeholder="Ex : Abidjan, Côte d'Ivoire" maxlength="120">
+    <button type="button" class="sb-geo-btn" id="locationGeoBtn">📍 Utiliser ma position</button>
+    <div class="sb-modal-actions">
+      <button class="sb-modal-btn sb-modal-btn-cancel" onclick="closeAllAttachmentModals()">Annuler</button>
+      <button class="sb-modal-btn sb-modal-btn-primary" id="locationSaveBtn">Ajouter au journal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Burn After Writing — end-of-page disposition -->
+<div class="ritual-modal-overlay" id="dispositionModal">
+  <div class="ritual-modal-card">
+    <div class="ritual-modal-title">Que souhaitez-vous faire de cette page ?</div>
+    <p class="ritual-modal-text">Vous venez d'écrire quelque chose d'important. Que doit-il en advenir ?</p>
+    <div class="disposition-list">
+      <button type="button" class="disposition-opt" data-disposition="forever"><span class="disposition-opt-icon">♾️</span> Garder pour toujours</button>
+      <button type="button" class="disposition-opt" data-disposition="24h"><span class="disposition-opt-icon">🕐</span> Supprimer après 24 heures</button>
+      <button type="button" class="disposition-opt" data-disposition="7d"><span class="disposition-opt-icon">📅</span> Supprimer après 7 jours</button>
+      <button type="button" class="disposition-opt" data-disposition="30d"><span class="disposition-opt-icon">🗓️</span> Supprimer après 30 jours</button>
+      <button type="button" class="disposition-opt danger" data-disposition="burn"><span class="disposition-opt-icon">🔥</span> Brûler immédiatement</button>
+    </div>
+  </div>
+</div>
+
+<!-- Burn ceremony stage -->
+<div class="ritual-stage-overlay" id="ritualStageOverlay">
+  <div class="ritual-stage-wrap" id="ritualStageWrap"></div>
+</div>
+
+<!-- Hidden print area for single-page PDF export -->
+<div id="pagePrintArea">
+  <div class="print-meta" id="printMeta"></div>
+  <div class="print-body" id="printBody"></div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+const JOURNAL_ID = {{ journal.id }};
+const INITIAL_PAGE = {{ initial_page_number }};
+const JOURNAL_HOME_URL = '{{ back_url }}';
+const JOURNAL_KIND = '{{ journal.kind }}';
+const PAGE_API      = (n) => `/api/journal/${JOURNAL_ID}/page/${n}/`;
+const PAGE_NEXT_API = (n) => `/api/journal/${JOURNAL_ID}/page/${n}/next/`;
+const PAGE_DATE_API = (d) => `/api/journal/${JOURNAL_ID}/page/by-date/${d}/`;
+const PAGE_ARCHIVE_API = (n) => `/api/journal/${JOURNAL_ID}/page/${n}/archive/`;
+const PAGE_LOCK_API    = (n) => `/api/journal/${JOURNAL_ID}/page/${n}/lock/`;
+const PAGE_RELEASE_API = (n) => `/api/journal/${JOURNAL_ID}/page/${n}/release/`;
+
+const MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+
+function parseYMD(s){
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function fmtTime(d){
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+let currentPageNumber = INITIAL_PAGE;
+let currentMood = '';
+let currentDate = '';
+let currentIsArchived = false;
+let currentIsLocked = false;
+let currentIsReleased = false;
+let navState = {total_pages: 1, prev_page: null, next_page: null, is_last: true};
+let clockTimer = null;
+let saveTimer = null;
+let dirty = false;
+let isPaginating = false;
+
+const contentEditable = document.getElementById('pageContentEditable');
+
+/* ═══════════════════ SANITIZATION — keep persisted formatting safe ═══════════════════ */
+const ALLOWED_TAGS = new Set(['B','STRONG','I','EM','U','H1','H2','P','DIV','BR','UL','OL','LI','BLOCKQUOTE','SPAN']);
+function sanitizeHtml(html){
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  (function walk(node){
+    Array.from(node.childNodes).forEach(child => {
+      if(child.nodeType === 1){
+        if(!ALLOWED_TAGS.has(child.tagName)){
+          while(child.firstChild) child.parentNode.insertBefore(child.firstChild, child);
+          child.parentNode.removeChild(child);
+          return;
+        }
+        Array.from(child.attributes).forEach(attr => child.removeAttribute(attr.name));
+        walk(child);
+      }else if(child.nodeType !== 3){
+        child.parentNode.removeChild(child);
+      }
+    });
+  })(tpl.content);
+  return tpl.innerHTML;
+}
+function normalizeContent(raw){
+  if(!raw) return '';
+  if(!/<[a-z][\s\S]*>/i.test(raw)) return escHtml(raw).replace(/\n/g, '<br>');
+  return raw;
+}
+function updatePlaceholderVisibility(){
+  contentEditable.classList.toggle('is-empty', contentEditable.textContent.trim() === '');
+}
+
+/* ═══════════════════ WRITING PREFERENCES (font, size, spacing, paper, theme) ═══════════════════ */
+const WRITE_PREFS_KEY = 'sana-write-prefs';
+const FONT_MAP = {
+  jost: "'Jost',sans-serif",
+  caveat: "'Caveat',cursive",
+  kalam: "'Kalam',cursive",
+  patrick: "'Patrick Hand',cursive",
+  shadows: "'Shadows Into Light',cursive",
+};
+function loadWritePrefs(){
+  const defaults = {font:'jost', size:16, lineHeight:32, paper:'lined', theme:'light'};
+  try{
+    const raw = localStorage.getItem(WRITE_PREFS_KEY);
+    if(raw) return Object.assign(defaults, JSON.parse(raw));
+  }catch(e){}
+  return defaults;
+}
+function saveWritePrefs(){
+  try{ localStorage.setItem(WRITE_PREFS_KEY, JSON.stringify(writePrefs)); }catch(e){}
+}
+let writePrefs = loadWritePrefs();
+
+function applyWritePrefs(){
+  const page = document.getElementById('pageCurrent');
+  contentEditable.style.fontFamily = FONT_MAP[writePrefs.font] || FONT_MAP.jost;
+  contentEditable.style.fontSize = writePrefs.size + 'px';
+  contentEditable.style.lineHeight = writePrefs.lineHeight + 'px';
+  page.classList.remove('paper-lined','paper-grid','paper-dot','paper-blank','paper-kraft');
+  page.classList.add('paper-' + writePrefs.paper);
+  page.classList.toggle('write-dark', writePrefs.theme === 'dark');
+
+  document.getElementById('wsFont').value = writePrefs.font;
+  document.getElementById('wsSize').value = writePrefs.size;
+  document.getElementById('wsLineHeight').value = writePrefs.lineHeight;
+  document.querySelectorAll('#wsPaperSwatches .ws-swatch').forEach(b=>b.classList.toggle('active', b.dataset.paper===writePrefs.paper));
+  document.querySelectorAll('#wsThemeSwatches .ws-swatch').forEach(b=>b.classList.toggle('active', b.dataset.theme===writePrefs.theme));
+}
+document.getElementById('wsFont').addEventListener('change', e=>{ writePrefs.font=e.target.value; saveWritePrefs(); applyWritePrefs(); });
+document.getElementById('wsSize').addEventListener('input', e=>{ writePrefs.size=parseInt(e.target.value,10); saveWritePrefs(); applyWritePrefs(); });
+document.getElementById('wsLineHeight').addEventListener('input', e=>{ writePrefs.lineHeight=parseInt(e.target.value,10); saveWritePrefs(); applyWritePrefs(); });
+document.querySelectorAll('#wsPaperSwatches .ws-swatch').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ writePrefs.paper=btn.dataset.paper; saveWritePrefs(); applyWritePrefs(); });
+});
+document.querySelectorAll('#wsThemeSwatches .ws-swatch').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ writePrefs.theme=btn.dataset.theme; saveWritePrefs(); applyWritePrefs(); });
+});
+
+const writeSettingsBtn = document.getElementById('writeSettingsBtn');
+const writeSettingsPanel = document.getElementById('writeSettingsPanel');
+writeSettingsBtn.addEventListener('click', ()=> writeSettingsPanel.classList.toggle('open'));
+document.addEventListener('click', (e)=>{
+  if(writeSettingsPanel.classList.contains('open') && !writeSettingsPanel.contains(e.target) && e.target !== writeSettingsBtn){
+    writeSettingsPanel.classList.remove('open');
+  }
+});
+
+/* ═══════════════════ MOOD ═══════════════════ */
+function setMood(moodKey){
+  currentMood = moodKey;
+  document.querySelectorAll('.mood-btn').forEach(b=>b.classList.toggle('active', b.dataset.mood===moodKey));
+  scheduleAutosave();
+}
+document.querySelectorAll('.mood-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>setMood(btn.dataset.mood===currentMood ? '' : btn.dataset.mood));
+});
+
+/* ═══════════════════ PAGE HEADER (date / day / time / page number) ═══════════════════ */
+function renderHeader(dateStr, dayOfWeek, isToday, updatedAtIso){
+  const d = parseYMD(dateStr);
+  document.getElementById('pageDay').textContent = dayOfWeek || '—';
+  document.getElementById('pageFullDate').textContent = `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  clearInterval(clockTimer);
+  const timeEl = document.getElementById('pageTime');
+  if(isToday){
+    timeEl.textContent = fmtTime(new Date());
+    clockTimer = setInterval(()=>{ timeEl.textContent = fmtTime(new Date()); }, 30000);
+  }else if(updatedAtIso){
+    timeEl.textContent = 'Enregistré à ' + fmtTime(new Date(updatedAtIso));
+  }else{
+    timeEl.textContent = '';
+  }
+}
+
+function applyPageData(data){
+  const page = data.page;
+  currentPageNumber = page.page_number;
+  currentDate = page.date;
+  currentIsArchived = !!page.is_archived;
+  currentIsLocked = !!page.is_locked;
+  currentIsReleased = !!page.is_released;
+  contentEditable.innerHTML = sanitizeHtml(normalizeContent(page.content));
+  updatePlaceholderVisibility();
+  currentMood = page.mood || '';
+  document.querySelectorAll('.mood-btn').forEach(b=>b.classList.toggle('active', b.dataset.mood===currentMood));
+  renderHeader(page.date, page.day_of_week, page.date === todayStr(), page.updated_at);
+
+  navState = data.nav;
+  document.getElementById('arrowPrev').disabled = !navState.prev_page;
+  document.getElementById('pageNumberLabel').textContent = `Page ${currentPageNumber} / ${navState.total_pages}`;
+  document.getElementById('pageNumberBadge').textContent = `Page ${currentPageNumber} / ${navState.total_pages}`;
+  const jumpPageInput = document.getElementById('jumpPageInput');
+  jumpPageInput.value = currentPageNumber;
+  jumpPageInput.max = navState.total_pages;
+  document.getElementById('jumpDate').value = page.date;
+  setSaveStatus('saved', page.updated_at);
+  dirty = false;
+  renderAttachments(page.attachments || []);
+  applyPageStatusUI(page);
+}
+
+function applyPageStatusUI(page){
+  const pageEl = document.getElementById('pageCurrent');
+  const badges = document.getElementById('pageStatusBadges');
+  badges.innerHTML = '';
+  if(page.is_archived){
+    const b = document.createElement('span');
+    b.className = 'page-status-badge';
+    b.textContent = '🗄️ Archivée';
+    badges.appendChild(b);
+  }
+  if(page.is_locked){
+    const b = document.createElement('span');
+    b.className = 'page-status-badge';
+    b.textContent = '🔒 Verrouillée';
+    badges.appendChild(b);
+  }
+  pageEl.classList.toggle('is-locked', page.is_locked && !page.is_released);
+  contentEditable.setAttribute('contenteditable', (page.is_locked || page.is_released) ? 'false' : 'true');
+
+  const releasedView = document.getElementById('releasedView');
+  releasedView.classList.toggle('show', page.is_released);
+  if(page.is_released){
+    document.getElementById('releasedIcon').textContent = '🔥';
+    if(page.released_at){
+      const rd = new Date(page.released_at);
+      const rDate = parseYMD(page.released_at.slice(0,10));
+      document.getElementById('releasedDate').textContent =
+        `Brûlée le ${rDate.getDate()} ${MONTHS[rDate.getMonth()]} ${rDate.getFullYear()} à ${fmtTime(rd)}`;
+    }else{
+      document.getElementById('releasedDate').textContent = '';
+    }
+  }
+
+  // Burn After Writing pages show their guided question and a dedicated
+  // "Continuer" flow instead of the personal journal's ⋮ menu.
+  const bawPrompt = document.getElementById('bawPrompt');
+  const bawContinueRow = document.getElementById('bawContinueRow');
+  const pageMenuWrap = document.getElementById('pageMenuWrap');
+  if(JOURNAL_KIND === 'burn'){
+    pageMenuWrap.style.display = 'none';
+    if(page.is_released){
+      bawPrompt.style.display = 'none';
+      bawContinueRow.style.display = 'none';
+    }else{
+      bawPrompt.textContent = page.prompt || '';
+      bawPrompt.style.display = page.prompt ? 'block' : 'none';
+      bawContinueRow.style.display = 'flex';
+    }
+    return;
+  }
+
+  document.getElementById('menuArchiveBtn').textContent = page.is_archived ? '🗄️ Désarchiver la page' : '🗄️ Archiver la page';
+  document.getElementById('menuLockBtn').textContent = page.is_locked ? '🔓 Déverrouiller la page' : '🔒 Verrouiller la page';
+  document.getElementById('menuArchiveBtn').disabled = page.is_released;
+  document.getElementById('menuLockBtn').disabled = page.is_released;
+  document.getElementById('menuSaveBtn').disabled = page.is_released || page.is_locked;
+
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = page.is_released || page.is_locked;
+  saveBtn.style.opacity = saveBtn.disabled ? '.5' : '';
+  saveBtn.style.cursor = saveBtn.disabled ? 'default' : '';
+
+  document.querySelectorAll('.sbt-btn').forEach(btn => { btn.disabled = page.is_released; });
+  document.querySelector('.scrapbook-toolbar').style.opacity = page.is_released ? '.4' : '';
+  document.querySelector('.scrapbook-toolbar').style.pointerEvents = page.is_released ? 'none' : '';
+}
+
+async function loadPage(n){
+  const res = await fetch(PAGE_API(n));
+  const data = await res.json();
+  applyPageData(data);
+  return data;
+}
+
+async function loadPageByDate(dateStr){
+  const res = await fetch(PAGE_DATE_API(dateStr), {
+    method: 'GET', headers: {'X-CSRFToken': getCsrf()},
+  });
+  const data = await res.json();
+  applyPageData(data);
+  return data;
+}
+
+/* ═══════════════════ FLIP / FADE TRANSITIONS ═══════════════════ */
+function buildFlipSnapshot(){
+  const div = document.createElement('div');
+  const current = document.getElementById('pageCurrent');
+  div.className = 'page page-flip-overlay ' + Array.from(current.classList).filter(c => c !== 'page').join(' ');
+  div.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-day">${escHtml(document.getElementById('pageDay').textContent)}</div>
+      <div class="page-fulldate">${escHtml(document.getElementById('pageFullDate').textContent)}</div></div>
+      <div class="page-time">${escHtml(document.getElementById('pageTime').textContent)}</div>
+    </div>
+    <div class="page-content-display">${contentEditable.innerHTML}</div>
+  `;
+  const displayDiv = div.querySelector('.page-content-display');
+  const cs = getComputedStyle(contentEditable);
+  displayDiv.style.fontFamily = cs.fontFamily;
+  displayDiv.style.fontSize = cs.fontSize;
+  displayDiv.style.lineHeight = cs.lineHeight;
+
+  const scrapbookClone = document.getElementById('scrapbookLayer').cloneNode(true);
+  scrapbookClone.querySelectorAll('.sb-delete,.sb-resize,.sb-rotate').forEach(el => el.remove());
+  scrapbookClone.querySelectorAll('.scrapbook-item').forEach(el => { el.classList.remove('selected'); el.style.pointerEvents = 'none'; });
+  div.appendChild(scrapbookClone);
+  return div;
+}
+
+async function withFlipTransition(loaderFn, direction){
+  await flushAutosave();
+  if(isReducedMotion()){
+    await loaderFn();
+    return;
+  }
+  const viewport = document.getElementById('pageViewport');
+  const overlay = buildFlipSnapshot();
+  viewport.appendChild(overlay);
+  overlay.getBoundingClientRect(); // force reflow
+  requestAnimationFrame(()=>{
+    overlay.classList.add(direction === 'next' ? 'flip-next' : 'flip-prev');
+  });
+  await loaderFn();
+  overlay.addEventListener('transitionend', ()=>overlay.remove(), {once:true});
+}
+
+async function withFadeTransition(loaderFn){
+  await flushAutosave();
+  if(isReducedMotion()){
+    await loaderFn();
+    return;
+  }
+  const page = document.getElementById('pageCurrent');
+  page.classList.add('fading');
+  await new Promise(resolve => setTimeout(resolve, 160));
+  await loaderFn();
+  page.classList.remove('fading');
+}
+
+/* ═══════════════════ NAVIGATION ═══════════════════ */
+function goPrev(){
+  if(!navState.prev_page) return;
+  withFlipTransition(()=>loadPage(navState.prev_page), 'prev');
+}
+
+async function goNext(){
+  if(navState.next_page){
+    withFlipTransition(()=>loadPage(navState.next_page), 'next');
+    return;
+  }
+  if(!navState.is_last) return;
+  if(JOURNAL_KIND === 'burn'){
+    // Burn After Writing never silently starts a new page — every entry goes
+    // through the disposition prompt first (see the Continuer button flow).
+    await flushAutosave();
+    openDispositionModal();
+    return;
+  }
+  await withFlipTransition(async ()=>{
+    const res = await fetch(PAGE_NEXT_API(currentPageNumber), {
+      method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    applyPageData(data);
+  }, 'next');
+}
+
+function jumpToPage(n){
+  n = parseInt(n, 10);
+  if(!n || n === currentPageNumber || n < 1 || n > navState.total_pages) return;
+  withFadeTransition(()=>loadPage(n));
+}
+
+function jumpToDateValue(dateStr){
+  if(!dateStr || dateStr === currentDate) return;
+  withFadeTransition(()=>loadPageByDate(dateStr));
+}
+
+document.getElementById('cornerPrev').addEventListener('click', goPrev);
+document.getElementById('cornerNext').addEventListener('click', goNext);
+document.getElementById('arrowPrev').addEventListener('click', goPrev);
+document.getElementById('arrowNext').addEventListener('click', goNext);
+document.getElementById('jumpDate').addEventListener('change', (e)=>jumpToDateValue(e.target.value));
+document.getElementById('jumpPageInput').addEventListener('change', (e)=>jumpToPage(e.target.value));
+
+document.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){
+    e.preventDefault();
+    manualSave();
+    return;
+  }
+  const tag = (e.target.tagName || '').toLowerCase();
+  if(tag === 'textarea' || tag === 'input' || e.target.isContentEditable) return;
+  if(e.key === 'ArrowLeft') goPrev();
+  if(e.key === 'ArrowRight') goNext();
+});
+
+// Swipe on mobile — discrete flip past a 60px threshold, not a continuous drag.
+let touchStartX = 0, touchStartY = 0;
+const viewportEl = document.getElementById('pageViewport');
+viewportEl.addEventListener('touchstart', (e)=>{
+  touchStartX = e.changedTouches[0].clientX;
+  touchStartY = e.changedTouches[0].clientY;
+}, {passive:true});
+viewportEl.addEventListener('touchend', (e)=>{
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){
+    if(dx < 0) goNext(); else goPrev();
+  }
+}, {passive:true});
+
+/* ═══════════════════ RICH TEXT TOOLBAR ═══════════════════ */
+document.querySelectorAll('.toolbar-btn').forEach(btn=>{
+  btn.addEventListener('mousedown', (e)=>{
+    e.preventDefault(); // keep the current selection alive
+    contentEditable.focus();
+    if(btn.dataset.cmd){
+      document.execCommand(btn.dataset.cmd, false, null);
+    }else if(btn.dataset.block){
+      const tag = btn.dataset.block === 'h1' ? 'H1' : btn.dataset.block === 'h2' ? 'H2' : 'BLOCKQUOTE';
+      document.execCommand('formatBlock', false, tag);
+    }
+    scheduleAutosave();
+  });
+});
+contentEditable.addEventListener('keydown', (e)=>{
+  if(e.ctrlKey || e.metaKey){
+    const k = e.key.toLowerCase();
+    if(k === 'b'){ e.preventDefault(); document.execCommand('bold'); }
+    if(k === 'i'){ e.preventDefault(); document.execCommand('italic'); }
+    if(k === 'u'){ e.preventDefault(); document.execCommand('underline'); }
+  }
+});
+
+/* ═══════════════════ MARKDOWN SHORTCUTS (as-you-type) ═══════════════════ */
+function isAtLineStart(node, matchStart){
+  if(matchStart > 0) return false;
+  let sib = node.previousSibling;
+  while(sib){
+    if(sib.textContent && sib.textContent.trim()) return false;
+    sib = sib.previousSibling;
+  }
+  return true;
+}
+function replaceRangeWithInline(node, start, end, innerText, tag){
+  const range = document.createRange();
+  range.setStart(node, start);
+  range.setEnd(node, end);
+  range.deleteContents();
+  const el = document.createElement(tag);
+  el.textContent = innerText;
+  range.insertNode(el);
+  const after = document.createRange();
+  after.setStartAfter(el);
+  after.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(after);
+}
+function applyMarkdownShortcuts(){
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  const node = range.startContainer;
+  if(node.nodeType !== 3 || !contentEditable.contains(node)) return;
+  const offset = range.startOffset;
+  const text = node.textContent.slice(0, offset);
+
+  const blockMatch = text.match(/^(#{1,2}|-|\*|\d+\.|>)\s$/);
+  if(blockMatch && isAtLineStart(node, offset - blockMatch[0].length)){
+    const marker = blockMatch[1];
+    const r = document.createRange();
+    r.setStart(node, 0);
+    r.setEnd(node, offset);
+    r.deleteContents();
+    if(marker === '#') document.execCommand('formatBlock', false, 'H1');
+    else if(marker === '##') document.execCommand('formatBlock', false, 'H2');
+    else if(marker === '-' || marker === '*') document.execCommand('insertUnorderedList');
+    else if(marker === '>') document.execCommand('formatBlock', false, 'BLOCKQUOTE');
+    else if(/^\d+\.$/.test(marker)) document.execCommand('insertOrderedList');
+    return;
+  }
+
+  const boldMatch = text.match(/\*\*([^*\s][^*]*)\*\*$/) || text.match(/__([^_\s][^_]*)__$/);
+  if(boldMatch){
+    replaceRangeWithInline(node, offset - boldMatch[0].length, offset, boldMatch[1], 'b');
+    return;
+  }
+  const italicMatch = text.match(/(?:^|[^*])\*([^*\s][^*]*)\*$/) || text.match(/(?:^|[^_])_([^_\s][^_]*)_$/);
+  if(italicMatch){
+    const full = italicMatch[0].startsWith('*') || italicMatch[0].startsWith('_') ? italicMatch[0] : italicMatch[0].slice(1);
+    replaceRangeWithInline(node, offset - full.length, offset, italicMatch[1], 'i');
+  }
+}
+
+/* ═══════════════════ AUTOSAVE + STATUS ═══════════════════ */
+function setSaveStatus(state, updatedAtIso){
+  const indicator = document.getElementById('saveIndicator');
+  const text = document.getElementById('saveIndicatorText');
+  indicator.className = 'save-indicator state-' + state;
+  if(state === 'saving') text.textContent = 'Enregistrement…';
+  else if(state === 'saved') text.textContent = updatedAtIso ? 'Enregistré à ' + fmtTime(new Date(updatedAtIso)) : 'Enregistré';
+  else if(state === 'unsaved') text.textContent = 'Modifications non enregistrées';
+  else if(state === 'error') text.textContent = 'Échec de l’enregistrement';
+}
+
+function scheduleAutosave(){
+  dirty = true;
+  setSaveStatus('unsaved');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>doAutosave(false), 2000);
+}
+contentEditable.addEventListener('input', ()=>{
+  scheduleAutosave();
+  updatePlaceholderVisibility();
+  try{ applyMarkdownShortcuts(); }catch(e){ console.warn('markdown shortcut error', e); }
+  checkOverflowAndPaginate();
+});
+
+async function doAutosave(force){
+  if(!dirty && !force) return;
+  clearTimeout(saveTimer);
+  dirty = false;
+  setSaveStatus('saving');
+  try{
+    const res = await fetch(PAGE_API(currentPageNumber), {
+      method: 'PUT', keepalive: true,
+      headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({content: sanitizeHtml(contentEditable.innerHTML), mood: currentMood}),
+    });
+    if(!res.ok) throw new Error('save failed');
+    const data = await res.json();
+    navState = data.nav;
+    setSaveStatus('saved', data.page.updated_at);
+  }catch(e){
+    dirty = true;
+    setSaveStatus('error');
+  }
+}
+function flushAutosave(){
+  if(!dirty) return Promise.resolve();
+  return doAutosave(false);
+}
+function manualSave(){
+  return doAutosave(true);
+}
+contentEditable.addEventListener('blur', flushAutosave);
+
+// Native "leave with unsaved changes?" confirmation.
+window.addEventListener('beforeunload', (e)=>{
+  if(dirty){
+    doAutosave(false); // best-effort background save attempt
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+/* ═══════════════════ AUTOMATIC PAGINATION — "the notebook grows" ═══════════════════ */
+function getSplitRange(container, maxHeight){
+  const rect = container.getBoundingClientRect();
+  const x = rect.left + 6;
+  const y = rect.top + maxHeight - 4;
+  if(document.caretRangeFromPoint){
+    const r = document.caretRangeFromPoint(x, y);
+    if(r && container.contains(r.startContainer)) return r;
+  }
+  if(document.caretPositionFromPoint){
+    const pos = document.caretPositionFromPoint(x, y);
+    if(pos && pos.offsetNode && container.contains(pos.offsetNode)){
+      const r = document.createRange();
+      r.setStart(pos.offsetNode, pos.offset);
+      return r;
+    }
+  }
+  return null;
+}
+function placeCaretAtStart(el){
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+async function checkOverflowAndPaginate(){
+  if(isPaginating) return;
+  if(contentEditable.scrollHeight <= contentEditable.clientHeight + 1) return;
+  if(!navState.is_last) return; // only auto-grow from the last written page
+
+  isPaginating = true;
+  try{
+    contentEditable.scrollTop = 0;
+    const maxHeight = contentEditable.clientHeight;
+    const range = getSplitRange(contentEditable, maxHeight);
+    if(!range) return;
+    if(!contentEditable.lastChild) return;
+
+    const endRange = document.createRange();
+    endRange.setStart(range.startContainer, range.startOffset);
+    endRange.setEndAfter(contentEditable.lastChild);
+    const overflowFrag = endRange.extractContents();
+
+    const overflowDiv = document.createElement('div');
+    overflowDiv.appendChild(overflowFrag);
+    const overflowHtml = sanitizeHtml(overflowDiv.innerHTML.trim());
+    const fittingHtml = sanitizeHtml(contentEditable.innerHTML.trim());
+
+    if(!overflowHtml) return; // nothing was actually extracted — editor untouched
+
+    if(!fittingHtml){
+      // Undo — the split point was at the very start; put everything back and give up.
+      while(overflowDiv.firstChild) contentEditable.appendChild(overflowDiv.firstChild);
+      return;
+    }
+
+    updatePlaceholderVisibility();
+    clearTimeout(saveTimer);
+    await doAutosave(true); // persists the now-trimmed current page
+
+    await withFlipTransition(async ()=>{
+      const res = await fetch(PAGE_NEXT_API(currentPageNumber), {
+        method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+        body: JSON.stringify({content: overflowHtml}),
+      });
+      const data = await res.json();
+      applyPageData(data);
+    }, 'next');
+
+    contentEditable.focus();
+    placeCaretAtStart(contentEditable);
+  }catch(e){
+    console.warn('auto-pagination error', e);
+  }finally{
+    isPaginating = false;
+  }
+}
+
+/* ═══════════════════ SCRAPBOOK — photos, stickers, drawings, voice notes, weather, location ═══════════════════ */
+const ATTACHMENTS_API = (n) => `/api/journal/${JOURNAL_ID}/page/${n}/attachments/`;
+const ATTACHMENT_API  = (n, id) => `/api/journal/${JOURNAL_ID}/page/${n}/attachments/${id}/`;
+const NO_RESIZE_TYPES = new Set(['voice_note']);
+const NO_ROTATE_TYPES = new Set(['voice_note']);
+
+const scrapbookLayer = document.getElementById('scrapbookLayer');
+let attachmentsById = {};
+let selectedAttachmentId = null;
+let dragState = null, resizeState = null, rotateState = null;
+
+function renderAttachments(list){
+  scrapbookLayer.innerHTML = '';
+  attachmentsById = {};
+  selectedAttachmentId = null;
+  list.forEach(att => {
+    attachmentsById[att.id] = att;
+    scrapbookLayer.appendChild(buildAttachmentElement(att));
+  });
+}
+
+function glyphOf(att){
+  if(att.type === 'location') return att.sticker_code || '📍';
+  return att.sticker_code || '❔';
+}
+
+function buildAttachmentElement(att){
+  const el = document.createElement('div');
+  el.className = `scrapbook-item type-${att.type}`;
+  if(!NO_RESIZE_TYPES.has(att.type)) el.classList.add('can-resize');
+  if(!NO_ROTATE_TYPES.has(att.type)) el.classList.add('can-rotate');
+  el.dataset.id = att.id;
+
+  let inner = '';
+  if(att.type === 'image' || att.type === 'drawing'){
+    inner = `<img src="${escHtml(att.file || '')}" alt="" draggable="false">`;
+  }else if(att.type === 'voice_note'){
+    inner = `<audio controls src="${escHtml(att.file || '')}"></audio>`;
+  }else if(att.type === 'weather' || att.type === 'location'){
+    inner = `<div class="sb-glyph">${glyphOf(att)}</div>${att.label ? `<div class="sb-caption">${escHtml(att.label)}</div>` : ''}`;
+  }else{
+    inner = `<div class="sb-glyph">${glyphOf(att)}</div>`;
+  }
+  inner += `
+    <button type="button" class="sb-delete" title="Supprimer">✕</button>
+    <div class="sb-resize" title="Redimensionner"></div>
+    <div class="sb-rotate" title="Pivoter">↻</div>
+  `;
+  el.innerHTML = inner;
+
+  updateItemStyle(att, el);
+
+  el.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('.sb-delete') || e.target.closest('.sb-resize') || e.target.closest('.sb-rotate')) return;
+    if(e.target.tagName === 'AUDIO') return; // let native audio controls work
+    startDrag(e, att);
+  });
+  el.querySelector('.sb-delete').addEventListener('click', (e)=>{ e.stopPropagation(); deleteAttachment(att.id); });
+  const resizeHandle = el.querySelector('.sb-resize');
+  if(resizeHandle) resizeHandle.addEventListener('pointerdown', (e)=> startResize(e, att));
+  const rotateHandle = el.querySelector('.sb-rotate');
+  if(rotateHandle) rotateHandle.addEventListener('pointerdown', (e)=> startRotate(e, att));
+
+  return el;
+}
+
+function sizeGlyphs(el, att){
+  const glyph = el.querySelector('.sb-glyph');
+  if(!glyph) return;
+  const widthPx = (att.width_pct / 100) * scrapbookLayer.clientWidth;
+  glyph.style.fontSize = Math.max(16, widthPx * 0.6) + 'px';
+}
+
+function updateItemStyle(att, el){
+  el = el || scrapbookLayer.querySelector(`.scrapbook-item[data-id="${att.id}"]`);
+  if(!el) return;
+  el.style.left = att.position_x + '%';
+  el.style.top = att.position_y + '%';
+  el.style.width = (att.type === 'voice_note') ? 'min(80%, 260px)' : att.width_pct + '%';
+  el.style.transform = `rotate(${att.rotation || 0}deg)`;
+  el.style.zIndex = att.order || 1;
+  sizeGlyphs(el, att);
+}
+
+function selectAttachment(id){
+  document.querySelectorAll('.scrapbook-item.selected').forEach(el => el.classList.remove('selected'));
+  selectedAttachmentId = id;
+  const el = scrapbookLayer.querySelector(`.scrapbook-item[data-id="${id}"]`);
+  if(el) el.classList.add('selected');
+}
+document.addEventListener('pointerdown', (e)=>{
+  if(!e.target.closest('.scrapbook-item')){
+    document.querySelectorAll('.scrapbook-item.selected').forEach(el => el.classList.remove('selected'));
+    selectedAttachmentId = null;
+  }
+});
+
+function bringToFront(att){
+  const maxOrder = Math.max(0, ...Object.values(attachmentsById).map(a => a.order || 0));
+  if(att.order < maxOrder){
+    att.order = maxOrder + 1;
+  }
+}
+
+function pctFromPointer(clientX, clientY){
+  const rect = scrapbookLayer.getBoundingClientRect();
+  return {
+    x: ((clientX - rect.left) / rect.width) * 100,
+    y: ((clientY - rect.top) / rect.height) * 100,
+  };
+}
+
+function startDrag(e, att){
+  e.preventDefault();
+  selectAttachment(att.id);
+  bringToFront(att);
+  const el = scrapbookLayer.querySelector(`.scrapbook-item[data-id="${att.id}"]`);
+  el.classList.add('dragging');
+  const p = pctFromPointer(e.clientX, e.clientY);
+  dragState = { id: att.id, offsetX: p.x - att.position_x, offsetY: p.y - att.position_y };
+  document.addEventListener('pointermove', onDragMove);
+  document.addEventListener('pointerup', onDragEnd, {once:true});
+  updateItemStyle(att, el);
+}
+function onDragMove(e){
+  if(!dragState) return;
+  const att = attachmentsById[dragState.id];
+  if(!att) return;
+  const p = pctFromPointer(e.clientX, e.clientY);
+  att.position_x = Math.max(0, Math.min(100, p.x - dragState.offsetX));
+  att.position_y = Math.max(0, Math.min(100, p.y - dragState.offsetY));
+  updateItemStyle(att);
+}
+function onDragEnd(){
+  document.removeEventListener('pointermove', onDragMove);
+  if(dragState){
+    const el = scrapbookLayer.querySelector(`.scrapbook-item[data-id="${dragState.id}"]`);
+    if(el) el.classList.remove('dragging');
+    persistAttachment(dragState.id);
+    dragState = null;
+  }
+}
+
+function startResize(e, att){
+  e.preventDefault(); e.stopPropagation();
+  selectAttachment(att.id);
+  bringToFront(att);
+  const rect = scrapbookLayer.getBoundingClientRect();
+  resizeState = { id: att.id, startX: e.clientX, startWidthPct: att.width_pct, layerWidth: rect.width };
+  document.addEventListener('pointermove', onResizeMove);
+  document.addEventListener('pointerup', onResizeEnd, {once:true});
+}
+function onResizeMove(e){
+  if(!resizeState) return;
+  const att = attachmentsById[resizeState.id];
+  if(!att) return;
+  const dx = e.clientX - resizeState.startX;
+  const deltaPct = (dx / resizeState.layerWidth) * 100;
+  att.width_pct = Math.max(5, Math.min(90, resizeState.startWidthPct + deltaPct));
+  updateItemStyle(att);
+}
+function onResizeEnd(){
+  document.removeEventListener('pointermove', onResizeMove);
+  if(resizeState){ persistAttachment(resizeState.id); resizeState = null; }
+}
+
+function startRotate(e, att){
+  e.preventDefault(); e.stopPropagation();
+  selectAttachment(att.id);
+  bringToFront(att);
+  rotateState = { id: att.id };
+  document.addEventListener('pointermove', onRotateMove);
+  document.addEventListener('pointerup', onRotateEnd, {once:true});
+}
+function onRotateMove(e){
+  if(!rotateState) return;
+  const att = attachmentsById[rotateState.id];
+  const el = scrapbookLayer.querySelector(`.scrapbook-item[data-id="${rotateState.id}"]`);
+  if(!att || !el) return;
+  const rect = el.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  let angle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI) + 90;
+  while(angle > 180) angle -= 360;
+  while(angle < -180) angle += 360;
+  att.rotation = Math.round(angle);
+  updateItemStyle(att, el);
+}
+function onRotateEnd(){
+  document.removeEventListener('pointermove', onRotateMove);
+  if(rotateState){ persistAttachment(rotateState.id); rotateState = null; }
+}
+
+async function persistAttachment(id){
+  const att = attachmentsById[id];
+  if(!att) return;
+  try{
+    const res = await fetch(ATTACHMENT_API(currentPageNumber, id), {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({
+        position_x: att.position_x, position_y: att.position_y,
+        width_pct: att.width_pct, rotation: att.rotation, order: att.order,
+      }),
+    });
+    if(res.ok){
+      const saved = await res.json();
+      attachmentsById[id] = saved;
+      updateItemStyle(saved);
+    }
+  }catch(e){ console.warn('failed to save sticker placement', e); }
+}
+
+async function deleteAttachment(id){
+  try{
+    await fetch(ATTACHMENT_API(currentPageNumber, id), {method:'DELETE', headers:{'X-CSRFToken':getCsrf()}});
+  }catch(e){ console.warn('failed to delete attachment', e); }
+  delete attachmentsById[id];
+  const el = scrapbookLayer.querySelector(`.scrapbook-item[data-id="${id}"]`);
+  if(el) el.remove();
+  if(selectedAttachmentId === id) selectedAttachmentId = null;
+}
+
+async function createAttachment(fields, file){
+  const form = new FormData();
+  Object.entries(fields).forEach(([k,v]) => form.append(k, v));
+  if(file) form.append('file', file);
+  const res = await fetch(ATTACHMENTS_API(currentPageNumber), {
+    method: 'POST', headers: {'X-CSRFToken': getCsrf()}, body: form,
+  });
+  if(!res.ok){
+    const err = await res.json().catch(()=>({error:'Erreur'}));
+    throw new Error(err.error || 'Erreur serveur');
+  }
+  const att = await res.json();
+  attachmentsById[att.id] = att;
+  scrapbookLayer.appendChild(buildAttachmentElement(att));
+  return att;
+}
+
+/* ── Add-attachment toolbar ── */
+function closeAllAttachmentModals(){
+  document.querySelectorAll('.sb-modal-overlay').forEach(m => m.classList.remove('open'));
+  stopVoiceRecording(true);
+}
+
+document.getElementById('sbtPhoto').addEventListener('click', ()=> document.getElementById('photoFileInput').click());
+document.getElementById('photoFileInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  try{
+    await createAttachment({attachment_type:'image', position_x:50, position_y:50, width_pct:28, rotation:0}, file);
+  }catch(err){ console.warn('photo upload failed', err); }
+});
+
+/* Stickers & emoji */
+const STICKER_SET = ['🌸','🌙','✨','🍂','☕','🕊️','💭','🔥','🦋','🌈','🌻','💛','⭐','🎵','😌','🌊','🤝','🧸','📖','🍀'];
+const EMOJI_SET = ['😀','😂','🥰','😍','😢','😭','😡','😴','🤔','👍','👏','🙏','💪','🎉','❤️','💔','🌟','💯','🥳','😎'];
+let activeGlyphTab = 'sticker';
+function renderGlyphGrid(){
+  const set = activeGlyphTab === 'sticker' ? STICKER_SET : EMOJI_SET;
+  const grid = document.getElementById('stickerGrid');
+  grid.innerHTML = set.map(g => `<button type="button" class="sb-glyph-opt" data-glyph="${g}">${g}</button>`).join('');
+  grid.querySelectorAll('.sb-glyph-opt').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      try{
+        await createAttachment({
+          attachment_type: activeGlyphTab, sticker_code: btn.dataset.glyph,
+          position_x: 50, position_y: 50, width_pct: 12, rotation: 0,
+        });
+        closeAllAttachmentModals();
+      }catch(err){ console.warn('sticker add failed', err); }
+    });
+  });
+}
+document.getElementById('sbtSticker').addEventListener('click', ()=>{
+  activeGlyphTab = 'sticker';
+  document.getElementById('stickerTabBtn').classList.add('active');
+  document.getElementById('emojiTabBtn').classList.remove('active');
+  renderGlyphGrid();
+  document.getElementById('stickerModal').classList.add('open');
+});
+document.getElementById('stickerTabBtn').addEventListener('click', ()=>{
+  activeGlyphTab = 'sticker';
+  document.getElementById('stickerTabBtn').classList.add('active');
+  document.getElementById('emojiTabBtn').classList.remove('active');
+  renderGlyphGrid();
+});
+document.getElementById('emojiTabBtn').addEventListener('click', ()=>{
+  activeGlyphTab = 'emoji';
+  document.getElementById('emojiTabBtn').classList.add('active');
+  document.getElementById('stickerTabBtn').classList.remove('active');
+  renderGlyphGrid();
+});
+
+/* Weather */
+const WEATHER_SET = ['☀️','🌤️','⛅','☁️','🌦️','🌧️','⛈️','🌨️','🌫️','🌈','❄️','💨'];
+let selectedWeatherGlyph = null;
+function renderWeatherGrid(){
+  const grid = document.getElementById('weatherGrid');
+  grid.innerHTML = WEATHER_SET.map(g => `<button type="button" class="sb-glyph-opt" data-glyph="${g}">${g}</button>`).join('');
+  grid.querySelectorAll('.sb-glyph-opt').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      selectedWeatherGlyph = btn.dataset.glyph;
+      grid.querySelectorAll('.sb-glyph-opt').forEach(b => b.classList.toggle('active', b===btn));
+      document.getElementById('weatherSaveBtn').disabled = false;
+    });
+  });
+}
+document.getElementById('sbtWeather').addEventListener('click', ()=>{
+  selectedWeatherGlyph = null;
+  document.getElementById('weatherLabelInput').value = '';
+  document.getElementById('weatherSaveBtn').disabled = true;
+  renderWeatherGrid();
+  document.getElementById('weatherModal').classList.add('open');
+});
+document.getElementById('weatherSaveBtn').addEventListener('click', async ()=>{
+  if(!selectedWeatherGlyph) return;
+  try{
+    await createAttachment({
+      attachment_type: 'weather', sticker_code: selectedWeatherGlyph,
+      label: document.getElementById('weatherLabelInput').value.trim(),
+      position_x: 15, position_y: 15, width_pct: 12, rotation: 0,
+    });
+    closeAllAttachmentModals();
+  }catch(err){ console.warn('weather add failed', err); }
+});
+
+/* Location */
+document.getElementById('sbtLocation').addEventListener('click', ()=>{
+  document.getElementById('locationLabelInput').value = '';
+  document.getElementById('locationModal').classList.add('open');
+});
+document.getElementById('locationGeoBtn').addEventListener('click', ()=>{
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      const lat = pos.coords.latitude.toFixed(4);
+      const lon = pos.coords.longitude.toFixed(4);
+      const input = document.getElementById('locationLabelInput');
+      if(!input.value.trim()) input.value = `${lat}, ${lon}`;
+    },
+    ()=>{ /* permission denied or unavailable — user can still type a place name */ }
+  );
+});
+document.getElementById('locationSaveBtn').addEventListener('click', async ()=>{
+  const label = document.getElementById('locationLabelInput').value.trim();
+  if(!label) return;
+  try{
+    await createAttachment({
+      attachment_type: 'location', sticker_code: '📍', label,
+      position_x: 50, position_y: 85, width_pct: 12, rotation: 0,
+    });
+    closeAllAttachmentModals();
+  }catch(err){ console.warn('location add failed', err); }
+});
+
+/* Drawing */
+const DRAW_COLORS = ['#1e0d17','#c26e8a','#5e2f47','#8dab88','#e8a44a','#6b9fd4','#ffffff'];
+let drawCtx = null, drawing = false, drawColor = DRAW_COLORS[0], drawSize = 5, drawLastPoint = null;
+function initDrawColorRow(){
+  const row = document.getElementById('drawColorRow');
+  row.innerHTML = DRAW_COLORS.map((c,i) => `<span class="sb-color-opt${i===0?' active':''}" data-color="${c}" style="background:${c};${c==='#ffffff'?'box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);':''}"></span>`).join('');
+  row.querySelectorAll('.sb-color-opt').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      drawColor = el.dataset.color;
+      row.querySelectorAll('.sb-color-opt').forEach(o=>o.classList.toggle('active', o===el));
+    });
+  });
+}
+function clearDrawCanvas(){
+  const canvas = document.getElementById('drawCanvas');
+  drawCtx.fillStyle = '#ffffff';
+  drawCtx.fillRect(0, 0, canvas.width, canvas.height);
+}
+function canvasPoint(e){
+  const canvas = document.getElementById('drawCanvas');
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (canvas.width / rect.width),
+    y: (e.clientY - rect.top) * (canvas.height / rect.height),
+  };
+}
+function initDrawCanvas(){
+  const canvas = document.getElementById('drawCanvas');
+  drawCtx = canvas.getContext('2d');
+  clearDrawCanvas();
+  canvas.addEventListener('pointerdown', (e)=>{
+    drawing = true;
+    drawLastPoint = canvasPoint(e);
+  });
+  canvas.addEventListener('pointermove', (e)=>{
+    if(!drawing) return;
+    const p = canvasPoint(e);
+    drawCtx.strokeStyle = drawColor;
+    drawCtx.lineWidth = drawSize;
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+    drawCtx.beginPath();
+    drawCtx.moveTo(drawLastPoint.x, drawLastPoint.y);
+    drawCtx.lineTo(p.x, p.y);
+    drawCtx.stroke();
+    drawLastPoint = p;
+  });
+  ['pointerup','pointerleave','pointercancel'].forEach(evt=>{
+    canvas.addEventListener(evt, ()=>{ drawing = false; });
+  });
+  document.getElementById('drawBrushSize').addEventListener('input', (e)=>{ drawSize = parseInt(e.target.value, 10); });
+  initDrawColorRow();
+}
+document.getElementById('sbtDraw').addEventListener('click', ()=>{
+  if(!drawCtx) initDrawCanvas();
+  clearDrawCanvas();
+  document.getElementById('drawModal').classList.add('open');
+});
+document.getElementById('drawClearBtn').addEventListener('click', clearDrawCanvas);
+document.getElementById('drawSaveBtn').addEventListener('click', ()=>{
+  const canvas = document.getElementById('drawCanvas');
+  canvas.toBlob(async (blob)=>{
+    if(!blob) return;
+    try{
+      await createAttachment({attachment_type:'drawing', position_x:50, position_y:50, width_pct:30, rotation:0},
+        new File([blob], 'dessin.png', {type:'image/png'}));
+      closeAllAttachmentModals();
+    }catch(err){ console.warn('drawing upload failed', err); }
+  }, 'image/png');
+});
+
+/* Voice note */
+let mediaRecorder = null, recordedChunks = [], recordedBlob = null, recordTimer = null, recordSeconds = 0;
+function fmtRecordTime(s){
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+async function toggleVoiceRecording(){
+  const btn = document.getElementById('voiceRecordBtn');
+  if(mediaRecorder && mediaRecorder.state === 'recording'){
+    stopVoiceRecording(false);
+    return;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    document.getElementById('voiceTimer').textContent = "Micro non disponible sur ce navigateur";
+    return;
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e)=>{ if(e.data.size) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = ()=>{
+      stream.getTracks().forEach(t => t.stop());
+      recordedBlob = new Blob(recordedChunks, {type: mediaRecorder.mimeType || 'audio/webm'});
+      const preview = document.getElementById('voicePreview');
+      preview.src = URL.createObjectURL(recordedBlob);
+      preview.style.display = 'block';
+      document.getElementById('voiceSaveBtn').disabled = false;
+    };
+    mediaRecorder.start();
+    btn.classList.add('recording');
+    recordSeconds = 0;
+    document.getElementById('voiceTimer').textContent = fmtRecordTime(0);
+    clearInterval(recordTimer);
+    recordTimer = setInterval(()=>{
+      recordSeconds++;
+      document.getElementById('voiceTimer').textContent = fmtRecordTime(recordSeconds);
+    }, 1000);
+  }catch(err){
+    document.getElementById('voiceTimer').textContent = "Micro indisponible ou permission refusée";
+  }
+}
+function stopVoiceRecording(silent){
+  clearInterval(recordTimer);
+  document.getElementById('voiceRecordBtn').classList.remove('recording');
+  if(mediaRecorder && mediaRecorder.state === 'recording'){
+    mediaRecorder.stop();
+  }
+  if(silent){
+    mediaRecorder = null;
+  }
+}
+document.getElementById('sbtVoice').addEventListener('click', ()=>{
+  document.getElementById('voiceModal').classList.add('open');
+});
+document.getElementById('voiceRecordBtn').addEventListener('click', toggleVoiceRecording);
+document.getElementById('voiceSaveBtn').addEventListener('click', async ()=>{
+  if(!recordedBlob) return;
+  try{
+    await createAttachment({attachment_type:'voice_note', position_x:50, position_y:50, width_pct:0, rotation:0},
+      new File([recordedBlob], 'note-vocale.webm', {type: recordedBlob.type || 'audio/webm'}));
+    recordedBlob = null;
+    document.getElementById('voicePreview').style.display = 'none';
+    document.getElementById('voiceSaveBtn').disabled = true;
+    document.getElementById('voiceTimer').textContent = 'Touche pour enregistrer';
+    closeAllAttachmentModals();
+  }catch(err){ console.warn('voice note upload failed', err); }
+});
+
+/* ═══════════════════ CLOSE THE BOOK (reverse of the opening animation) ═══════════════════ */
+function closeBook(){
+  flushAutosave();
+  const book = document.getElementById('book');
+  if(isReducedMotion() || !book.classList.contains('opening')){
+    location.href = JOURNAL_HOME_URL;
+    return;
+  }
+  const cover = document.getElementById('bookCover');
+  cover.style.visibility = 'visible';
+  cover.style.pointerEvents = '';
+  cover.getBoundingClientRect(); // force reflow
+  book.classList.remove('opening');
+  cover.addEventListener('transitionend', function onClosed(e){
+    if(e.propertyName !== 'transform') return;
+    cover.removeEventListener('transitionend', onClosed);
+    location.href = JOURNAL_HOME_URL;
+  }, {once:true});
+}
+
+/* ═══════════════════ PAGE MENU (⋮) ═══════════════════ */
+const pageMenuBtn = document.getElementById('pageMenuBtn');
+const pageMenuDropdown = document.getElementById('pageMenuDropdown');
+pageMenuBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  pageMenuDropdown.classList.toggle('open');
+});
+document.addEventListener('click', (e)=>{
+  if(!pageMenuDropdown.contains(e.target) && e.target !== pageMenuBtn){
+    pageMenuDropdown.classList.remove('open');
+  }
+});
+
+document.getElementById('menuSaveBtn').addEventListener('click', ()=>{
+  pageMenuDropdown.classList.remove('open');
+  manualSave();
+});
+
+document.getElementById('menuArchiveBtn').addEventListener('click', async ()=>{
+  pageMenuDropdown.classList.remove('open');
+  try{
+    const res = await fetch(PAGE_ARCHIVE_API(currentPageNumber), {method:'POST', headers:{'X-CSRFToken':getCsrf()}});
+    if(!res.ok) return;
+    applyPageStatusUI(await res.json());
+  }catch(e){ console.warn('archive toggle failed', e); }
+});
+
+document.getElementById('menuLockBtn').addEventListener('click', async ()=>{
+  pageMenuDropdown.classList.remove('open');
+  await flushAutosave();
+  try{
+    const res = await fetch(PAGE_LOCK_API(currentPageNumber), {method:'POST', headers:{'X-CSRFToken':getCsrf()}});
+    if(!res.ok) return;
+    applyPageStatusUI(await res.json());
+  }catch(e){ console.warn('lock toggle failed', e); }
+});
+
+document.getElementById('menuPdfBtn').addEventListener('click', ()=>{
+  pageMenuDropdown.classList.remove('open');
+  exportPageAsPdf();
+});
+
+function exportPageAsPdf(){
+  const dayText = document.getElementById('pageDay').textContent;
+  const dateText = document.getElementById('pageFullDate').textContent;
+  document.getElementById('printMeta').textContent = `${dayText} — ${dateText}`;
+  document.getElementById('printBody').textContent = contentEditable.innerText || '';
+  window.print();
+}
+
+/* ═══════════════════ BURN AFTER WRITING — Continuer → disposition → next page ═══════════════════ */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const BURN_DURATION_MS = 6200;
+
+async function advanceToNextBawPage(){
+  await withFlipTransition(async () => {
+    const res = await fetch(PAGE_NEXT_API(currentPageNumber), {
+      method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    applyPageData(data);
+  }, 'next');
+}
+
+function openDispositionModal(){
+  document.getElementById('dispositionModal').classList.add('open');
+}
+function closeDispositionModal(){
+  document.getElementById('dispositionModal').classList.remove('open');
+}
+
+if(JOURNAL_KIND === 'burn'){
+  document.getElementById('bawContinueBtn').addEventListener('click', async () => {
+    await flushAutosave();
+    openDispositionModal();
+  });
+
+  document.querySelectorAll('.disposition-opt').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const disposition = btn.dataset.disposition;
+      closeDispositionModal();
+      if(disposition === 'burn'){
+        const excerpt = (contentEditable.innerText || '').trim().slice(0, 90);
+        await playBurnCeremony(excerpt);
+        try{
+          await fetch(PAGE_RELEASE_API(currentPageNumber), {
+            method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+            body: JSON.stringify({ritual: 'fire'}),
+          });
+        }catch(e){ console.warn('burn failed', e); }
+      }else{
+        try{
+          await fetch(`/api/journal/${JOURNAL_ID}/page/${currentPageNumber}/disposition/`, {
+            method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+            body: JSON.stringify({disposition}),
+          });
+        }catch(e){ console.warn('disposition save failed', e); }
+      }
+      await advanceToNextBawPage();
+    });
+  });
+}
+
+
+/* ═══════════════════ BURN CEREMONY — a realistic paper-burning animation ═══════════════════ */
+function buildErosionClipPath(progress, seeds, w, h){
+  const n = seeds.length;
+  const pts = [];
+  const cx = w/2, cy = h/2;
+  const maxInset = Math.min(w, h) * 0.6;
+  for(let i=0;i<n;i++){
+    const t = i / n;
+    let x, y;
+    if(t < 0.25){ x = (t/0.25) * w; y = 0; }
+    else if(t < 0.5){ x = w; y = ((t-0.25)/0.25) * h; }
+    else if(t < 0.75){ x = w - ((t-0.5)/0.25) * w; y = h; }
+    else { x = 0; y = h - ((t-0.75)/0.25) * h; }
+    const seed = seeds[i];
+    const localProgress = Math.min(1, progress * (0.7 + seed * 0.6));
+    const inset = localProgress * maxInset * (0.6 + seed * 0.5);
+    const dx = cx - x, dy = cy - y;
+    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+    x += (dx/dist) * inset;
+    y += (dy/dist) * inset;
+    pts.push(`${x.toFixed(1)}px ${y.toFixed(1)}px`);
+  }
+  return `polygon(${pts.join(',')})`;
+}
+
+function spawnParticleEl(layer, cls, x, y, opts){
+  const el = document.createElement('div');
+  el.className = cls;
+  const size = opts.size || (3 + Math.random()*3);
+  el.style.cssText = `left:${x}px;top:${y}px;width:${size}px;height:${size}px;`;
+  layer.appendChild(el);
+  const dx = opts.dx || 0, dy = opts.dy || 0, dur = opts.dur || 1200;
+  const rotTo = opts.rotate ? ((Math.random()-0.5)*360) + 'deg' : '0deg';
+  el.animate([
+    { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+    { transform: `translate(${dx}px, ${dy}px) rotate(${rotTo})`, opacity: 0 },
+  ], { duration: dur, easing: 'ease-out' });
+  setTimeout(() => el.remove(), dur);
+  return el;
+}
+function spawnFlame(layer, x, y){
+  const el = document.createElement('div');
+  el.className = 'rp-flame';
+  el.style.left = (x-8) + 'px';
+  el.style.top = (y-18) + 'px';
+  layer.appendChild(el);
+  const dur = 650 + Math.random()*300;
+  el.animate([
+    { opacity: 0, transform: 'translateY(0) scale(.6)' },
+    { opacity: 1, transform: 'translateY(-4px) scale(1)', offset: .2 },
+    { opacity: 0, transform: 'translateY(-12px) scale(.8)' },
+  ], { duration: dur, easing: 'ease-out' });
+  setTimeout(() => el.remove(), dur);
+}
+
+function spawnBurnParticles(layer, w, h, progress){
+  const cx = w/2, cy = h/2;
+  const maxInset = Math.min(w,h) * 0.6 * progress;
+  const side = Math.floor(Math.random()*4);
+  let x, y;
+  if(side===0){ x = Math.random()*w; y = 0; }
+  else if(side===1){ x = w; y = Math.random()*h; }
+  else if(side===2){ x = Math.random()*w; y = h; }
+  else { x = 0; y = Math.random()*h; }
+  const dx = cx-x, dy = cy-y, dist = Math.sqrt(dx*dx+dy*dy) || 1;
+  x += (dx/dist) * maxInset * (0.5 + Math.random()*0.6);
+  y += (dy/dist) * maxInset * (0.5 + Math.random()*0.6);
+  const roll = Math.random();
+  if(roll < 0.3) spawnParticleEl(layer, 'rp-ember', x, y, {dx:(Math.random()-0.5)*60, dy:-40-Math.random()*60, dur:900+Math.random()*500});
+  else if(roll < 0.6) spawnParticleEl(layer, 'rp-ash', x, y, {dx:(Math.random()-0.5)*50, dy:-30-Math.random()*50, dur:1400+Math.random()*800, rotate:true});
+  else if(roll < 0.82) spawnFlame(layer, x, y);
+  else spawnParticleEl(layer, 'rp-smoke', x, y, {dx:(Math.random()-0.5)*40, dy:-60-Math.random()*70, dur:2200+Math.random()*1000, size:24+Math.random()*28});
+}
+
+async function playBurnCeremony(excerpt){
+  const overlay = document.getElementById('ritualStageOverlay');
+  const wrap = document.getElementById('ritualStageWrap');
+  const fireSeeds = Array.from({length: 24}, () => Math.random());
+
+  wrap.innerHTML = `
+    <div class="ritual-page" id="ritualPageEl">
+      <div class="ritual-page-icon">🔥</div>
+      ${excerpt ? `<div class="ritual-page-excerpt">&ldquo;${escHtml(excerpt)}&rdquo;</div>` : ''}
+      <div class="ritual-fx-layer" id="ritualFxLayer"></div>
+    </div>
+    <div class="ritual-release-msg" id="ritualReleaseMsg"><span>Ces mots se sont transformés en cendres.</span></div>
+  `;
+  overlay.classList.add('open');
+  const pageEl = document.getElementById('ritualPageEl');
+  const fxLayer = document.getElementById('ritualFxLayer');
+
+  if(isReducedMotion()){
+    pageEl.style.transition = 'opacity 1.6s ease, transform 1.6s ease';
+    requestAnimationFrame(() => { pageEl.style.opacity = '0'; pageEl.style.transform = 'scale(.94)'; });
+    await sleep(1700);
+    document.getElementById('ritualReleaseMsg').classList.add('show');
+    await sleep(1400);
+    overlay.classList.remove('open');
+    return;
+  }
+
+  const w = pageEl.offsetWidth, h = pageEl.offsetHeight;
+
+  await new Promise((resolve) => {
+    let start = null, lastSpawn = 0;
+    function frame(ts){
+      if(!start) start = ts;
+      const elapsed = ts - start;
+      const progress = Math.min(1, elapsed / BURN_DURATION_MS);
+      // paper darkening, fire spreading from the edges inward, text fading with it
+      pageEl.style.clipPath = buildErosionClipPath(progress, fireSeeds, w, h);
+      pageEl.style.filter = `brightness(${1-progress*0.5}) sepia(${Math.min(1,progress*1.2)}) contrast(${1+progress*0.25})`;
+      pageEl.style.transform = `rotateX(${-progress*14}deg) scale(${1-progress*0.1})`;
+      if(progress > 0.82) pageEl.style.opacity = String(Math.max(0, 1-(progress-0.82)/0.18));
+      if(elapsed - lastSpawn > 110 && progress < 0.92){
+        lastSpawn = elapsed;
+        spawnBurnParticles(fxLayer, w, h, progress);
+      }
+      if(progress < 1) requestAnimationFrame(frame);
+      else resolve();
+    }
+    requestAnimationFrame(frame);
+  });
+
+  document.getElementById('ritualReleaseMsg').classList.add('show');
+  await sleep(1200);
+  overlay.classList.remove('open');
+}
+
+/* ═══════════════════ INITIAL LOAD + COVER-OPEN ANIMATION ═══════════════════ */
+(async function init(){
+  applyWritePrefs();
+  await loadPage(INITIAL_PAGE);
+  requestAnimationFrame(()=>{
+    document.getElementById('book').classList.add('opening');
+  });
+  document.getElementById('bookCover').addEventListener('transitionend', function onOpen(e){
+    if(e.propertyName !== 'transform') return;
+    if(!document.getElementById('book').classList.contains('opening')) return;
+    this.style.visibility = 'hidden';
+    this.style.pointerEvents = 'none';
+    this.removeEventListener('transitionend', onOpen);
+  });
+})();
+</script>
+{% endblock %}

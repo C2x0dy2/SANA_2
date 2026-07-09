@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+SANA — Mon Journal
+{% endblock %}
+
+{% block theme_vars %}
+:root{
+  --p950:#1e0d17;--p700:#5e2f47;--p400:#9a5e79;
+  --r500:#c26e8a;--r300:#dca8bc;--r100:#f2d8e4;--r50:#fce8f0;
+  --blush:#fdf3f7;--txt:#1a0d14;--txt-m:#6b4a58;--txt-s:#9a7585;
+  --white:#fff;--nav-h:60px;--rad:20px;
+  --charcoal:#3a3a3f;--charcoal-p:#e7e5e6;
+  --shadow-card:0 2px 16px rgba(107,47,71,.06);
+  --shadow-hover:0 20px 44px rgba(107,47,71,.16);
+}
+html,body{min-height:100%;}
+{% endblock %}
+
+{% block page_styles %}
+body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
+}
+[data-motion="reduced"] *,[data-motion="reduced"] *::before,[data-motion="reduced"] *::after{
+  animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;
+}
+:focus-visible{outline:2px solid var(--r500);outline-offset:2px;border-radius:4px;}
+
+/* ── TOPBAR ── */
+.topbar{
+  height:var(--nav-h);background:rgba(253,243,247,.96);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(194,110,138,.12);position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;gap:12px;
+  padding:0 clamp(14px,3vw,24px);
+}
+.back-btn{
+  display:flex;align-items:center;gap:6px;background:none;border:none;
+  cursor:pointer;font-family:'Jost',sans-serif;font-size:.78rem;color:var(--txt-m);
+  padding:6px 10px;border-radius:100px;transition:background .2s,color .2s;
+}
+.back-btn:hover{background:var(--r50);color:var(--r500);}
+.back-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;}
+
+/* ── HERO ── */
+.landing-wrap{max-width:1000px;margin:0 auto;padding:clamp(28px,5vw,56px) clamp(16px,3vw,32px) 90px;}
+.landing-eyebrow{
+  font-size:.68rem;text-transform:uppercase;letter-spacing:4px;color:var(--r500);
+  font-weight:500;display:block;text-align:center;margin-bottom:10px;
+  opacity:0;animation:fadeUp .6s ease forwards;
+}
+.landing-title{
+  font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,2.6rem);font-weight:300;
+  color:var(--p950);text-align:center;margin-bottom:10px;
+  opacity:0;animation:fadeUp .6s .08s ease forwards;
+}
+.landing-title em{font-style:italic;color:var(--r500);}
+.landing-sub{
+  font-size:.88rem;color:var(--txt-s);font-weight:300;text-align:center;
+  max-width:480px;margin:0 auto clamp(36px,6vw,56px);line-height:1.8;
+  opacity:0;animation:fadeUp .6s .16s ease forwards;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── EXPERIENCE CARDS ── */
+.experience-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,3vw,28px);
+}
+@media(max-width:760px){.experience-grid{grid-template-columns:1fr;}}
+
+.exp-card{
+  position:relative;background:var(--white);border-radius:var(--rad);
+  border:1px solid rgba(194,110,138,.1);box-shadow:var(--shadow-card);
+  padding:clamp(28px,4vw,40px) clamp(24px,3.5vw,32px);cursor:pointer;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;
+  transition:transform .35s cubic-bezier(.22,1,.36,1),box-shadow .35s ease;
+  text-decoration:none;
+  opacity:0;animation:fadeUp .6s .26s ease forwards;
+}
+.exp-card:nth-child(2){animation-delay:.36s;}
+.exp-card:hover{transform:translateY(-8px);box-shadow:var(--shadow-hover);}
+
+.exp-illustration{
+  width:104px;height:104px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:2.6rem;position:relative;flex-shrink:0;
+}
+.exp-illustration::after{
+  content:'';position:absolute;inset:-10px;border-radius:50%;
+  border:1px dashed currentColor;opacity:.25;
+}
+.exp-illustration .exp-icon{
+  display:inline-block;animation:breathe 4.5s ease-in-out infinite;
+}
+@keyframes breathe{
+  0%,100%{transform:scale(1) translateY(0);}
+  50%{transform:scale(1.06) translateY(-3px);}
+}
+
+.exp-card-personal .exp-illustration{background:var(--r50);color:var(--r500);}
+.exp-card-burn .exp-illustration{background:var(--charcoal-p);color:var(--charcoal);}
+
+.exp-title{font-family:'Playfair Display',serif;font-size:clamp(1.15rem,2.2vw,1.4rem);font-style:italic;color:var(--p950);}
+.exp-desc{font-size:.82rem;color:var(--txt-m);font-weight:300;line-height:1.8;max-width:280px;}
+.exp-cta{
+  margin-top:10px;font-size:.72rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--r500);
+  font-weight:500;display:flex;align-items:center;gap:6px;transition:gap .2s;
+}
+.exp-card:hover .exp-cta{gap:10px;}
+.exp-cta svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.4;}
+
+/* Ambient candlelight glow drifting behind the Burn card, subtle */
+.exp-card-burn{position:relative;}
+.exp-card-burn::before{
+  content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(circle at 50% 120%, rgba(232,169,74,.09) 0%, transparent 60%);
+  animation:emberGlow 5s ease-in-out infinite;
+}
+@keyframes emberGlow{0%,100%{opacity:.6;}50%{opacity:1;}}
+
+/* Floating dust/petal motes over the Personal card, subtle */
+.exp-card-personal .exp-mote{
+  position:absolute;width:4px;height:4px;border-radius:50%;background:var(--r300);opacity:0;
+  animation:moteDrift 6s ease-in-out infinite;
+}
+@keyframes moteDrift{
+  0%{opacity:0;transform:translateY(0);}
+  15%{opacity:.6;}
+  85%{opacity:.4;}
+  100%{opacity:0;transform:translateY(-60px);}
+}
+{% endblock %}
+
+{% block navbar %}
+<div class="topbar">
+  {% url 'sanasource:dashboard' as dash_url %}
+  {% include "includes/back_button.html" with back_href=dash_url back_label="Tableau de bord" %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="landing-wrap">
+  <span class="landing-eyebrow">Ton espace d'écriture</span>
+  <h1 class="landing-title">Mon <em>Journal</em></h1>
+  <p class="landing-sub">Deux façons d'écrire : pour garder, ou pour laisser partir. Choisis ce dont tu as besoin aujourd'hui.</p>
+
+  <div class="experience-grid">
+    <a class="exp-card exp-card-personal" href="{% url 'sanasource:journal_bookshelf' %}">
+      <span class="exp-mote" style="left:20%;animation-delay:0s;"></span>
+      <span class="exp-mote" style="left:55%;animation-delay:1.8s;"></span>
+      <span class="exp-mote" style="left:78%;animation-delay:3.4s;"></span>
+      <div class="exp-illustration"><span class="exp-icon">📔</span></div>
+      <div class="exp-title">Journal personnel</div>
+      <p class="exp-desc">Un espace libre pour écrire chaque jour, à ton rythme — tes mots, tes pages, tes souvenirs, gardés en sécurité.</p>
+      <span class="exp-cta">Ouvrir <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </a>
+
+    <a class="exp-card exp-card-burn" href="{% url 'sanasource:journal_burn_open' %}">
+      <div class="exp-illustration"><span class="exp-icon">🕊️</span></div>
+      <div class="exp-title">Burn After Writing</div>
+      <p class="exp-desc">Un espace pour déposer ce que tu portes en silence — une question à la fois, puis, si tu le souhaites, le laisser s'envoler.</p>
+      <span class="exp-cta">Ouvrir <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </a>
+  </div>
+</div>
+{% endblock %}

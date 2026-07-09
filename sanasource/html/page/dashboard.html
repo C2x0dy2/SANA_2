@@ -1,15 +1,10 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SANA — Mon Espace</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
-{% csrf_token %}
-<style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+{% block title %}
+SANA — Mon Espace
+{% endblock %}
+
+{% block theme_vars %}
 :root{
   --p950:#1e0d17;--p800:#3d1d2e;--p700:#5e2f47;--p400:#9a5e79;
   --r500:#c26e8a;--r300:#dca8bc;--r100:#f2d8e4;--r50:#fce8f0;
@@ -20,10 +15,22 @@
   --txt:#1a0d14;--txt-m:#6b4a58;--txt-s:#9a7585;
   --white:#fff;--glass:rgba(255,255,255,.78);
   --sid:240px;--nav-h:60px;
-  --rad:20px;
+  --rad:20px;--radius-sm:14px;--radius-lg:28px;
+  --glass-border:rgba(255,255,255,.85);
+  --shadow-card:0 2px 16px rgba(107,47,71,.06);
+  --shadow-hover:0 12px 32px rgba(107,47,71,.14);
+  --gradient-accent:linear-gradient(135deg,var(--r500),var(--p700));
+  --blob-1:rgba(194,110,138,.22);--blob-2:rgba(220,168,188,.18);--blob-3:rgba(154,94,121,.14);
 }
+{% endblock %}
+
+{% block page_styles %}
 html{scroll-behavior:smooth;}
 body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);overflow-x:hidden;min-height:100vh;}
+
+[data-contrast="high"]{--txt-s:var(--txt-m);}
+[data-contrast="high"] .card,[data-contrast="high"] .card-glass{border-width:1.5px;border-color:currentColor;}
+[data-contrast="high"] .card-glass{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--white);}
 
 /* ── SIDEBAR ── */
 .sidebar{
@@ -327,6 +334,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 .main{
   margin-left:var(--sid);padding-top:var(--nav-h);
   min-height:100vh;transition:margin-left .35s;
+  position:relative;z-index:2;
 }
 .section{display:none;padding:clamp(20px,3vw,32px) clamp(16px,3vw,32px) 80px;}
 .section.active{display:block;animation:secIn .4s cubic-bezier(.22,1,.36,1);}
@@ -342,13 +350,32 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 .card{
   background:var(--white);border-radius:var(--rad);
   border:1px solid rgba(194,110,138,.08);
-  box-shadow:0 2px 16px rgba(107,47,71,.06);
+  box-shadow:var(--shadow-card);
+  transition:transform .3s ease,box-shadow .3s ease;
 }
 .card-glass{
-  background:var(--glass);backdrop-filter:blur(16px);
-  border-radius:var(--rad);border:1px solid rgba(255,255,255,.85);
-  box-shadow:0 4px 20px rgba(107,47,71,.08);
+  background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-radius:var(--rad);border:1px solid var(--glass-border);
+  box-shadow:var(--shadow-card);
+  transition:transform .3s ease,box-shadow .3s ease;
 }
+.card:hover,.card-glass:hover,
+.chart-card:hover,.post-card:hover,.group-card:hover,.blog-card:hover,
+.jeu-card:hover,.testi-card:hover,.pro-profile-card:hover,.agenda-card:hover,
+.profil-card:hover,.settings-card:hover,.ressources-card:hover,.pro-card:hover{
+  transform:translateY(-3px);box-shadow:var(--shadow-hover);
+}
+
+/* ── AMBIENT BACKGROUND ── */
+.ambient-layer{position:fixed;inset:0;z-index:1;overflow:hidden;pointer-events:none;}
+.blob{position:absolute;border-radius:50%;filter:blur(60px);}
+.blob-1{width:420px;height:420px;background:var(--blob-1);top:-120px;left:10%;animation:blobDrift1 22s ease-in-out infinite;}
+.blob-2{width:340px;height:340px;background:var(--blob-2);bottom:-100px;right:8%;animation:blobDrift2 26s ease-in-out infinite;}
+.blob-3{width:280px;height:280px;background:var(--blob-3);top:40%;left:60%;animation:blobDrift3 30s ease-in-out infinite;}
+@keyframes blobDrift1{0%,100%{transform:translate(0,0);}50%{transform:translate(40px,60px);}}
+@keyframes blobDrift2{0%,100%{transform:translate(0,0);}50%{transform:translate(-50px,-30px);}}
+@keyframes blobDrift3{0%,100%{transform:translate(0,0);}50%{transform:translate(-30px,50px);}}
+[data-motion="reduced"] .blob{animation:none;}
 
 /* ── GRID HELPERS ── */
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,2vw,20px);}
@@ -368,7 +395,10 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
   margin-bottom:clamp(16px,2.5vw,24px);
   position:relative;overflow:hidden;
   box-shadow:0 4px 24px rgba(194,110,138,.1);
+  animation:breathe 5.5s ease-in-out infinite;
 }
+@keyframes breathe{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.008);opacity:.97;}}
+[data-motion="reduced"] .welcome-card{animation:none;}
 .welcome-card::before{
   content:'';position:absolute;width:320px;height:320px;border-radius:50%;
   background:radial-gradient(circle,rgba(194,110,138,.08),transparent 70%);
@@ -453,10 +483,10 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
   font-size:.72rem;font-weight:400;letter-spacing:1px;cursor:pointer;transition:all .3s;
   display:flex;align-items:center;justify-content:center;gap:5px;border:none;
 }
-.btn-primary-sm{background:var(--r500);color:white;}
-.btn-primary-sm:hover{background:var(--p700);}
+.btn-primary-sm{background:var(--gradient-accent);color:white;box-shadow:0 2px 10px rgba(194,110,138,.25);}
+.btn-primary-sm:hover{background:var(--p700);box-shadow:0 4px 16px rgba(194,110,138,.35);transform:translateY(-1px);}
 .btn-outline-sm{background:transparent;color:var(--p700);border:1px solid rgba(107,47,71,.2);}
-.btn-outline-sm:hover{border-color:var(--r500);color:var(--r500);}
+.btn-outline-sm:hover{border-color:var(--r500);color:var(--r500);background:var(--r50);}
 
 /* Ressources */
 .ressources-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(18px,3vw,28px);}
@@ -496,7 +526,61 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
    SECTION 1 — CHAT SANA
 ══════════════════════════════════ */
 #sec-chat{padding-bottom:0;}
-.chat-layout{display:flex;flex-direction:column;height:calc(100svh - var(--nav-h) - 64px);}
+.chat-shell{display:flex;gap:14px;height:calc(100svh - var(--nav-h) - 64px);position:relative;}
+.chat-sidebar{
+  width:250px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;
+  background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);
+  padding:14px;overflow:hidden;
+}
+.chat-new-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--r500),var(--p700));color:white;border:none;
+  border-radius:100px;padding:11px 16px;font-family:'Jost',sans-serif;font-size:.82rem;
+  font-weight:500;cursor:pointer;transition:transform .2s,box-shadow .2s;
+}
+.chat-new-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(194,110,138,.3);}
+.chat-conv-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:3px;margin:4px -4px 0;padding:0 4px;}
+.chat-conv-list::-webkit-scrollbar{width:3px;}
+.chat-conv-list::-webkit-scrollbar-thumb{background:rgba(194,110,138,.2);border-radius:3px;}
+.conv-item{
+  display:flex;align-items:center;gap:6px;padding:10px 10px;border-radius:12px;
+  cursor:pointer;transition:background .2s;
+}
+.conv-item:hover{background:var(--blush);}
+.conv-item.active{background:var(--blush);}
+.conv-item.active .conv-title{color:var(--p950);font-weight:500;}
+.conv-title{
+  flex:1;font-size:.78rem;color:var(--txt-m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  min-width:0;
+}
+.conv-actions{display:none;gap:2px;flex-shrink:0;}
+.conv-item:hover .conv-actions{display:flex;}
+.conv-action-btn{
+  width:22px;height:22px;border:none;background:none;cursor:pointer;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;color:var(--txt-s);transition:background .2s;flex-shrink:0;
+}
+.conv-action-btn:hover{background:rgba(194,110,138,.15);color:var(--r500);}
+.chat-sidebar-empty{text-align:center;padding:24px 10px;font-size:.72rem;color:var(--txt-s);}
+.chat-sidebar-toggle{
+  display:none;position:absolute;top:14px;left:14px;z-index:6;
+  width:38px;height:38px;border-radius:50%;border:1px solid rgba(194,110,138,.15);
+  background:var(--white);align-items:center;justify-content:center;cursor:pointer;
+  box-shadow:0 2px 8px rgba(107,47,71,.08);
+}
+.chat-sidebar-overlay{display:none;position:absolute;inset:0;background:rgba(0,0,0,.25);z-index:15;}
+@media(max-width:900px){
+  .chat-sidebar{
+    position:absolute;top:0;left:0;bottom:0;width:min(78vw,290px);z-index:20;
+    transform:translateX(calc(-100% - 20px));transition:transform .3s ease;
+    box-shadow:6px 0 24px rgba(0,0,0,.12);
+  }
+  .chat-sidebar.open{transform:none;}
+  .chat-sidebar-toggle{display:flex;}
+  .chat-sidebar-overlay.open{display:block;}
+  .chat-layout{padding-top:46px;}
+}
+.chat-layout{display:flex;flex-direction:column;flex:1;min-width:0;height:100%;}
 .chat-topbar{
   display:flex;align-items:center;gap:12px;
   padding:clamp(12px,2vw,18px) clamp(16px,3vw,24px);
@@ -569,7 +653,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
   border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
   transition:background .3s,transform .2s;flex-shrink:0;
 }
-.chat-send:hover{background:var(--p700);transform:scale(1.05);}
+.chat-send:hover{background:var(--p700);}
 .chat-send svg{width:16px;height:16px;stroke:white;fill:none;stroke-width:2;}
 
 /* ══════════════════════════════════
@@ -889,6 +973,16 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 }
 
 /* ══════════════════════════════════
+   RIPPLE EFFECT
+══════════════════════════════════ */
+.btn-primary-sm,.btn-outline-sm,.btn-post,.chat-send,.nav-item,.mn-item,.theme-opt,.conv-item{
+  position:relative;overflow:hidden;
+}
+.ripple-fx{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);transform:scale(0);animation:rippleFx .5s ease-out;pointer-events:none;}
+[data-theme="dark"] .ripple-fx,[data-theme="cozy"] .ripple-fx{background:rgba(255,255,255,.25);}
+@keyframes rippleFx{to{transform:scale(2.5);opacity:0;}}
+
+/* ══════════════════════════════════
    THEME PICKER
 ══════════════════════════════════ */
 .theme-btn{
@@ -904,10 +998,15 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
   background:var(--white);border:1px solid rgba(194,110,138,.15);
   border-radius:16px;padding:10px;
   box-shadow:0 8px 32px rgba(107,47,71,.14);
-  display:none;z-index:500;min-width:180px;
+  display:none;z-index:500;min-width:240px;
+  grid-template-columns:1fr 1fr;gap:4px;
   animation:secIn .2s ease;
 }
-.theme-dropdown.open{display:block;}
+.theme-dropdown.open{display:grid;}
+.theme-dropdown .theme-opt{
+  flex-direction:column;align-items:center;gap:6px;
+  padding:10px 6px;text-align:center;font-size:.68rem;
+}
 .theme-opt{
   display:flex;align-items:center;gap:10px;padding:9px 12px;
   border-radius:10px;cursor:pointer;transition:background .2s;
@@ -916,203 +1015,24 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 .theme-opt:hover{background:var(--blush);}
 .theme-opt.active{background:var(--r50);color:var(--r500);font-weight:500;}
 .theme-swatch{width:16px;height:16px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.7);box-shadow:0 1px 4px rgba(0,0,0,.12);}
+@media(max-width:480px){.theme-dropdown{right:0;left:auto;min-width:0;max-width:calc(100vw - 32px);}}
+/* [data-theme="…"] variable overrides now live in base.html so every page gets them. */
+{% endblock %}
 
-/* ══════════════════════════════════
-   THEME: SOMBRE
-══════════════════════════════════ */
-[data-theme="sombre"]{
-  --white:#1e1028;--blush:#170d20;--ivory:#1a1025;--cream:#1c1128;
-  --r50:#2a1535;--r100:#3a2045;--glass:rgba(26,16,36,.85);
-  --txt:#f2dff0;--txt-m:#d4a8cc;--txt-s:#9a7090;
-}
-[data-theme="sombre"] body{background:#120a18;}
-[data-theme="sombre"] .sidebar{background:#170d20;border-right-color:rgba(194,110,138,.25);box-shadow:3px 0 24px rgba(0,0,0,.4);}
-[data-theme="sombre"] .sid-user,[data-theme="sombre"] .sid-footer{background:#120a18;}
-[data-theme="sombre"] .sid-logo{color:var(--r300);}
-[data-theme="sombre"] .sid-tagline{color:rgba(255,255,255,.3);}
-[data-theme="sombre"] .sid-name{color:rgba(255,255,255,.9);}
-[data-theme="sombre"] .sid-anon{color:var(--r300);}
-[data-theme="sombre"] .nav-section-label{color:rgba(255,255,255,.2);}
-[data-theme="sombre"] .nav-item{color:rgba(255,255,255,.5);}
-[data-theme="sombre"] .nav-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85);}
-[data-theme="sombre"] .nav-item.active{background:rgba(194,110,138,.18);color:var(--r300);}
-[data-theme="sombre"] .topbar{background:rgba(18,10,24,.96);border-bottom-color:rgba(194,110,138,.18);}
-[data-theme="sombre"] .topbar-title{color:var(--r300);}
-[data-theme="sombre"] .tb-icon{background:#2a1535;border-color:rgba(194,110,138,.2);}
-[data-theme="sombre"] .tb-av{background:linear-gradient(135deg,var(--r500),var(--p700));}
-[data-theme="sombre"] .mobile-nav{background:rgba(18,10,24,.97);border-top-color:rgba(194,110,138,.2);}
-[data-theme="sombre"] .mn-item{color:rgba(255,255,255,.35);}
-[data-theme="sombre"] .mn-item.active{color:var(--r300);}
-[data-theme="sombre"] .card,.card-glass,[data-theme="sombre"] .chart-card,[data-theme="sombre"] .post-card,[data-theme="sombre"] .group-card,
-[data-theme="sombre"] .blog-card,[data-theme="sombre"] .jeu-card,[data-theme="sombre"] .testi-card,
-[data-theme="sombre"] .pro-card,[data-theme="sombre"] .ressources-card,[data-theme="sombre"] .write-card,
-[data-theme="sombre"] .agenda-card,[data-theme="sombre"] .profil-card,[data-theme="sombre"] .settings-card,
-[data-theme="sombre"] .badges-section-card,[data-theme="sombre"] .pro-profile-card,
-[data-theme="sombre"] .quick-card,[data-theme="sombre"] .mood-bar,[data-theme="sombre"] .badges-strip{background:#1e1028;border-color:rgba(194,110,138,.12);}
-[data-theme="sombre"] .welcome-card{background:linear-gradient(135deg,#2a1535 0%,var(--p700) 55%,var(--r500) 100%);border-color:rgba(194,110,138,.2);}
-[data-theme="sombre"] .wc-greeting{color:rgba(253,243,247,.4);}
-[data-theme="sombre"] .wc-name{color:var(--r100);}
-[data-theme="sombre"] .wc-name em{color:var(--r300);}
-[data-theme="sombre"] .wc-msg{color:rgba(253,243,247,.55);}
-[data-theme="sombre"] .wc-date{color:rgba(253,243,247,.15);}
-[data-theme="sombre"] .wc-day{color:rgba(253,243,247,.3);}
-[data-theme="sombre"] .mood-stat-card,[data-theme="sombre"] .profil-field,
-[data-theme="sombre"] .rdv-item,[data-theme="sombre"] .pro-stat{background:#2a1535;}
-[data-theme="sombre"] .chat-messages{background:#120a18;}
-[data-theme="sombre"] .theme-btn{background:#2a1535;}
-[data-theme="sombre"] .theme-dropdown{background:#1e1028;border-color:rgba(194,110,138,.18);}
-[data-theme="sombre"] .theme-opt:hover{background:#2a1535;}
-[data-theme="sombre"] .write-input{background:#2a1535;color:var(--txt);}
-[data-theme="sombre"] .chat-input{background:#1e1028;border-color:rgba(194,110,138,.25);color:var(--txt);}
-[data-theme="sombre"] .chat-input::placeholder{color:rgba(255,255,255,.25);}
+{% block background %}
+<!-- AMBIENT BACKGROUND -->
+<div class="ambient-layer" aria-hidden="true">
+  <span class="blob blob-1"></span>
+  <span class="blob blob-2"></span>
+  <span class="blob blob-3"></span>
+</div>
+{% endblock %}
 
-/* ══════════════════════════════════
-   THEME: LAVANDE
-══════════════════════════════════ */
-[data-theme="lavande"]{
-  --r500:#7c5cfc;--r300:#b4a0ff;--r100:#e4deff;--r50:#f0edff;
-  --blush:#f5f2ff;--p950:#1a1040;--p800:#2d1d7a;--p700:#4a35c0;--p400:#7060e0;
-  --txt:#1a1040;--txt-m:#4a3a90;--txt-s:#8878c8;
-}
-[data-theme="lavande"] body{background:#f0edff;}
-[data-theme="lavande"] .topbar{background:rgba(240,237,255,.96);border-bottom-color:rgba(124,92,252,.12);}
-[data-theme="lavande"] .sidebar{border-right-color:rgba(124,92,252,.15);box-shadow:3px 0 24px rgba(74,53,192,.06);}
-[data-theme="lavande"] .sid-logo{color:#4a35c0;}
-[data-theme="lavande"] .sid-anon{color:#7c5cfc;}
-[data-theme="lavande"] .nav-item.active{background:#f0edff;color:#7c5cfc;border-left-color:#7c5cfc;}
-[data-theme="lavande"] .nav-item:hover{background:#f0edff;color:#4a35c0;}
-[data-theme="lavande"] .welcome-card{background:linear-gradient(135deg,#fff 0%,#f0edff 50%,#e4deff 100%);border-color:rgba(124,92,252,.15);}
-[data-theme="lavande"] .wc-name em{color:#7c5cfc;}
-[data-theme="lavande"] .chat-send,[data-theme="lavande"] .btn-primary-sm,[data-theme="lavande"] .btn-post{background:#7c5cfc;}
-[data-theme="lavande"] .rtab.active{background:#7c5cfc;border-color:#7c5cfc;}
-[data-theme="lavande"] .nav-badge{background:#7c5cfc;}
-[data-theme="lavande"] .mobile-nav{border-top-color:rgba(124,92,252,.15);}
-[data-theme="lavande"] .mn-item.active{color:#7c5cfc;}
+{% block sidebar %}
+{% include "includes/sidebar.html" %}
+{% endblock %}
 
-/* ══════════════════════════════════
-   THEME: NATURE
-══════════════════════════════════ */
-[data-theme="nature"]{
-  --r500:#4a9068;--r300:#82c4a0;--r100:#cceedd;--r50:#e8f7ef;
-  --blush:#f0f8f3;--p950:#0d2818;--p800:#1a4028;--p700:#266040;--p400:#508060;
-  --txt:#0d2818;--txt-m:#2a5038;--txt-s:#6a9878;
-}
-[data-theme="nature"] body{background:#e8f7ef;}
-[data-theme="nature"] .topbar{background:rgba(232,247,239,.96);border-bottom-color:rgba(74,144,104,.12);}
-[data-theme="nature"] .sidebar{border-right-color:rgba(74,144,104,.15);box-shadow:3px 0 24px rgba(26,64,40,.06);}
-[data-theme="nature"] .sid-logo{color:#266040;}
-[data-theme="nature"] .sid-anon{color:#4a9068;}
-[data-theme="nature"] .nav-item.active{background:#e8f7ef;color:#4a9068;border-left-color:#4a9068;}
-[data-theme="nature"] .nav-item:hover{background:#e8f7ef;color:#266040;}
-[data-theme="nature"] .welcome-card{background:linear-gradient(135deg,#fff 0%,#e8f7ef 50%,#cceedd 100%);border-color:rgba(74,144,104,.15);}
-[data-theme="nature"] .wc-name em{color:#4a9068;}
-[data-theme="nature"] .chat-send,[data-theme="nature"] .btn-primary-sm,[data-theme="nature"] .btn-post{background:#4a9068;}
-[data-theme="nature"] .chat-send:hover,[data-theme="nature"] .btn-primary-sm:hover{background:#266040;}
-[data-theme="nature"] .rtab.active{background:#4a9068;border-color:#4a9068;}
-[data-theme="nature"] .nav-badge{background:#4a9068;}
-[data-theme="nature"] .mobile-nav{border-top-color:rgba(74,144,104,.15);}
-[data-theme="nature"] .mn-item.active{color:#4a9068;}
-[data-theme="nature"] .eyebrow{color:#4a9068;}
-[data-theme="nature"] .sec-title em{color:#4a9068;}
-</style>
-</head>
-<body>
-
-<!-- SIDEBAR OVERLAY (mobile) -->
-<div class="sid-overlay" id="sidOverlay" onclick="closeSidebar()"></div>
-
-<!-- SIDEBAR -->
-<aside class="sidebar" id="sidebar">
-  <div class="sid-brand">
-    <a href="/" class="sid-logo">Sana</a>
-    <div class="sid-tagline">Soutien & bien-être mental</div>
-  </div>
-
-  <div class="sid-user">
-    <div class="sid-av">{% if user.first_name %}{{ user.first_name|slice:":1"|upper }}{% elif profile %}{{ profile.username_anonyme|slice:":1"|upper }}{% else %}?{% endif %}</div>
-    <div>
-      <div class="sid-name">{% if user.first_name %}{{ user.first_name }}{% else %}Anonyme·e{% endif %}</div>
-      <div class="sid-anon">{% if profile %}@{{ profile.username_anonyme }}{% else %}Espace sécurisé{% endif %}</div>
-    </div>
-  </div>
-
-  <nav class="sid-nav">
-    <div class="nav-section-label">Principal</div>
-    <div class="nav-item active" onclick="showSection('accueil',this)">
-      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      Accueil
-    </div>
-    <div class="nav-item" onclick="showSection('chat',this)">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Chat SANA
-      <span class="nav-badge">IA</span>
-    </div>
-    <div class="nav-item" onclick="showSection('humeur',this)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-      Mon Humeur
-    </div>
-
-    <div class="nav-section-label">Communauté</div>
-    <div class="nav-item" onclick="showSection('communaute',this)">
-      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Communauté
-    </div>
-    <div class="nav-item" onclick="showSection('groupes',this)">
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-      Groupes
-    </div>
-    <div class="nav-item" onclick="showSection('messages',this)">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Messages privés
-      <span class="dm-nav-badge" id="dmNavBadge" style="display:none">0</span>
-    </div>
-
-    <div class="nav-section-label">Ressources</div>
-    <div class="nav-item" onclick="showSection('ressources',this)">
-      <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      Blog & Ressources
-    </div>
-
-    <div class="nav-section-label">Mon espace</div>
-    <div class="nav-item" onclick="showSection('parcours',this)">
-      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      Mon Parcours
-    </div>
-    <div class="nav-item" onclick="showSection('journal',this)">
-      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      Mon Journal
-    </div>
-    <div class="nav-item" onclick="showSection('pro',this)">
-      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Mon Professionnel
-    </div>
-    <div class="nav-item" onclick="showSection('badges',this)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
-      Mes Badges
-    </div>
-    <div class="nav-section-label">Sensibilisation</div>
-    <div class="nav-item" onclick="showSection('sensibilisation',this)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Sensibilisation
-    </div>
-    <div class="nav-item" onclick="showSection('profil',this)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      Mon Profil
-    </div>
-  </nav>
-
-  <div class="sid-footer">
-    <button class="urgence-btn" onclick="openSOS()">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Urgence — SAMU 185
-    </button>
-    <a href="{% url 'sanasource:logout' %}" style="display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;padding:9px 14px;border-radius:12px;font-family:'Jost',sans-serif;font-size:.72rem;font-weight:400;color:var(--txt-s);text-decoration:none;transition:background .2s,color .2s;" onmouseover="this.style.background='var(--r50)';this.style.color='var(--r500)'" onmouseout="this.style.background='';this.style.color='var(--txt-s)'">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Se déconnecter
-    </a>
-  </div>
-</aside>
-
+{% block navbar %}
 <!-- TOPBAR -->
 <header class="topbar" id="topbar">
   <div class="topbar-left">
@@ -1198,21 +1118,37 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
     <div style="position:relative;" id="themeWrap">
       <div class="theme-btn" id="themeBtn" onclick="toggleThemeMenu()" title="Changer le thème">🎨</div>
       <div class="theme-dropdown" id="themeDropdown">
-        <div class="theme-opt active" id="opt-clair" onclick="setTheme('clair')">
+        <div class="theme-opt active" id="opt-light" onclick="setTheme('light')">
           <span class="theme-swatch" style="background:linear-gradient(135deg,#fce8f0,#f2d8e4);"></span>
-          Rose clair
+          Clair
         </div>
-        <div class="theme-opt" id="opt-sombre" onclick="setTheme('sombre')">
-          <span class="theme-swatch" style="background:linear-gradient(135deg,#2a1535,#5e2f47);"></span>
+        <div class="theme-opt" id="opt-dark" onclick="setTheme('dark')">
+          <span class="theme-swatch" style="background:linear-gradient(135deg,#2a1535,#5e2f60);"></span>
           Sombre
         </div>
-        <div class="theme-opt" id="opt-lavande" onclick="setTheme('lavande')">
+        <div class="theme-opt" id="opt-sakura" onclick="setTheme('sakura')">
+          <span class="theme-swatch" style="background:linear-gradient(135deg,#fbd5e8,#e0448a);"></span>
+          Sakura
+        </div>
+        <div class="theme-opt" id="opt-ocean" onclick="setTheme('ocean')">
+          <span class="theme-swatch" style="background:linear-gradient(135deg,#c8ecf0,#2ba8b8);"></span>
+          Océan
+        </div>
+        <div class="theme-opt" id="opt-lavender" onclick="setTheme('lavender')">
           <span class="theme-swatch" style="background:linear-gradient(135deg,#b4a0ff,#7c5cfc);"></span>
           Lavande
         </div>
-        <div class="theme-opt" id="opt-nature" onclick="setTheme('nature')">
+        <div class="theme-opt" id="opt-sunset" onclick="setTheme('sunset')">
+          <span class="theme-swatch" style="background:linear-gradient(135deg,#f5a078,#f0623c);"></span>
+          Coucher de soleil
+        </div>
+        <div class="theme-opt" id="opt-forest" onclick="setTheme('forest')">
           <span class="theme-swatch" style="background:linear-gradient(135deg,#82c4a0,#4a9068);"></span>
-          Nature
+          Forêt
+        </div>
+        <div class="theme-opt" id="opt-cozy" onclick="setTheme('cozy')">
+          <span class="theme-swatch" style="background:linear-gradient(135deg,#3a2210,#e08838);"></span>
+          Nuit cosy
         </div>
       </div>
     </div>
@@ -1222,7 +1158,9 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
     <div class="tb-av">{% if user.first_name %}{{ user.first_name|slice:":1"|upper }}{% elif profile %}{{ profile.username_anonyme|slice:":1"|upper }}{% else %}?{% endif %}</div>
   </div>
 </header>
+{% endblock %}
 
+{% block content %}
 <!-- MAIN CONTENT -->
 <main class="main">
 
@@ -1364,47 +1302,60 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
     <div class="sec-title">Chat <em>SANA</em></div>
     <div class="sec-sub">Écoute IA confidentielle — disponible 24h/24</div>
 
-    <div class="chat-layout">
-      <div class="chat-topbar">
-        <div class="chat-av">🌸</div>
-        <div class="chat-info-top">
-          <div class="chat-info-name">SANA — Écoute IA</div>
-          <div class="chat-info-st"><span class="chat-sdot"></span>Disponible · Confidentiel · Sans jugement</div>
+    <div class="chat-shell">
+      <div class="chat-sidebar-overlay" id="chatSidebarOverlay" onclick="closeChatSidebar()"></div>
+
+      <div class="chat-sidebar" id="chatSidebar">
+        <button class="chat-new-btn" onclick="createNewConversation()">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="white" fill="none" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nouveau SanaChat
+        </button>
+        <div class="chat-conv-list" id="chatConvList">
+          <div class="chat-sidebar-empty">Chargement…</div>
         </div>
-        <div class="chat-mood-bar">
-          <span>Humeur :</span>
-          <div class="chat-mood-emojis">
-            <button onclick="selectMoodChat(this,'😔')">😔</button>
-            <button onclick="selectMoodChat(this,'😐')">😐</button>
-            <button onclick="selectMoodChat(this,'🙂')">🙂</button>
-            <button onclick="selectMoodChat(this,'😊')">😊</button>
+      </div>
+
+      <button class="chat-sidebar-toggle" onclick="toggleChatSidebar()" aria-label="Conversations">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+
+      <div class="chat-layout">
+        <div class="chat-topbar">
+          <div class="chat-av">🌸</div>
+          <div class="chat-info-top">
+            <div class="chat-info-name">SANA — Écoute IA</div>
+            <div class="chat-info-st"><span class="chat-sdot"></span>Disponible · Confidentiel · Sans jugement</div>
+          </div>
+          <div class="chat-mood-bar">
+            <span>Humeur :</span>
+            <div class="chat-mood-emojis">
+              <button onclick="selectMoodChat(this,'😔')">😔</button>
+              <button onclick="selectMoodChat(this,'😐')">😐</button>
+              <button onclick="selectMoodChat(this,'🙂')">🙂</button>
+              <button onclick="selectMoodChat(this,'😊')">😊</button>
+            </div>
+          </div>
+          <div class="chat-urgence" onclick="window.location.href='/help'">
+            ⚠️ Urgence
           </div>
         </div>
-        <div class="chat-urgence" onclick="window.location.href='/help'">
-          ⚠️ Urgence
-        </div>
-      </div>
 
-      <div class="chat-messages" id="dashChatMessages">
-        <div class="cmsg bot">
+        <div class="chat-messages" id="dashChatMessages"></div>
+
+        <div class="chat-typing" id="dashTyping">
           <div class="cmsg-av">🌸</div>
-          <div class="cmsg-bubble">Bonjour 🌸 Je suis SANA. Je suis là pour t'écouter, sans jugement et en toute confidentialité.<br><br>Comment tu te sens aujourd'hui ?</div>
+          <div class="typing-bubble">
+            <div class="td"></div><div class="td"></div><div class="td"></div>
+          </div>
         </div>
-      </div>
 
-      <div class="chat-typing" id="dashTyping">
-        <div class="cmsg-av">🌸</div>
-        <div class="typing-bubble">
-          <div class="td"></div><div class="td"></div><div class="td"></div>
+        <div class="chat-input-wrap">
+          <input type="text" class="chat-input" id="dashChatInput" placeholder="Écris ce que tu ressens..." autocomplete="off"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();dashSendMsg()}">
+          <button class="chat-send" onclick="dashSendMsg()">
+            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
         </div>
-      </div>
-
-      <div class="chat-input-wrap">
-        <input type="text" class="chat-input" id="dashChatInput" placeholder="Écris ce que tu ressens..." autocomplete="off"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();dashSendMsg()}">
-        <button class="chat-send" onclick="dashSendMsg()">
-          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        </button>
       </div>
     </div>
   </div>
@@ -1482,7 +1433,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
             <button class="post-btn {% if post.id in user_liked_ids %}liked{% endif %}"
                     id="like-btn-{{ post.id }}"
                     onclick="dashToggleLike({{ post.id }}, this)">
-              ❤️ <span id="like-count-{{ post.id }}">{{ post.likes.count }}</span>
+                    ❤️ <span id="like-count-{{ post.id }}">{{ post.like_count }}</span>
             </button>
             <button class="post-btn">💬 <span>0</span></button>
             <button class="post-btn">🤝 Soutenir</button>
@@ -1981,6 +1932,18 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
             <div class="toggle" onclick="this.classList.toggle('on')"></div>
           </div>
         </div>
+
+        <div class="settings-card">
+          <div class="eyebrow">Accessibilité</div>
+          <div class="setting-row">
+            <div class="sr-left"><div class="sr-title">Réduire les animations</div><div class="sr-desc">Désactive les effets de mouvement et transitions</div></div>
+            <div class="toggle" id="toggle-motion" onclick="toggleA11ySetting('motion',this)"></div>
+          </div>
+          <div class="setting-row">
+            <div class="sr-left"><div class="sr-title">Contraste élevé</div><div class="sr-desc">Renforce les couleurs et les bordures pour une meilleure lisibilité</div></div>
+            <div class="toggle" id="toggle-contrast" onclick="toggleA11ySetting('contrast',this)"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2056,89 +2019,10 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
           <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Faire un exercice de respiration</div><div style="font-size:.68rem;color:var(--txt-s);">5 minutes · Recommandé pour toi</div></div>
           <span style="color:var(--r500);font-size:.8rem;">→</span>
         </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blush);border-radius:12px;cursor:pointer;" onclick="showSection('journal',null)">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blush);border-radius:12px;cursor:pointer;" onclick="location.href='{% url 'sanasource:journal_home' %}'">
           <span style="font-size:1.2rem;">📓</span>
           <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Écrire dans ton journal</div><div style="font-size:.68rem;color:var(--txt-s);">Poser tes pensées du jour</div></div>
           <span style="color:var(--r500);font-size:.8rem;">→</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ MON JOURNAL ══ -->
-  <div id="sec-journal" class="section">
-    <div class="sec-title">Mon <em>Journal</em></div>
-    <div class="sec-sub">Ton espace privé — confidentiel, uniquement pour toi</div>
-
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:clamp(14px,2vw,20px);" id="journalLayout">
-      <div>
-        <div class="card" style="padding:clamp(18px,3vw,28px);margin-bottom:14px;">
-          <div class="eyebrow">Nouvelle entrée — {{ "today"|date:"d F Y" }}</div>
-          <div style="margin-top:12px;">
-            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-              <button class="post-btn" onclick="setJournalMood(this,'😄')">😄</button>
-              <button class="post-btn" onclick="setJournalMood(this,'🙂')">🙂</button>
-              <button class="post-btn" onclick="setJournalMood(this,'😐')">😐</button>
-              <button class="post-btn" onclick="setJournalMood(this,'😟')">😟</button>
-              <button class="post-btn" onclick="setJournalMood(this,'😢')">😢</button>
-              <span id="journalMoodLabel" style="font-size:.72rem;color:var(--txt-s);align-self:center;margin-left:4px;"></span>
-            </div>
-            <input type="text" id="journalTitle" placeholder="Un titre (optionnel)..." style="width:100%;border:1.5px solid rgba(194,110,138,.18);border-radius:10px;padding:10px 14px;font-family:'Jost',sans-serif;font-size:.88rem;background:var(--blush);color:var(--txt);outline:none;margin-bottom:10px;transition:border-color .3s;" onfocus="this.style.borderColor='var(--r500)'" onblur="this.style.borderColor='rgba(194,110,138,.18)'"/>
-            <textarea id="journalContent" rows="8" placeholder="Comment tu te sens ? Qu'est-ce qui s'est passé aujourd'hui ? Pas de jugement ici, c'est ton espace..." style="width:100%;border:1.5px solid rgba(194,110,138,.18);border-radius:12px;padding:12px 14px;font-family:'Jost',sans-serif;font-size:.88rem;resize:vertical;outline:none;background:var(--blush);color:var(--txt);line-height:1.7;transition:border-color .3s;" onfocus="this.style.borderColor='var(--r500)'" onblur="this.style.borderColor='rgba(194,110,138,.18)'"></textarea>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-              <span style="font-size:.65rem;color:var(--txt-s);">🔒 Privé · Jamais partagé</span>
-              <button class="btn-sm btn-primary-sm" onclick="saveJournalEntry()" style="padding:10px 20px;">Enregistrer</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Entrées précédentes -->
-        <div class="eyebrow" style="margin-bottom:10px;">Entrées précédentes</div>
-        <div style="display:flex;flex-direction:column;gap:10px;" id="journalEntries">
-          <div class="card" style="padding:clamp(14px,2.5vw,20px);cursor:pointer;" onclick="this.querySelector('.je-body').style.display=this.querySelector('.je-body').style.display==='none'?'block':'none'">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-size:1.1rem;">🙂</span>
-              <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Une journée plutôt bien</div><div style="font-size:.65rem;color:var(--txt-s);">Hier · 18 Mars 2026</div></div>
-              <span style="color:var(--txt-s);font-size:.8rem;">▼</span>
-            </div>
-            <div class="je-body" style="display:none;margin-top:10px;font-size:.82rem;color:var(--txt-m);line-height:1.75;font-weight:300;">J'ai réussi à finir le rapport que je reportais depuis une semaine. Sentiment de fierté. La respiration du matin aide vraiment à commencer la journée plus sereinement.</div>
-          </div>
-          <div class="card" style="padding:clamp(14px,2.5vw,20px);cursor:pointer;" onclick="this.querySelector('.je-body').style.display=this.querySelector('.je-body').style.display==='none'?'block':'none'">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-size:1.1rem;">😐</span>
-              <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Journée mitigée</div><div style="font-size:.65rem;color:var(--txt-s);">17 Mars 2026</div></div>
-              <span style="color:var(--txt-s);font-size:.8rem;">▼</span>
-            </div>
-            <div class="je-body" style="display:none;margin-top:10px;font-size:.82rem;color:var(--txt-m);line-height:1.75;font-weight:300;">Quelques tensions au travail. J'ai l'impression de ne pas être entendu. Mais j'ai parlé à SANA et ça m'a aidé à mettre les mots dessus.</div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div class="card" style="padding:clamp(16px,2.5vw,22px);margin-bottom:12px;">
-          <div class="eyebrow">Prompts du jour</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
-            <div style="background:var(--blush);border-radius:10px;padding:10px 12px;font-size:.78rem;color:var(--txt-m);cursor:pointer;transition:background .2s;" onclick="document.getElementById('journalContent').value='Aujourd\'hui, quelque chose qui m\'a rendu heureux·se : '" onmouseover="this.style.background='var(--r50)'" onmouseout="this.style.background='var(--blush)'">
-              💛 Qu'est-ce qui t'a rendu heureux·se aujourd'hui ?
-            </div>
-            <div style="background:var(--blush);border-radius:10px;padding:10px 12px;font-size:.78rem;color:var(--txt-m);cursor:pointer;transition:background .2s;" onclick="document.getElementById('journalContent').value='Une chose difficile que j\'ai vécue et ce que j\'en retiens : '" onmouseover="this.style.background='var(--r50)'" onmouseout="this.style.background='var(--blush)'">
-              🌱 Une chose difficile et ce que tu en retiens ?
-            </div>
-            <div style="background:var(--blush);border-radius:10px;padding:10px 12px;font-size:.78rem;color:var(--txt-m);cursor:pointer;transition:background .2s;" onclick="document.getElementById('journalContent').value='Ce dont j\'ai besoin en ce moment : '" onmouseover="this.style.background='var(--r50)'" onmouseout="this.style.background='var(--blush)'">
-              🤍 De quoi as-tu besoin en ce moment ?
-            </div>
-            <div style="background:var(--blush);border-radius:10px;padding:10px 12px;font-size:.78rem;color:var(--txt-m);cursor:pointer;transition:background .2s;" onclick="document.getElementById('journalContent').value='3 choses pour lesquelles je suis reconnaissant·e : 1. '" onmouseover="this.style.background='var(--r50)'" onmouseout="this.style.background='var(--blush)'">
-              🙏 3 choses pour lesquelles tu es reconnaissant·e
-            </div>
-          </div>
-        </div>
-        <div class="card" style="padding:clamp(16px,2.5vw,22px);">
-          <div class="eyebrow">Ce mois-ci</div>
-          <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;">
-            <div style="display:flex;justify-content:space-between;font-size:.78rem;"><span style="color:var(--txt-m);">Entrées écrites</span><span style="color:var(--p950);font-weight:500;">8</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:.78rem;"><span style="color:var(--txt-m);">Humeur dominante</span><span>🙂</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:.78rem;"><span style="color:var(--txt-m);">Streak d'écriture</span><span style="color:var(--p950);font-weight:500;">🔥 3 jours</span></div>
-          </div>
         </div>
       </div>
     </div>
@@ -2150,7 +2034,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
     <div class="sec-sub">La santé mentale est une force, pas une faiblesse — parlons-en</div>
 
     <!-- Bannière choc -->
-    <div style="background:linear-gradient(135deg,var(--p950),var(--p700));border-radius:clamp(20px,3vw,28px);padding:clamp(24px,4vw,40px);margin-bottom:clamp(16px,2.5vw,24px);position:relative;overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#1e0d17,#5e2f47);border-radius:clamp(20px,3vw,28px);padding:clamp(24px,4vw,40px);margin-bottom:clamp(16px,2.5vw,24px);position:relative;overflow:hidden;">
       <div style="position:absolute;inset:0;background:radial-gradient(circle at 80% 50%,rgba(194,110,138,.2),transparent 60%);pointer-events:none;"></div>
       <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:3px;color:rgba(253,243,247,.45);margin-bottom:8px;">Côte d'Ivoire · 2026</div>
       <div style="font-family:'Playfair Display',serif;font-size:clamp(1.4rem,3vw,2rem);font-weight:300;color:var(--r100);margin-bottom:10px;line-height:1.3;">1 Ivoirien sur 5 souffrira<br>d'un trouble mental dans sa vie.</div>
@@ -2230,7 +2114,9 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
   </div>
 
 </main>
+{% endblock %}
 
+{% block modals %}
 <!-- MOBILE BOTTOM NAV -->
 <nav class="mobile-nav">
   <div class="mn-item active" onclick="showSection('accueil',this)">
@@ -2281,14 +2167,16 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
     </div>
   </div>
 </div>
+{% endblock %}
 
+{% block page_scripts %}
 <script>
 // ── SECTION NAV ──
 const sectionMap = {
   accueil:'Accueil', chat:'Chat SANA', humeur:'Mon Humeur',
   communaute:'Communauté', groupes:'Groupes', messages:'Messages Privés',
   ressources:'Blog & Ressources', pro:'Mon Professionnel', badges:'Mes Badges',
-  profil:'Mon Profil', parcours:'Mon Parcours', journal:'Mon Journal', sensibilisation:'Sensibilisation'
+  profil:'Mon Profil', parcours:'Mon Parcours', sensibilisation:'Sensibilisation'
 };
 
 function showSection(id, trigger){
@@ -2359,51 +2247,171 @@ function switchTab(tab, contentId){
   document.getElementById(contentId).classList.add('active');
 }
 
-// ── CHATBOT DASHBOARD ──
+// ── CHATBOT DASHBOARD (multi-conversation) ──
 const CHAT_URL='/api/chat/';
-let dashHistory=[];
+const CONVERSATIONS_URL='/api/conversations/';
+let conversations=[];
+let activeConversationId=null;
 let dashReady=false;
 let dashSending=false;
 
 function getCsrf(){
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  if(meta) return meta.content;
   const inp=document.querySelector('[name=csrfmiddlewaretoken]');
   if(inp) return inp.value;
   const v=document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
   return v?v.pop():'';
 }
 
-function initDashChat(){
+async function chatApi(url, options={}){
+  const res = await fetch(url, {
+    method: options.method || 'GET',
+    headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+    body: options.body,
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw Object.assign(new Error(data.error || 'Erreur serveur'), {status:res.status});
+  return data;
+}
+
+function escapeHtml(str){
+  const d=document.createElement('div');
+  d.textContent = str==null ? '' : String(str);
+  return d.innerHTML;
+}
+
+async function initDashChat(){
   if(dashReady) return;
   dashReady=true;
-  dashHistory=[{role:'assistant',content:"Bonjour 🌸 Je suis SANA. Je suis là pour t'écouter, sans jugement et en toute confidentialité.\n\nComment tu te sens aujourd'hui ?"}];
+  try{
+    const data = await chatApi(CONVERSATIONS_URL);
+    conversations = data.conversations || [];
+    renderConvList();
+    if(conversations.length) await selectConversation(conversations[0].id);
+  }catch(e){
+    console.error('❌ Failed to load conversations', e);
+    document.getElementById('chatConvList').innerHTML = '<div class="chat-sidebar-empty">Impossible de charger les conversations.</div>';
+  }
+}
+
+function renderConvList(){
+  const list = document.getElementById('chatConvList');
+  if(!list) return;
+  if(!conversations.length){
+    list.innerHTML = '<div class="chat-sidebar-empty">Aucune conversation</div>';
+    return;
+  }
+  list.innerHTML = conversations.map(c => `
+    <div class="conv-item ${c.id===activeConversationId?'active':''}" onclick="selectConversation(${c.id})">
+      <span class="conv-title">${escapeHtml(c.title)}</span>
+      <div class="conv-actions">
+        <button class="conv-action-btn" title="Renommer" onclick="event.stopPropagation();renameConversation(${c.id})">✎</button>
+        <button class="conv-action-btn" title="Supprimer" onclick="event.stopPropagation();deleteConversation(${c.id})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function selectConversation(id){
+  if(activeConversationId===id) { closeChatSidebar(); return; }
+  activeConversationId = id;
+  renderConvList();
+  closeChatSidebar();
+  const container=document.getElementById('dashChatMessages');
+  container.innerHTML = '<div class="chat-sidebar-empty">Chargement…</div>';
+  try{
+    const data = await chatApi(`${CONVERSATIONS_URL}${id}/`);
+    container.innerHTML = '';
+    (data.messages || []).forEach(m => appendDashMsg(m.role==='assistant'?'bot':'user', m.content));
+  }catch(e){
+    console.error('❌ Failed to load conversation messages', e);
+    container.innerHTML = '';
+    appendDashMsg('bot', 'Impossible de charger cette conversation pour le moment.');
+  }
+}
+
+async function createNewConversation(){
+  try{
+    const conv = await chatApi(CONVERSATIONS_URL, {method:'POST'});
+    conversations.unshift(conv);
+    renderConvList();
+    await selectConversation(conv.id);
+  }catch(e){
+    console.error('❌ Failed to create conversation', e);
+  }
+}
+
+async function renameConversation(id){
+  const conv = conversations.find(c=>c.id===id);
+  const nextTitle = prompt('Renommer la conversation :', conv ? conv.title : '');
+  if(nextTitle===null) return;
+  const title = nextTitle.trim();
+  if(!title) return;
+  try{
+    const updated = await chatApi(`${CONVERSATIONS_URL}${id}/`, {method:'PATCH', body:JSON.stringify({title})});
+    const idx = conversations.findIndex(c=>c.id===id);
+    if(idx>=0) conversations[idx] = updated;
+    renderConvList();
+  }catch(e){
+    console.error('❌ Failed to rename conversation', e);
+  }
+}
+
+async function deleteConversation(id){
+  if(!confirm('Supprimer définitivement cette conversation ?')) return;
+  try{
+    await chatApi(`${CONVERSATIONS_URL}${id}/`, {method:'DELETE'});
+    conversations = conversations.filter(c=>c.id!==id);
+    if(activeConversationId===id){
+      activeConversationId=null;
+      if(conversations.length){
+        await selectConversation(conversations[0].id);
+      }else{
+        const conv = await chatApi(CONVERSATIONS_URL, {method:'POST'});
+        conversations.unshift(conv);
+        await selectConversation(conv.id);
+      }
+    }
+    renderConvList();
+  }catch(e){
+    console.error('❌ Failed to delete conversation', e);
+  }
 }
 
 async function dashSendMsg(){
-  if(dashSending) return;
+  if(dashSending || !activeConversationId) return;
   const inp=document.getElementById('dashChatInput');
   const txt=inp.value.trim();
   if(!txt) return;
   inp.value='';inp.focus();dashSending=true;
 
   appendDashMsg('user',txt);
-  dashHistory.push({role:'user',content:txt});
 
   const typing=document.getElementById('dashTyping');
   typing.classList.add('show');
   scrollDashChat();
 
   try{
-    const res=await fetch(CHAT_URL,{
+    const data = await chatApi(CHAT_URL, {
       method:'POST',
-      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
-      body:JSON.stringify({messages:dashHistory})
+      body: JSON.stringify({conversation_id: activeConversationId, message: txt}),
     });
-    const data=await res.json();
     typing.classList.remove('show');
-    const reply=data.reply||"Je suis là. Prends ton temps.";
-    appendDashMsg('bot',reply);
-    dashHistory.push({role:'assistant',content:reply});
+    if(data.reply){
+      appendDashMsg('bot',data.reply);
+      const idx = conversations.findIndex(c=>c.id===activeConversationId);
+      if(idx>=0){
+        conversations[idx] = {...conversations[idx], title: data.conversation_title, updated_at: data.updated_at};
+        const [conv] = conversations.splice(idx,1);
+        conversations.unshift(conv);
+        renderConvList();
+      }
+    } else {
+      appendDashMsg('bot', data.error || 'Le modèle n’a pas pu répondre pour l’instant.');
+    }
   }catch(e){
+    console.error('❌ Dashboard chat request failed', e);
     typing.classList.remove('show');
     appendDashMsg('bot',"Je suis là, même si la connexion a vacillé.");
   }
@@ -2413,7 +2421,7 @@ async function dashSendMsg(){
 function appendDashMsg(role,text){
   const w=document.createElement('div');
   w.className='cmsg '+role;
-  const html=text.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  const html=escapeHtml(text).replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
   if(role==='bot'){
     w.innerHTML=`<div class="cmsg-av">🌸</div><div class="cmsg-bubble">${html}</div>`;
   }else{
@@ -2426,6 +2434,16 @@ function appendDashMsg(role,text){
 function scrollDashChat(){
   const c=document.getElementById('dashChatMessages');
   requestAnimationFrame(()=>{c.scrollTop=c.scrollHeight;});
+}
+
+function toggleChatSidebar(){
+  document.getElementById('chatSidebar').classList.toggle('open');
+  document.getElementById('chatSidebarOverlay').classList.toggle('open');
+}
+function closeChatSidebar(){
+  if(window.innerWidth>900) return;
+  document.getElementById('chatSidebar').classList.remove('open');
+  document.getElementById('chatSidebarOverlay').classList.remove('open');
 }
 
 // ── SOS MODAL ──
@@ -2441,46 +2459,6 @@ function closeSOS(){
 document.getElementById('sosModal').addEventListener('click',function(e){
   if(e.target===this) closeSOS();
 });
-
-// ── JOURNAL ──
-let journalMoodSelected='';
-function setJournalMood(btn, emoji){
-  document.querySelectorAll('#journalLayout .post-btn').forEach(b=>{b.classList.remove('liked');});
-  btn.classList.add('liked');
-  journalMoodSelected=emoji;
-  const labels={'😄':'Très bien','🙂':'Bien','😐':'Moyen','😟':'Difficile','😢':'Mal'};
-  document.getElementById('journalMoodLabel').textContent='— '+labels[emoji];
-}
-function saveJournalEntry(){
-  const title=document.getElementById('journalTitle').value.trim();
-  const content=document.getElementById('journalContent').value.trim();
-  if(!content){document.getElementById('journalContent').focus();return;}
-  const mood=journalMoodSelected||'📓';
-  const today=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
-  const entry=document.createElement('div');
-  entry.className='card';
-  entry.style.cssText='padding:clamp(14px,2.5vw,20px);cursor:pointer;margin-bottom:10px;';
-  entry.innerHTML=`<div style="display:flex;align-items:center;gap:10px;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-    <span style="font-size:1.1rem;">${mood}</span>
-    <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">${title||'Entrée du '+today}</div><div style="font-size:.65rem;color:var(--txt-s);">Aujourd'hui · ${today}</div></div>
-    <span style="color:var(--txt-s);font-size:.8rem;">▼</span>
-  </div>
-  <div style="display:none;margin-top:10px;font-size:.82rem;color:var(--txt-m);line-height:1.75;font-weight:300;">${content}</div>`;
-  document.getElementById('journalEntries').prepend(entry);
-  document.getElementById('journalTitle').value='';
-  document.getElementById('journalContent').value='';
-  document.getElementById('journalMoodLabel').textContent='';
-  journalMoodSelected='';
-  document.querySelectorAll('#journalLayout .post-btn').forEach(b=>b.classList.remove('liked'));
-}
-
-// ── JOURNAL LAYOUT RESPONSIVE ──
-function adjustJournalLayout(){
-  const l=document.getElementById('journalLayout');
-  if(l) l.style.gridTemplateColumns=window.innerWidth<900?'1fr':'1fr 300px';
-}
-window.addEventListener('resize',adjustJournalLayout);
-adjustJournalLayout();
 
 // ── MOOD DATA FROM DB ──
 const MOOD_DATA = {{ mood_data|safe }};
@@ -2659,31 +2637,65 @@ function escHtml(str) {
   return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── THEME SWITCHER ──
-const THEMES=['clair','sombre','lavande','nature'];
-function setTheme(t){
-  document.documentElement.setAttribute('data-theme', t==='clair'?'':t);
-  localStorage.setItem('sana-theme',t);
-  THEMES.forEach(n=>{
-    const el=document.getElementById('opt-'+n);
-    if(el) el.classList.toggle('active',n===t);
-  });
-  document.getElementById('themeDropdown').classList.remove('open');
+// Theme switcher (setTheme/toggleThemeMenu/restore-on-load) now lives in
+// base.html so every page — not just the dashboard — picks up the saved theme.
+
+// ── ACCESSIBILITY SETTINGS (reduced motion / high contrast) ──
+function toggleA11ySetting(kind, el){
+  const attr = kind==='motion' ? 'data-motion' : 'data-contrast';
+  const val  = kind==='motion' ? 'reduced' : 'high';
+  const key  = kind==='motion' ? 'sana-motion' : 'sana-contrast';
+  const isOn = el.classList.toggle('on');
+  if(isOn){ document.documentElement.setAttribute(attr, val); localStorage.setItem(key, val); }
+  else{ document.documentElement.removeAttribute(attr); localStorage.removeItem(key); }
 }
-function toggleThemeMenu(){
-  document.getElementById('themeDropdown').classList.toggle('open');
-}
-// Close dropdown on outside click
-document.addEventListener('click',function(e){
-  const wrap=document.getElementById('themeWrap');
-  if(wrap && !wrap.contains(e.target)) document.getElementById('themeDropdown').classList.remove('open');
-});
-// Restore saved theme
 (function(){
-  const saved=localStorage.getItem('sana-theme')||'clair';
-  if(saved&&saved!=='clair') setTheme(saved);
-  else{ THEMES.forEach(n=>{ const el=document.getElementById('opt-'+n); if(el) el.classList.toggle('active',n==='clair'); }); }
+  if(localStorage.getItem('sana-motion')==='reduced'){
+    document.documentElement.setAttribute('data-motion','reduced');
+    const t=document.getElementById('toggle-motion'); if(t) t.classList.add('on');
+  }
+  if(localStorage.getItem('sana-contrast')==='high'){
+    document.documentElement.setAttribute('data-contrast','high');
+    const t=document.getElementById('toggle-contrast'); if(t) t.classList.add('on');
+  }
 })();
+function isReducedMotion(){
+  return document.documentElement.getAttribute('data-motion')==='reduced';
+}
+
+// ── RIPPLE EFFECT ──
+document.addEventListener('click', function(e){
+  if(isReducedMotion()) return;
+  const el = e.target.closest('.btn-primary-sm,.btn-outline-sm,.btn-post,.chat-send,.nav-item,.mn-item,.theme-opt,.conv-item');
+  if(!el) return;
+  const rect = el.getBoundingClientRect();
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple-fx';
+  const size = Math.max(rect.width, rect.height);
+  ripple.style.width = ripple.style.height = size+'px';
+  ripple.style.left = (e.clientX - rect.left - size/2)+'px';
+  ripple.style.top  = (e.clientY - rect.top  - size/2)+'px';
+  el.appendChild(ripple);
+  ripple.addEventListener('animationend', ()=>ripple.remove());
+});
+
+// ── MAGNETIC BUTTONS ──
+function initMagnetic(selector, strength, maxOffset){
+  document.querySelectorAll(selector).forEach(el=>{
+    el.addEventListener('mousemove', e=>{
+      if(isReducedMotion()) return;
+      const r = el.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width/2);
+      const dy = e.clientY - (r.top + r.height/2);
+      const x = Math.max(-maxOffset, Math.min(maxOffset, dx*strength));
+      const y = Math.max(-maxOffset, Math.min(maxOffset, dy*strength));
+      el.style.transform = `translate(${x}px, ${y}px) scale(1.05)`;
+    });
+    el.addEventListener('mouseleave', ()=>{ el.style.transform = ''; });
+  });
+}
+initMagnetic('.chat-send', 0.35, 8);
+initMagnetic('.theme-btn', 0.35, 8);
 
 // ── NOTIFICATION SYSTEM ───────────────────────────────────────────────────────
 const VAPID_PUBLIC_KEY = '{{ vapid_public_key }}';
@@ -3028,7 +3040,7 @@ function openDMWith(userId, name, initial) {
 async function loadDMMessages(initial) {
   if (!currentDMUserId) return;
   try {
-    const res = await fetch(`/api/dm/${currentDMUserId}/`);
+    const res = await fetch(`/api/dm/${currentDMUserId}/?since=${lastDMMsgId}`);
     const data = await res.json();
     if (data.error) return;
     const area = document.getElementById('dmChatMessages');
@@ -3045,8 +3057,9 @@ async function loadDMMessages(initial) {
     if (initial && !msgs.length) {
       area.innerHTML = '<p class="dm-empty">Commence la conversation !</p>';
     }
-    // Update unread count
-    pollDMUnread();
+    if (typeof data.unread_total === 'number') {
+      updateDMBadge(data.unread_total);
+    }
   } catch(e) {}
 }
 
@@ -3145,5 +3158,5 @@ async function pollDMUnread() {
   } catch(e) {}
 }
 </script>
-</body>
-</html>
+{% endblock %}
+

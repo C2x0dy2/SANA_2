@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.contrib.auth.hashers import make_password, check_password as verify_password_hash
 
 
 class UserProfile(models.Model):
@@ -82,6 +83,9 @@ class SanaGroup(models.Model):
 
     @property
     def member_count(self):
+        annotated = self.__dict__.get('member_count_annotated')
+        if annotated is not None:
+            return annotated
         return self.members.count()
 
 
@@ -152,6 +156,217 @@ class MoodEntry(models.Model):
         return self._SCORE.get(self.mood, 50)
 
 
+# ── Journal (carnet intime) ────────────────────────────────────────────────────
+
+class Journal(models.Model):
+    ICON_DEFAULT = '📔'
+    COLOR_CHOICES = [
+        ('burgundy',   '#7d3049'),
+        ('forest',     '#3f5d43'),
+        ('navy',       '#2c3e63'),
+        ('mustard',    '#b8862f'),
+        ('terracotta', '#b5533b'),
+        ('plum',       '#5c3a63'),
+        ('teal',       '#2c6e6b'),
+        ('charcoal',   '#3a3a3f'),
+    ]
+    _COLOR_HEX = dict(COLOR_CHOICES)
+
+    COVER_STYLE_CHOICES = [
+        ('classic', 'Classique'),
+        ('leather', 'Cuir'),
+        ('linen',   'Lin'),
+        ('floral',  'Fleuri'),
+        ('kraft',   'Kraft'),
+        ('velvet',  'Velours'),
+    ]
+
+    KIND_CHOICES = [
+        ('personal', 'Personnel'),
+        ('burn',     'Burn After Writing'),
+    ]
+
+    # `user` is the journal's owner (kept as `user` to match the FK convention
+    # used across the app and to avoid breaking the existing journal views).
+    user         = models.ForeignKey(User, on_delete=models.CASCADE, related_name='journals')
+    kind         = models.CharField(max_length=10, choices=KIND_CHOICES, default='personal')
+    title        = models.CharField(max_length=100, default='Mon journal')
+    cover_style  = models.CharField(max_length=20, choices=COVER_STYLE_CHOICES, default='classic')
+    icon         = models.CharField(max_length=8, default=ICON_DEFAULT)
+    color        = models.CharField(max_length=20, choices=[(k, k) for k, _ in COLOR_CHOICES], default='burgundy')
+    created_at   = models.DateTimeField(auto_now_add=True)
+    updated_at   = models.DateTimeField(auto_now=True)
+    last_opened  = models.DateTimeField(null=True, blank=True)
+    is_locked    = models.BooleanField(default=False)
+    password     = models.CharField(max_length=128, blank=True)  # stores a hash, never plaintext
+
+    class Meta:
+        ordering            = ['-updated_at']
+        verbose_name        = 'Journal'
+        verbose_name_plural = 'Journaux'
+
+    def __str__(self):
+        return f'{self.user.username} — {self.title}'
+
+    @property
+    def color_hex(self):
+        return self._COLOR_HEX.get(self.color, self._COLOR_HEX['burgundy'])
+
+    @property
+    def has_password(self):
+        return bool(self.password)
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password) if raw_password else ''
+
+    def check_password(self, raw_password):
+        if not self.password:
+            return False
+        return verify_password_hash(raw_password, self.password)
+
+
+class JournalEntry(models.Model):
+    journal    = models.ForeignKey(Journal, on_delete=models.CASCADE, related_name='entries')
+    entry_date = models.DateField()
+    title      = models.CharField(max_length=150, blank=True)
+    content    = models.TextField(blank=True)
+    mood       = models.CharField(max_length=20, choices=MoodEntry.MOOD_CHOICES, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering            = ['entry_date']
+        unique_together     = [['journal', 'entry_date']]
+        verbose_name        = "Entrée de journal"
+        verbose_name_plural = "Entrées de journal"
+
+    def __str__(self):
+        return f'[{self.journal.title}] {self.entry_date}'
+
+
+# ── Journal (nouveau système paginé) ──────────────────────────────────────────
+
+class JournalPage(models.Model):
+    _DAY_NAMES_FR = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+
+    RITUAL_CHOICES = [
+        ('fire', 'Feu'),
+    ]
+
+    journal     = models.ForeignKey(Journal, on_delete=models.CASCADE, related_name='pages')
+    page_number = models.PositiveIntegerField()
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+    content     = models.TextField(blank=True)
+    mood        = models.CharField(max_length=20, choices=MoodEntry.MOOD_CHOICES, blank=True)
+    date        = models.DateField()
+    day_of_week = models.CharField(max_length=12, blank=True)
+
+    # Only set for Burn After Writing pages — the guided reflection question
+    # shown above the (still free-form) answer area. Blank for personal pages.
+    prompt = models.TextField(blank=True, default='')
+
+    # Burn After Writing disposition — when set, the page is auto-burned once
+    # this passes (checked lazily on read, see views._maybe_burn_expired).
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    # Once burned/released, content/mood/attachments are wiped for good and
+    # only this flag + a symbolic marker remain (a placeholder, not a gap).
+    is_archived    = models.BooleanField(default=False)
+    is_locked      = models.BooleanField(default=False)
+    is_released    = models.BooleanField(default=False)
+    released_at    = models.DateTimeField(null=True, blank=True)
+    release_ritual = models.CharField(max_length=20, choices=RITUAL_CHOICES, blank=True)
+
+    class Meta:
+        ordering            = ['page_number']
+        unique_together     = [['journal', 'page_number']]
+        verbose_name        = 'Page de journal'
+        verbose_name_plural = 'Pages de journal'
+
+    def __str__(self):
+        return f'[{self.journal.title}] page {self.page_number}'
+
+    def save(self, *args, **kwargs):
+        if self.date:
+            self.day_of_week = self._DAY_NAMES_FR[self.date.weekday()]
+        super().save(*args, **kwargs)
+
+
+class Attachment(models.Model):
+    TYPE_CHOICES = [
+        ('image',      'Image'),
+        ('sticker',    'Sticker'),
+        ('emoji',      'Emoji'),
+        ('drawing',    'Dessin'),
+        ('voice_note', 'Note vocale'),
+        ('weather',    'Météo'),
+        ('location',   'Lieu'),
+    ]
+
+    page            = models.ForeignKey(JournalPage, on_delete=models.CASCADE, related_name='attachments')
+    attachment_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    file            = models.FileField(upload_to='journal_attachments/%Y/%m/', blank=True, null=True)
+    sticker_code    = models.CharField(max_length=50, blank=True)
+    label           = models.CharField(max_length=200, blank=True)
+    order           = models.PositiveIntegerField(default=0)
+    created_at      = models.DateTimeField(auto_now_add=True)
+
+    # Free placement on the page's scrapbook layer — percentages of the page's
+    # own box, so a spot stays put regardless of viewport size.
+    position_x = models.FloatField(default=50)
+    position_y = models.FloatField(default=50)
+    width_pct  = models.FloatField(default=25)
+    rotation   = models.FloatField(default=0)
+
+    class Meta:
+        ordering            = ['order', 'created_at']
+        verbose_name        = 'Pièce jointe'
+        verbose_name_plural = 'Pièces jointes'
+
+    def __str__(self):
+        return f'[{self.page}] {self.attachment_type}'
+
+
+# ── Chat SANA (conversations) ─────────────────────────────────────────────────
+
+class Conversation(models.Model):
+    DEFAULT_TITLE = 'Nouvelle conversation'
+
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations')
+    title      = models.CharField(max_length=100, default=DEFAULT_TITLE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering            = ['-updated_at']
+        verbose_name        = 'Conversation'
+        verbose_name_plural = 'Conversations'
+
+    def __str__(self):
+        return f'{self.user.username} — {self.title}'
+
+
+class Message(models.Model):
+    ROLE_CHOICES = [
+        ('user',      'Utilisateur'),
+        ('assistant', 'Assistant'),
+        ('system',    'Système'),
+    ]
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
+    role         = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    content      = models.TextField()
+    timestamp    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['timestamp']
+        verbose_name        = 'Message de chat'
+        verbose_name_plural = 'Messages de chat'
+
+    def __str__(self):
+        return f'[{self.conversation_id}] {self.role}: {self.content[:40]}'
+
+
 # ── Posts communautaires ──────────────────────────────────────────────────────
 
 class Notification(models.Model):
@@ -218,3 +433,10 @@ class CommunityPost(models.Model):
 
     def __str__(self):
         return f'{self.author.username}: {self.content[:60]}'
+
+    @property
+    def like_count(self):
+        annotated = self.__dict__.get('like_count_annotated')
+        if annotated is not None:
+            return annotated
+        return self.likes.count()

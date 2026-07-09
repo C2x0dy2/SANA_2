@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+SANA — Mes Journaux
+{% endblock %}
+
+{% block theme_vars %}
+:root{
+  --p950:#1e0d17;--p700:#5e2f47;--p400:#9a5e79;
+  --r500:#c26e8a;--r300:#dca8bc;--r100:#f2d8e4;--r50:#fce8f0;
+  --blush:#fdf3f7;--txt:#1a0d14;--txt-m:#6b4a58;--txt-s:#9a7585;
+  --white:#fff;--nav-h:60px;--rad:20px;
+  --shadow-card:0 2px 16px rgba(107,47,71,.06);
+  --shadow-hover:0 12px 32px rgba(107,47,71,.14);
+  --pages-edge: inset -4px 0 0 rgba(255,255,255,.4), inset -6px 0 0 rgba(0,0,0,.05), inset -8px 0 0 rgba(255,255,255,.3), inset -10px 0 0 rgba(0,0,0,.04);
+}
+html,body{min-height:100%;}
+{% endblock %}
+
+{% block page_styles %}
+body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
+}
+[data-motion="reduced"] *,[data-motion="reduced"] *::before,[data-motion="reduced"] *::after{
+  animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;
+}
+:focus-visible{outline:2px solid var(--r500);outline-offset:2px;border-radius:4px;}
+
+/* ── TOPBAR ── */
+.topbar{
+  height:var(--nav-h);background:rgba(253,243,247,.96);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(194,110,138,.12);position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;gap:12px;
+  padding:0 clamp(14px,3vw,24px);
+}
+.back-btn{
+  display:flex;align-items:center;gap:6px;background:none;border:none;
+  cursor:pointer;font-family:'Jost',sans-serif;font-size:.78rem;color:var(--txt-m);
+  padding:6px 10px;border-radius:100px;transition:background .2s,color .2s;
+}
+.back-btn:hover{background:var(--r50);color:var(--r500);}
+.back-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;}
+.topbar-title{font-family:'Playfair Display',serif;font-size:1rem;font-style:italic;color:var(--p950);}
+
+/* ── SHELF ── */
+.shelf-wrap{max-width:1100px;margin:0 auto;padding:clamp(24px,4vw,48px) clamp(16px,3vw,32px) 80px;}
+.shelf-title{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,3vw,2.2rem);font-weight:300;color:var(--p950);margin-bottom:4px;}
+.shelf-title em{font-style:italic;color:var(--r500);}
+.shelf-sub{font-size:.8rem;color:var(--txt-s);font-weight:300;margin-bottom:clamp(18px,3vw,26px);}
+
+/* ── SEARCH & SORT ── */
+.shelf-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:clamp(20px,3.5vw,30px);}
+.shelf-search{
+  flex:1;min-width:180px;display:flex;align-items:center;gap:8px;
+  background:var(--white);border:1.5px solid rgba(194,110,138,.18);
+  border-radius:100px;padding:9px 16px;transition:border-color .2s;
+}
+.shelf-search:focus-within{border-color:var(--r500);}
+.shelf-search svg{width:14px;height:14px;stroke:var(--txt-s);fill:none;stroke-width:2;flex-shrink:0;}
+.shelf-search input{border:none;background:none;outline:none;font-family:'Jost',sans-serif;font-size:.82rem;color:var(--txt);width:100%;}
+.shelf-search input::placeholder{color:var(--txt-s);}
+.shelf-sort{
+  border:1.5px solid rgba(194,110,138,.18);border-radius:100px;padding:9px 34px 9px 16px;
+  font-family:'Jost',sans-serif;font-size:.78rem;color:var(--txt-m);background:var(--white);
+  outline:none;cursor:pointer;transition:border-color .2s;
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a7585' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:12px;
+}
+.shelf-sort:focus{border-color:var(--r500);}
+
+.shelf-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:clamp(18px,3vw,28px);
+}
+.book-cover-card{
+  position:relative;aspect-ratio:2/3;border-radius:4px 12px 12px 4px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  color:white;box-shadow:var(--shadow-card),var(--pages-edge);transition:transform .3s ease,box-shadow .3s ease;
+  padding:14px;text-align:center;overflow:hidden;
+}
+.book-cover-card:hover{transform:translateY(-6px) rotate(-1deg);box-shadow:var(--shadow-hover),var(--pages-edge);}
+.book-cover-card::before{content:'';position:absolute;inset:0;background:linear-gradient(120deg,rgba(255,255,255,.2),transparent 55%);}
+.book-cover-card::after{content:'';position:absolute;top:0;left:0;bottom:0;width:10px;background:rgba(0,0,0,.25);}
+.bcc-icon{font-size:2.2rem;filter:drop-shadow(0 3px 8px rgba(0,0,0,.3));}
+.bcc-title{font-family:'Playfair Display',serif;font-size:.92rem;font-style:italic;line-height:1.3;text-shadow:0 2px 6px rgba(0,0,0,.3);}
+.bcc-meta{font-size:.62rem;opacity:.85;position:relative;}
+.bcc-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity .2s;z-index:2;}
+.book-cover-card:hover .bcc-actions{opacity:1;}
+.bcc-action-btn{
+  width:24px;height:24px;border-radius:50%;border:none;background:rgba(0,0,0,.35);color:white;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.68rem;
+}
+.bcc-action-btn:hover{background:rgba(0,0,0,.55);}
+
+/* Cover textures — layered on the sheen pseudo-element so the JS-set color gradient stays intact */
+.cover-leather::before{background:
+  linear-gradient(120deg,rgba(255,255,255,.15),transparent 55%),
+  repeating-linear-gradient(115deg, rgba(0,0,0,.08) 0 2px, transparent 2px 6px);
+}
+.cover-linen::before{background:
+  linear-gradient(120deg,rgba(255,255,255,.18),transparent 55%),
+  repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 4px),
+  repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 1px, transparent 1px 4px);
+}
+.cover-floral::before{background:
+  linear-gradient(120deg,rgba(255,255,255,.18),transparent 55%),
+  radial-gradient(circle at 20% 25%, rgba(255,255,255,.28) 0 3px, transparent 4px),
+  radial-gradient(circle at 62% 52%, rgba(255,255,255,.2) 0 2.5px, transparent 3.5px),
+  radial-gradient(circle at 82% 18%, rgba(255,255,255,.22) 0 2px, transparent 3px),
+  radial-gradient(circle at 32% 80%, rgba(255,255,255,.2) 0 2.5px, transparent 3.5px),
+  radial-gradient(circle at 75% 78%, rgba(255,255,255,.24) 0 2px, transparent 3px);
+}
+.cover-kraft::before{
+  background:
+    linear-gradient(120deg,rgba(255,255,255,.1),transparent 55%),
+    repeating-linear-gradient(4deg, rgba(0,0,0,.06) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(-8deg, rgba(255,255,255,.05) 0 1px, transparent 1px 7px);
+  mix-blend-mode:multiply;
+}
+.cover-velvet::before{background:
+  linear-gradient(120deg,rgba(255,255,255,.32),transparent 40%),
+  radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.16), transparent 60%);
+}
+
+.new-journal-card{
+  aspect-ratio:2/3;border-radius:4px 12px 12px 4px;border:2px dashed rgba(194,110,138,.3);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  cursor:pointer;color:var(--txt-s);transition:all .25s;background:rgba(255,255,255,.4);
+}
+.new-journal-card:hover{border-color:var(--r500);color:var(--r500);background:var(--r50);}
+.new-journal-card span{font-size:2rem;}
+.new-journal-card small{font-size:.72rem;}
+
+.shelf-empty{text-align:center;padding:60px 20px;color:var(--txt-s);font-size:.85rem;grid-column:1/-1;}
+
+/* ── MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(30,13,23,.45);z-index:1000;
+  display:none;align-items:center;justify-content:center;padding:20px;
+  overflow-y:auto;
+}
+.modal-overlay.open{display:flex;}
+.modal-card{
+  background:var(--white);border-radius:24px;padding:clamp(22px,4vw,32px);
+  max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);
+  animation:modalIn .25s cubic-bezier(.22,1,.36,1);margin:auto;
+}
+@keyframes modalIn{from{opacity:0;transform:scale(.94) translateY(8px);}to{opacity:1;transform:none;}}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.2rem;font-style:italic;color:var(--p950);margin-bottom:16px;}
+.modal-label{font-size:.68rem;text-transform:uppercase;letter-spacing:2px;color:var(--r500);font-weight:500;display:block;margin:14px 0 8px;}
+.modal-input{
+  width:100%;border:1.5px solid rgba(194,110,138,.2);border-radius:12px;padding:10px 14px;
+  font-family:'Jost',sans-serif;font-size:.88rem;outline:none;background:var(--blush);color:var(--txt);
+  transition:border-color .2s;
+}
+.modal-input:focus{border-color:var(--r500);}
+.icon-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;}
+.icon-opt{
+  aspect-ratio:1;border-radius:10px;border:1.5px solid transparent;background:var(--blush);
+  font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;
+}
+.icon-opt:hover{background:var(--r50);}
+.icon-opt.active{border-color:var(--r500);background:var(--r50);}
+.color-row{display:flex;gap:8px;flex-wrap:wrap;}
+.color-opt{
+  width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+  transition:all .2s;flex-shrink:0;
+}
+.color-opt.active{border-color:var(--p950);transform:scale(1.1);}
+
+.cover-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+.cover-opt{
+  aspect-ratio:2/3;border-radius:3px 8px 8px 3px;cursor:pointer;
+  border:2px solid transparent;position:relative;overflow:hidden;transition:all .2s;
+}
+.cover-opt::before{content:'';position:absolute;inset:0;background:linear-gradient(120deg,rgba(255,255,255,.2),transparent 55%);}
+.cover-opt::after{content:'';position:absolute;top:0;left:0;bottom:0;width:4px;background:rgba(0,0,0,.25);}
+.cover-opt:hover{transform:translateY(-2px);}
+.cover-opt.active{border-color:var(--p950);transform:scale(1.05);}
+.cover-opt-label{
+  position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:.48rem;
+  letter-spacing:.5px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);z-index:1;
+}
+
+.modal-actions{display:flex;gap:10px;margin-top:22px;}
+.modal-btn{
+  flex:1;padding:11px;border-radius:100px;font-family:'Jost',sans-serif;font-size:.82rem;
+  font-weight:500;cursor:pointer;border:none;transition:all .2s;
+}
+.modal-btn-cancel{background:var(--blush);color:var(--txt-m);}
+.modal-btn-cancel:hover{background:var(--r50);}
+.modal-btn-create{background:linear-gradient(135deg,var(--r500),var(--p700));color:white;}
+.modal-btn-create:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(194,110,138,.3);}
+{% endblock %}
+
+{% block navbar %}
+<div class="topbar">
+  {% url 'sanasource:dashboard' as dash_url %}
+  {% include "includes/back_button.html" with back_href=dash_url back_label="Tableau de bord" %}
+  <span class="topbar-title">Mes Journaux</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="shelf-wrap">
+  <div class="shelf-title">Mes <em>Journaux</em></div>
+  <div class="shelf-sub">Ton espace privé — confidentiel, uniquement pour toi</div>
+
+  <div class="shelf-controls">
+    <div class="shelf-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Rechercher un journal…" oninput="renderShelf()">
+    </div>
+    <select class="shelf-sort" id="sortSelect" onchange="renderShelf()">
+      <option value="updated">Récemment modifiés</option>
+      <option value="opened">Récemment ouverts</option>
+      <option value="title">Titre (A → Z)</option>
+      <option value="created">Date de création</option>
+    </select>
+  </div>
+
+  <div class="shelf-grid" id="shelfGrid">
+    <div class="new-journal-card" onclick="openCreateModal()">
+      <span>+</span>
+      <small>Nouveau journal</small>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Create/Edit journal modal -->
+<div class="modal-overlay" id="journalModal" onclick="if(event.target===this) closeModal()">
+  <div class="modal-card">
+    <div class="modal-title" id="modalTitle">Nouveau journal</div>
+    <input type="text" class="modal-input" id="modalTitleInput" placeholder="Titre du journal…" maxlength="100">
+
+    <span class="modal-label">Couverture</span>
+    <div class="cover-grid" id="coverGrid"></div>
+
+    <span class="modal-label">Icône</span>
+    <div class="icon-grid" id="iconGrid"></div>
+
+    <span class="modal-label">Couleur</span>
+    <div class="color-row" id="colorRow"></div>
+
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="modal-btn modal-btn-create" id="modalSubmitBtn" onclick="submitJournalModal()">Créer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+const JOURNALS_URL = '/api/journal/';
+const ICONS = ['📔','📕','📗','📘','📙','📓','📒','🖋️','🌙','✨','🍂','🌸','☕','🕊️','💭','🔥'];
+const COLORS = [
+  ['burgundy','#7d3049'], ['forest','#3f5d43'], ['navy','#2c3e63'], ['mustard','#b8862f'],
+  ['terracotta','#b5533b'], ['plum','#5c3a63'], ['teal','#2c6e6b'], ['charcoal','#3a3a3f'],
+];
+const COVERS = [
+  ['classic','Classique'], ['leather','Cuir'], ['linen','Lin'],
+  ['floral','Fleuri'], ['kraft','Kraft'], ['velvet','Velours'],
+];
+
+let selectedIcon = ICONS[0];
+let selectedColor = COLORS[0][0];
+let selectedCover = COVERS[0][0];
+let editingJournalId = null;
+let allJournals = [];
+
+async function api(url, options={}){
+  const res = await fetch(url, {
+    method: options.method || 'GET',
+    headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+    body: options.body,
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw Object.assign(new Error(data.error||'Erreur serveur'), {status:res.status});
+  return data;
+}
+
+function colorHex(key){
+  const found = COLORS.find(([k]) => k === key);
+  return found ? found[1] : COLORS[0][1];
+}
+
+function buildPickers(){
+  document.getElementById('iconGrid').innerHTML = ICONS.map(ic =>
+    `<button type="button" class="icon-opt${ic===selectedIcon?' active':''}" data-icon="${ic}">${ic}</button>`
+  ).join('');
+  document.getElementById('colorRow').innerHTML = COLORS.map(([key,hex]) =>
+    `<span class="color-opt${key===selectedColor?' active':''}" data-color="${key}" style="background:${hex}"></span>`
+  ).join('');
+  renderCoverGrid();
+
+  document.getElementById('iconGrid').querySelectorAll('.icon-opt').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedIcon = el.dataset.icon;
+      document.querySelectorAll('.icon-opt').forEach(o=>o.classList.toggle('active', o===el));
+    });
+  });
+  document.getElementById('colorRow').querySelectorAll('.color-opt').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedColor = el.dataset.color;
+      document.querySelectorAll('.color-opt').forEach(o=>o.classList.toggle('active', o===el));
+      renderCoverGrid();
+    });
+  });
+}
+
+function renderCoverGrid(){
+  const hex = colorHex(selectedColor);
+  const grid = document.getElementById('coverGrid');
+  grid.innerHTML = COVERS.map(([key,label]) =>
+    `<div class="cover-opt cover-${key}${key===selectedCover?' active':''}" data-cover="${key}"
+          style="background:linear-gradient(135deg, ${hex} 0%, rgba(0,0,0,.3) 100%), ${hex}" title="${label}">
+      <span class="cover-opt-label">${label}</span>
+    </div>`
+  ).join('');
+  grid.querySelectorAll('.cover-opt').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedCover = el.dataset.cover;
+      grid.querySelectorAll('.cover-opt').forEach(o=>o.classList.toggle('active', o===el));
+    });
+  });
+}
+
+function openCreateModal(){
+  editingJournalId = null;
+  document.getElementById('modalTitle').textContent = 'Nouveau journal';
+  document.getElementById('modalSubmitBtn').textContent = 'Créer';
+  document.getElementById('modalTitleInput').value = '';
+  selectedIcon = ICONS[0];
+  selectedColor = COLORS[0][0];
+  selectedCover = COVERS[0][0];
+  buildPickers();
+  document.getElementById('journalModal').classList.add('open');
+  document.getElementById('modalTitleInput').focus();
+}
+
+function openEditModal(id){
+  const journal = allJournals.find(j => j.id === id);
+  if(!journal) return;
+  editingJournalId = id;
+  document.getElementById('modalTitle').textContent = 'Modifier le journal';
+  document.getElementById('modalSubmitBtn').textContent = 'Enregistrer';
+  document.getElementById('modalTitleInput').value = journal.title;
+  selectedIcon = journal.icon;
+  selectedColor = journal.color;
+  selectedCover = journal.cover_style || 'classic';
+  buildPickers();
+  document.getElementById('journalModal').classList.add('open');
+  document.getElementById('modalTitleInput').focus();
+}
+
+function closeModal(){
+  document.getElementById('journalModal').classList.remove('open');
+}
+
+async function submitJournalModal(){
+  const title = document.getElementById('modalTitleInput').value.trim();
+  if(!title) { document.getElementById('modalTitleInput').focus(); return; }
+  try{
+    if(editingJournalId){
+      await api(JOURNALS_URL + editingJournalId + '/', {
+        method: 'PATCH',
+        body: JSON.stringify({title, icon: selectedIcon, color: selectedColor, cover_style: selectedCover}),
+      });
+    }else{
+      await api(JOURNALS_URL, {
+        method: 'POST',
+        body: JSON.stringify({title, icon: selectedIcon, color: selectedColor, cover_style: selectedCover}),
+      });
+    }
+    closeModal();
+    await loadJournals();
+  }catch(e){
+    console.error('Failed to save journal', e);
+  }
+}
+
+async function deleteJournal(id, title){
+  if(!confirm(`Supprimer définitivement "${title}" et toutes ses entrées ? Cette action est irréversible.`)) return;
+  try{
+    await api(JOURNALS_URL + id + '/', {method:'DELETE'});
+    await loadJournals();
+  }catch(e){
+    console.error('Failed to delete journal', e);
+  }
+}
+
+async function duplicateJournal(id){
+  try{
+    await api(JOURNALS_URL + id + '/duplicate/', {method:'POST'});
+    await loadJournals();
+  }catch(e){
+    console.error('Failed to duplicate journal', e);
+  }
+}
+
+function renderJournalCard(j){
+  const div = document.createElement('div');
+  div.className = `book-cover-card cover-${j.cover_style || 'classic'}`;
+  div.style.background = `linear-gradient(135deg, ${j.color_hex} 0%, rgba(0,0,0,.3) 100%), ${j.color_hex}`;
+  div.innerHTML = `
+    <div class="bcc-actions">
+      <button class="bcc-action-btn" title="Renommer" onclick="event.stopPropagation();openEditModal(${j.id})">✎</button>
+      <button class="bcc-action-btn" title="Dupliquer" onclick="event.stopPropagation();duplicateJournal(${j.id})">⧉</button>
+      <button class="bcc-action-btn" title="Supprimer" onclick="event.stopPropagation();deleteJournal(${j.id}, '${escHtml(j.title).replace(/'/g,"\\'")}')">✕</button>
+    </div>
+    <span class="bcc-icon">${j.icon}</span>
+    <span class="bcc-title">${escHtml(j.title)}</span>
+    <span class="bcc-meta">${j.entry_count} entrée${j.entry_count===1?'':'s'}</span>
+  `;
+  div.addEventListener('click', ()=>{ location.href = `/journal/${j.id}/`; });
+  return div;
+}
+
+function sortJournals(list, mode){
+  const sorted = list.slice();
+  if(mode === 'title'){
+    sorted.sort((a,b) => a.title.localeCompare(b.title, 'fr', {sensitivity:'base'}));
+  }else if(mode === 'created'){
+    sorted.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  }else if(mode === 'opened'){
+    sorted.sort((a,b) => new Date(b.last_opened || 0) - new Date(a.last_opened || 0));
+  }else{
+    sorted.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at));
+  }
+  return sorted;
+}
+
+function renderShelf(){
+  const grid = document.getElementById('shelfGrid');
+  const newCard = grid.querySelector('.new-journal-card');
+  grid.querySelectorAll('.book-cover-card').forEach(el=>el.remove());
+  grid.querySelectorAll('.shelf-empty').forEach(el=>el.remove());
+
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  const sortMode = document.getElementById('sortSelect').value;
+
+  let filtered = allJournals.filter(j => j.title.toLowerCase().includes(query));
+  filtered = sortJournals(filtered, sortMode);
+
+  if(allJournals.length && !filtered.length){
+    const empty = document.createElement('div');
+    empty.className = 'shelf-empty';
+    empty.textContent = 'Aucun journal ne correspond à ta recherche.';
+    grid.insertBefore(empty, newCard);
+  }
+  filtered.forEach(j => grid.insertBefore(renderJournalCard(j), newCard));
+}
+
+async function loadJournals(){
+  try{
+    const data = await api(JOURNALS_URL);
+    allJournals = data.journals || [];
+    renderShelf();
+  }catch(e){
+    console.error('Failed to load journals', e);
+  }
+}
+
+loadJournals();
+</script>
+{% endblock %}

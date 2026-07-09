@@ -1,0 +1,94 @@
+<!-- SIDEBAR OVERLAY (mobile) -->
+<div class="sid-overlay" id="sidOverlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sid-brand">
+    <a href="/" class="sid-logo">Sana</a>
+    <div class="sid-tagline">Soutien & bien-être mental</div>
+  </div>
+
+  <div class="sid-user">
+    <div class="sid-av">{% if user.first_name %}{{ user.first_name|slice:":1"|upper }}{% elif profile %}{{ profile.username_anonyme|slice:":1"|upper }}{% else %}?{% endif %}</div>
+    <div>
+      <div class="sid-name">{% if user.first_name %}{{ user.first_name }}{% else %}Anonyme·e{% endif %}</div>
+      <div class="sid-anon">{% if profile %}@{{ profile.username_anonyme }}{% else %}Espace sécurisé{% endif %}</div>
+    </div>
+  </div>
+
+  <nav class="sid-nav">
+    <div class="nav-section-label">Principal</div>
+    <div class="nav-item active" onclick="showSection('accueil',this)">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Accueil
+    </div>
+    <div class="nav-item" onclick="showSection('chat',this)">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Chat SANA
+      <span class="nav-badge">IA</span>
+    </div>
+    <div class="nav-item" onclick="showSection('humeur',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+      Mon Humeur
+    </div>
+
+    <div class="nav-section-label">Communauté</div>
+    <div class="nav-item" onclick="showSection('communaute',this)">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Communauté
+    </div>
+    <div class="nav-item" onclick="showSection('groupes',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Groupes
+    </div>
+    <div class="nav-item" onclick="showSection('messages',this)">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Messages privés
+      <span class="dm-nav-badge" id="dmNavBadge" style="display:none">0</span>
+    </div>
+
+    <div class="nav-section-label">Ressources</div>
+    <div class="nav-item" onclick="showSection('ressources',this)">
+      <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Blog & Ressources
+    </div>
+
+    <div class="nav-section-label">Mon espace</div>
+    <div class="nav-item" onclick="showSection('parcours',this)">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Mon Parcours
+    </div>
+    <a class="nav-item" href="{% url 'sanasource:journal_home' %}" style="text-decoration:none;">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Mon Journal
+    </a>
+    <div class="nav-item" onclick="showSection('pro',this)">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Mon Professionnel
+    </div>
+    <div class="nav-item" onclick="showSection('badges',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      Mes Badges
+    </div>
+    <div class="nav-section-label">Sensibilisation</div>
+    <div class="nav-item" onclick="showSection('sensibilisation',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Sensibilisation
+    </div>
+    <div class="nav-item" onclick="showSection('profil',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Mon Profil
+    </div>
+  </nav>
+
+  <div class="sid-footer">
+    <button class="urgence-btn" onclick="openSOS()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Urgence — SAMU 185
+    </button>
+    <a href="{% url 'sanasource:logout' %}" style="display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;padding:9px 14px;border-radius:12px;font-family:'Jost',sans-serif;font-size:.72rem;font-weight:400;color:var(--txt-s);text-decoration:none;transition:background .2s,color .2s;" onmouseover="this.style.background='var(--r50)';this.style.color='var(--r500)'" onmouseout="this.style.background='';this.style.color='var(--txt-s)'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Se déconnecter
+    </a>
+  </div>
+</aside>

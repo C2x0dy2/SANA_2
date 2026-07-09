@@ -1,15 +1,15 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANA — Aide & Soutien</title>
+{% block title %}
+SANA — Aide & Soutien
+{% endblock %}
+
+{% block fonts %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
-    <style>
-        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+{% endblock %}
 
+{% block theme_vars %}
         :root {
             --plum-950: #1e0d17;
             --plum-700: #5e2f47;
@@ -30,7 +30,9 @@
             --glass:    rgba(255,255,255,0.75);
             --nav-h:    60px;
         }
+{% endblock %}
 
+{% block page_styles %}
         html { scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
 
         body {
@@ -526,16 +528,15 @@
         }
         .back-top:hover { color:var(--rose-500); }
         .back-top svg { width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2; }
-    </style>
-</head>
-<body>
+{% endblock %}
 
-    {% csrf_token %}
-
+{% block background %}
     <div class="cur-dot" id="cDot"></div>
     <div class="cur-ring" id="cRing"></div>
     <div class="bg-mesh"></div>
+{% endblock %}
 
+{% block navbar %}
     <nav>
         <a href="/" class="nav-logo">Sana</a>
         <a href="/" class="nav-back">
@@ -543,7 +544,9 @@
             Accueil
         </a>
     </nav>
+{% endblock %}
 
+{% block content %}
     <div class="page">
 
         <!-- ===== STATE 0 : CHOIX ===== -->
@@ -786,8 +789,9 @@
         </div>
 
     </div><!-- .page -->
+{% endblock %}
 
-
+{% block modals %}
     <!-- LOGIN PROMPT -->
     <div class="login-prompt" id="loginPrompt">
         <div class="lp-row">
@@ -806,8 +810,9 @@
             <button class="lp-later" onclick="dismissPrompt()">Pas maintenant</button>
         </div>
     </div>
+{% endblock %}
 
-
+{% block page_scripts %}
     <script>
     // ===== CURSOR =====
     const cDot=document.getElementById('cDot'),cRing=document.getElementById('cRing');
@@ -849,6 +854,7 @@
 
     // ===== CHATBOT =====
     const CHAT_URL = '/api/chat/';
+    const HELP_CHAT_STORAGE_KEY = 'sana_help_chat_history';
 
     let chatHistory = [];
     let msgCount    = 0;
@@ -856,13 +862,41 @@
     let chatReady   = false;
     let isSending   = false;
 
+    function persistHelpHistory(){
+        try { localStorage.setItem(HELP_CHAT_STORAGE_KEY, JSON.stringify(chatHistory)); } catch (e) {}
+    }
+
+    function restoreHelpHistory(){
+        try {
+            const stored = localStorage.getItem(HELP_CHAT_STORAGE_KEY);
+            if(stored){
+                const parsed = JSON.parse(stored);
+                if(Array.isArray(parsed) && parsed.length){
+                    chatHistory = parsed;
+                    return true;
+                }
+            }
+        } catch (e) {}
+        return false;
+    }
+
     function initChat(){
         if(chatReady) return;
         chatReady = true;
-        chatHistory = [{
-            role   : 'assistant',
-            content: "Bonjour 🌸 Je suis là pour t'écouter, sans jugement et en toute confidentialité. Tu n'as pas à tout expliquer d'un coup.\n\nComment tu te sens en ce moment ?"
-        }];
+        if(!restoreHelpHistory()){
+            chatHistory = [{
+                role   : 'assistant',
+                content: "Bonjour 🌸 Je suis là pour t'écouter, sans jugement et en toute confidentialité. Tu n'as pas à tout expliquer d'un coup.\n\nComment tu te sens en ce moment ?"
+            }];
+            persistHelpHistory();
+        }
+        if(chatHistory.length){
+            const container = document.getElementById('chatMessages');
+            if(container){
+                container.innerHTML = '';
+                chatHistory.forEach(msg => appendMsg(msg.role, msg.content));
+            }
+        }
     }
 
     async function sendMsg(){
@@ -877,6 +911,7 @@
 
         appendMsg('user', text);
         chatHistory.push({role:'user', content:text});
+        persistHelpHistory();
         msgCount++;
 
         const typing = document.getElementById('typingIndicator');
@@ -885,7 +920,7 @@
 
         try {
             const csrf = getCsrf();
-            console.log('📤 Envoi vers', CHAT_URL, '| CSRF:', csrf ? '✅' : '❌ MANQUANT');
+            console.log('📤 Help chat payload', {messages: chatHistory});
 
             const res = await fetch(CHAT_URL, {
                 method : 'POST',
@@ -896,25 +931,27 @@
                 body: JSON.stringify({messages: chatHistory})
             });
 
-            console.log('📥 Status HTTP:', res.status);
+            console.log('📥 Help chat status:', res.status);
             const data = await res.json();
-            console.log('📥 Réponse:', data);
+            console.log('📥 Help chat response:', data);
 
             typing.classList.remove('show');
 
             if(!res.ok){
-                console.error('❌ Erreur serveur:', data.error);
-                appendMsg('bot', "Je rencontre une petite difficulté technique. Réessaie dans quelques instants.");
+                console.error('❌ Help chat server error:', data.error);
+                appendMsg('bot', data.error || 'Le service de réponse est momentanément indisponible.');
+            } else if(data.reply){
+                appendMsg('bot', data.reply);
+                chatHistory.push({role:'assistant', content:data.reply});
+                persistHelpHistory();
             } else {
-                const reply = data.reply || "Je suis là. Prends ton temps.";
-                appendMsg('bot', reply);
-                chatHistory.push({role:'assistant', content:reply});
+                appendMsg('bot', data.error || 'Le modèle n’a pas pu répondre pour l’instant.');
             }
 
         } catch(e) {
             typing.classList.remove('show');
-            console.error('❌ Erreur fetch:', e);
-            appendMsg('bot', "Je suis là, même si la connexion a vacillé. Continue à m'écrire.");
+            console.error('❌ Help chat request failed:', e);
+            appendMsg('bot', 'La connexion au service de réponse a échoué.');
         }
 
         isSending = false;
@@ -973,5 +1010,5 @@
         breathTimer = setTimeout(next, 800);
     }
     </script>
-</body>
-</html>
+{% endblock %}
+

@@ -1,15 +1,15 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANA — Créer un compte</title>
+{% block title %}
+SANA — Créer un compte
+{% endblock %}
+
+{% block fonts %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
-    <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+{% endblock %}
 
+{% block theme_vars %}
         :root {
             --r0: #fff8fb;
             --r1: #ffecf4;
@@ -25,7 +25,9 @@
             --error:   #d95668;
             --warn:    #e8a84a;
         }
+{% endblock %}
 
+{% block page_styles %}
         html, body { height: 100%; }
 
         body {
@@ -691,14 +693,15 @@
                 transition-duration: 0.15s !important;
             }
         }
-    </style>
-</head>
-<body>
+{% endblock %}
 
+{% block background %}
 <!-- ── Background canvas ── -->
 <canvas id="bg-canvas" aria-hidden="true"></canvas>
 <div class="grain" aria-hidden="true"></div>
+{% endblock %}
 
+{% block content %}
 <main class="card" role="main">
 
     <!-- ── IMAGE PANEL ── -->
@@ -900,7 +903,9 @@
 
     </div><!-- /.panel-form -->
 </main>
+{% endblock %}
 
+{% block page_scripts %}
 <script>
 (() => {
 'use strict';
@@ -1160,5 +1165,5 @@ $('btn-submit').addEventListener('mousedown', function(e) {
 
 })();
 </script>
-</body>
-</html>
+{% endblock %}
+

@@ -1,17 +1,32 @@
 from pathlib import Path
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+import json
+import logging
+import os
+import random
+import re
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from django.db.models import Count
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Notification, PushSubscription, DirectMessage
-from .notifications import send_notification
-import json
-import anthropic
+from django.db.models import Count, Max, OuterRef, Subquery, IntegerField, Q
+from django.db.models.functions import Coalesce
+from django.utils import timezone
+from django.urls import reverse
 
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment
+from .notifications import send_notification
+from .serializers import serialize_journal_page, serialize_attachment
+from .reflection_questions import REFLECTION_QUESTIONS
+from google import genai
+from google.genai import types as genai_types
+from google.genai import errors as genai_errors
+
+logging.basicConfig(level=logging.INFO, format='%(levelname)s %(name)s %(message)s')
+logger = logging.getLogger(__name__)
 
 # ============================================================
 # PAGES
@@ -169,44 +184,182 @@ def login_view(request):
 # CHATBOT IA
 # ============================================================
 
-SANA_SYSTEM_PROMPT = """Tu es SANA, un assistant d'écoute bienveillant pour une plateforme
-de santé mentale en Côte d'Ivoire.
+MAX_CHAT_HISTORY = 100
+
+GEMINI_MODEL = 'gemini-2.5-flash'
+
+SANA_SYSTEM_PROMPT = """Tu es SANA, une présence chaleureuse et respectueuse sur une plateforme de santé mentale.
 
 Règles absolues :
-- Tu n'es PAS un médecin ou psychologue. Tu ne diagnostiques jamais.
-- Tu écoutes, tu poses des questions douces, tu valides les émotions.
-- Tu parles toujours en français, avec douceur et sans jargon médical.
-- Tes réponses font 2-4 phrases max, naturelles et humaines.
-- Si l'utilisateur mentionne des idées suicidaires ou automutilation,
-  donne immédiatement le numéro 185 (SAMU CI) et reste présent.
+- Tu n'es PAS un médecin ni un psychologue. Tu ne diagnostiques jamais.
+- Tu écoutes avec douceur, tu valides les émotions et tu poses une question de suivi uniquement si elle est utile.
+- Tu réponds en français, avec un ton naturel, humain et non robotique.
+- Tes réponses font généralement 2 à 4 phrases maximum, sans répétitions ni phrases trop génériques.
+- Tu varies les formulations et tu adaptes le ton selon l'émotion perçue : plus doux en détresse, plus rassurant en anxiété, plus direct si l'utilisateur est en colère ou débordé.
+- Tu utilises le contexte de la conversation de façon cohérente et tu n'oublies pas ce qui a déjà été dit.
+- Si l'utilisateur mentionne des idées suicidaires, d'automutilation ou un danger immédiat, tu réponds immédiatement avec soutien, urgence et le numéro 185 (SAMU CI).
 - Tu t'appelles SANA. Ne mentionne jamais Claude ou Anthropic."""
 
+SANA_WELCOME_MESSAGE = (
+    "Bonjour 🌸 Je suis SANA. Je suis là pour t'écouter, sans jugement et en toute confidentialité.\n\n"
+    "Comment tu te sens aujourd'hui ?"
+)
 
-def _get_valid_anthropic_key():
-    api_key = (settings.ANTHROPIC_API_KEY or '').strip()
 
-    # Guard against accidentally storing Python expressions in .env.
-    if api_key.startswith('os.environ.get('):
+def _get_valid_gemini_key():
+    api_key = (os.getenv('GEMINI_API_KEY') or settings.GEMINI_API_KEY or '').strip().strip('"').strip("'")
+
+    if not api_key or api_key.startswith('os.environ.get('):
+        logger.warning('Gemini key load status: loaded=False length=0')
         return None
 
-    # Anthropic keys usually start with sk-ant-.
-    if not api_key.startswith('sk-ant-'):
+    placeholder_values = {'your-api-key', 'your_gemini_api_key', 'changeme', 'replace-me'}
+    if api_key.lower() in placeholder_values or '...' in api_key or 'your' in api_key.lower() or 'replace' in api_key.lower():
+        return None
+
+    if len(api_key) < 20:
         return None
 
     return api_key
 
 
-def _fallback_reply(messages):
+def _normalize_messages(messages, max_messages=MAX_CHAT_HISTORY):
+    normalized = []
+    for item in messages[-max_messages:]:
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get('role', '') or '').strip().lower()
+        content = str(item.get('content', '') or '').strip()
+        if role not in {'user', 'assistant'} or not content:
+            continue
+        previous = normalized[-1] if normalized else None
+        if previous and previous['role'] == role and previous['content'].lower() == content.lower():
+            continue
+        normalized.append({'role': role, 'content': content})
+
+    return normalized[-max_messages:]
+
+
+def _detect_emotional_state(messages):
+    combined = ' '.join((message.get('content') or '') for message in messages if message.get('role') == 'user')
+    text = re.sub(r'[^\wÀ-ÿ\s]', ' ', combined.lower())
+
+    crisis_markers = ['suicide', 'me tuer', 'je veux mourir', 'me faire du mal', 'automutil', 'je ne veux plus vivre']
+    sad_markers = ['triste', 'seul', 'solitude', 'déprim', 'désesp', 'pleure', 'vide', 'chagrin', 'fatigué']
+    anxious_markers = ['anxieux', 'anxieuse', 'stress', 'angoisse', 'panique', 'peur', 'nerveux', 'tendu', 'oppresse']
+    angry_markers = ['énerv', 'furieux', 'colère', 'frustr', 'fâché', 'agacé', 'bouscul']
+
+    if any(marker in text for marker in crisis_markers):
+        return {'label': 'crisis', 'tone': 'warm, urgent, calm', 'intensity': 'high', 'needs_followup': True}
+    if any(marker in text for marker in sad_markers):
+        return {'label': 'sad', 'tone': 'sad, gentle, compassionate, steady', 'intensity': 'medium', 'needs_followup': True}
+    if any(marker in text for marker in anxious_markers):
+        return {'label': 'anxious', 'tone': 'anxious, grounding, reassuring, calm', 'intensity': 'medium', 'needs_followup': True}
+    if any(marker in text for marker in angry_markers):
+        return {'label': 'angry', 'tone': 'calm, validating, clear', 'intensity': 'medium', 'needs_followup': True}
+    return {'label': 'neutral', 'tone': 'warm, curious, supportive', 'intensity': 'low', 'needs_followup': False}
+
+
+def _build_context_message(messages, request_user=None):
+    normalized = _normalize_messages(messages, max_messages=12)
     last_user_message = ''
-    for message in reversed(messages):
+    for message in reversed(normalized):
+        if message.get('role') == 'user':
+            last_user_message = (message.get('content') or '').strip()
+            break
+
+    emotional_state = _detect_emotional_state(normalized)
+    recent_history = []
+    for message in normalized:
+        role_label = 'Utilisateur' if message['role'] == 'user' else 'SANA'
+        recent_history.append(f"{role_label}: {message['content']}")
+
+    profile_context = ''
+    if request_user and getattr(request_user, 'is_authenticated', False):
+        profile = getattr(request_user, 'profile', None)
+        if profile:
+            details = []
+            if profile.situation:
+                details.append(f"situation={profile.situation}")
+            if profile.comment_tu_te_sens:
+                details.append(f"état_initial={profile.comment_tu_te_sens}")
+            if profile.objectif_principal:
+                details.append(f"objectif={profile.objectif_principal}")
+            if details:
+                profile_context = 'Profil utilisateur: ' + '; '.join(details)
+
+    context_text = (
+        'Contexte de conversation pour SANA:\n'
+        f"- État émotionnel détecté: {emotional_state['label']} ({emotional_state['tone']})\n"
+        f"- Dernier message utilisateur: {last_user_message or 'aucun'}\n"
+        f"{profile_context}\n"
+        'Historique récent (du plus ancien au plus récent):\n'
+        + '\n'.join(recent_history)
+        + '\n\nAgis comme SANA avec chaleur, cohérence et nuance.'
+    )
+    return {'role': 'user', 'content': context_text}
+
+
+def _to_gemini_contents(messages):
+    return [
+        {
+            'role': 'model' if message['role'] == 'assistant' else 'user',
+            'parts': [{'text': message['content']}],
+        }
+        for message in messages
+    ]
+
+
+def _generate_conversation_title(text, max_length=40):
+    text = ' '.join(text.split())
+    if not text:
+        return Conversation.DEFAULT_TITLE
+    if len(text) <= max_length:
+        return text
+    truncated = text[:max_length].rsplit(' ', 1)[0].strip()
+    return (truncated or text[:max_length]) + '…'
+
+
+def _serialize_conversation(conversation):
+    return {
+        'id':         conversation.id,
+        'title':      conversation.title,
+        'updated_at': conversation.updated_at.isoformat(),
+    }
+
+
+def _get_or_create_active_conversation(user):
+    """Returns the user's conversations ordered by recency, creating a first
+    one (with the SANA greeting) if the user has none yet."""
+    conversations = list(user.conversations.all())
+    if conversations:
+        return conversations
+    conversation = Conversation.objects.create(user=user)
+    Message.objects.create(conversation=conversation, role='assistant', content=SANA_WELCOME_MESSAGE)
+    return [conversation]
+
+
+def _fallback_reply(messages):
+    normalized = _normalize_messages(messages, max_messages=10)
+    emotional_state = _detect_emotional_state(normalized)
+    last_user_message = ''
+    for message in reversed(normalized):
         if message.get('role') == 'user':
             last_user_message = (message.get('content') or '').strip()
             break
 
     if not last_user_message:
-        return "Je suis la pour t'ecouter. Tu peux m'ecrire ce que tu ressens en ce moment, a ton rythme."
+        return "Je suis là avec toi, à ton rythme. Tu peux me dire ce que tu ressens en ce moment ?"
 
-    return "Merci de me faire confiance. Je t'entends, et ce que tu ressens compte. Dis-moi ce qui te pese le plus en ce moment."
+    if emotional_state['label'] == 'crisis':
+        return "Je suis là avec toi, et ce que tu partages me paraît très lourd. Si tu es en danger immédiat, appelle le 185 ou contacte quelqu’un près de toi tout de suite. Veux-tu me dire ce qui te pèse le plus en ce moment ?"
+    if emotional_state['label'] == 'sad':
+        return "Je suis là, et je t'entends. Ce que tu partages compte vraiment. Qu'est-ce qui a été le plus difficile aujourd'hui ?"
+    if emotional_state['label'] == 'anxious':
+        return "Merci de me le dire. Ta tension est réelle, et tu n'as pas à la porter seul·e. Quel élément te semble le plus difficile à gérer en ce moment ?"
+    if emotional_state['label'] == 'angry':
+        return "Je sens que quelque chose te bouscule fortement. Tu peux me le dire doucement, et on peut essayer de clarifier ce qui s'est passé."
+    return "Je suis là, à ton rythme. Tu peux me raconter ce qui te traverse aujourd'hui, même si c'est encore flou."
 
 
 @csrf_exempt
@@ -215,49 +368,158 @@ def sana_chat(request):
         return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
 
     try:
-        # ── 1. Lecture du body ───────────────────────────────
-        body     = json.loads(request.body)
-        messages = body.get('messages', [])[-50:]
+        body = json.loads(request.body)
 
-        print(f"📨 Nombre de messages reçus : {len(messages)}")
-        for m in messages:
-            print(f"   [{m.get('role')}] {m.get('content', '')[:80]}")
+        conversation = None
+        conversation_id = body.get('conversation_id')
+        if request.user.is_authenticated and conversation_id:
+            conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
 
-        # ── 2. Vérification clé API ──────────────────────────
-        api_key = _get_valid_anthropic_key()
-        print(f"🔑 Clé API chargée : {bool(api_key)}")
+        if conversation is not None:
+            user_text = (body.get('message') or '').strip()
+            if not user_text:
+                return JsonResponse({'error': 'Message vide'}, status=400)
 
-        if not api_key:
-            return JsonResponse({'reply': _fallback_reply(messages), 'fallback': True})
+            is_first_user_message = not conversation.messages.filter(role='user').exists()
+            Message.objects.create(conversation=conversation, role='user', content=user_text)
+            if is_first_user_message and conversation.title == Conversation.DEFAULT_TITLE:
+                conversation.title = _generate_conversation_title(user_text)
+            conversation.save()  # bumps updated_at (auto_now) and persists any new title
 
-        # ── 3. Appel Anthropic ───────────────────────────────
-        client   = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model      = "claude-sonnet-4-20250514",
-            max_tokens = 400,
-            system     = SANA_SYSTEM_PROMPT,
-            messages   = messages
+            raw_messages = list(conversation.messages.order_by('timestamp').values('role', 'content'))
+        else:
+            raw_messages = body.get('messages', [])
+
+        messages = _normalize_messages(raw_messages, max_messages=MAX_CHAT_HISTORY)
+
+        logger.info("📨 Chat request received with %s message(s)", len(raw_messages))
+        logger.info("🧠 Normalized chat history: %s", json.dumps(messages, ensure_ascii=False))
+        for message in messages:
+            logger.info("   [%s] %s", message.get('role'), (message.get('content', '') or '')[:120])
+
+        api_key = _get_valid_gemini_key()
+        logger.info('🔑 Gemini key status: loaded=%s length=%s', bool(api_key), len(api_key or ''))
+
+        if not api_key or not messages:
+            logger.warning('🛑 No Gemini key or history available; aborting model call')
+            return JsonResponse({'error': 'Le service IA n’est pas encore configuré. Ajoutez une vraie clé Gemini valide dans votre fichier .env ou votre environnement, puis redémarrez le serveur.'}, status=503)
+
+        client = genai.Client(api_key=api_key)
+        model_messages = [_build_context_message(messages, request.user)] + messages
+        contents = _to_gemini_contents(model_messages)
+        logger.info("📤 Prompt sent to Gemini:\n%s", json.dumps(model_messages, ensure_ascii=False, indent=2))
+
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=contents,
+            config=genai_types.GenerateContentConfig(
+                system_instruction=SANA_SYSTEM_PROMPT,
+                max_output_tokens=600,
+                # Elevated temperature/top_p so SANA varies its phrasing across
+                # turns instead of reusing the same sentences (gemini-2.5-flash
+                # does not support presence/frequency penalties).
+                temperature=1.15,
+                top_p=0.95,
+                # Disable "thinking" so the full max_output_tokens budget goes
+                # to the visible reply instead of being spent on reasoning.
+                thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
+            ),
         )
 
-        reply = response.content[0].text
-        print(f"✅ Réponse SANA : {reply[:120]}")
-        return JsonResponse({'reply': reply})
+        logger.info("📥 Raw Gemini response: %s", repr(response))
+
+        reply = (getattr(response, 'text', None) or '').strip()
+
+        if not reply:
+            logger.warning("🛑 Gemini returned no usable text content")
+            return JsonResponse({'error': 'Le modèle n’a pas renvoyé de contenu exploitable.'}, status=502)
+
+        logger.info("📤 Final reply returned to client: %s", reply)
+
+        response_payload = {'reply': reply}
+        if conversation is not None:
+            Message.objects.create(conversation=conversation, role='assistant', content=reply)
+            conversation.save()  # bump updated_at so this conversation moves to the top of the sidebar
+            response_payload['conversation_id'] = conversation.id
+            response_payload['conversation_title'] = conversation.title
+            response_payload['updated_at'] = conversation.updated_at.isoformat()
+
+        return JsonResponse(response_payload)
 
     except json.JSONDecodeError as e:
-        print(f"❌ JSON invalide : {e}")
+        logger.exception("❌ Invalid JSON in chat request: %s", e)
         return JsonResponse({'error': f'JSON invalide : {e}'}, status=400)
 
-    except anthropic.AuthenticationError as e:
-        print(f"❌ Clé API invalide : {e}")
-        return JsonResponse({'error': f'Clé API invalide : {e}'}, status=401)
+    except genai_errors.ClientError as e:
+        logger.exception("❌ Invalid Gemini API key or request rejected: %s", e)
+        status = getattr(e, 'code', None) or 400
+        return JsonResponse({'error': f'Clé API invalide ou requête rejetée : {e.message or e}'}, status=status)
 
-    except anthropic.APIConnectionError as e:
-        print(f"❌ Connexion Anthropic impossible : {e}")
-        return JsonResponse({'error': f'Connexion impossible : {e}'}, status=503)
+    except genai_errors.ServerError as e:
+        logger.exception("❌ Gemini API server/connection error: %s", e)
+        status = getattr(e, 'code', None) or 503
+        return JsonResponse({'error': f'Connexion impossible : {e.message or e}'}, status=status)
 
     except Exception as e:
-        print(f"❌ Erreur inattendue ({type(e).__name__}) : {e}")
+        logger.exception("❌ Unexpected error while calling Gemini: %s", e)
         return JsonResponse({'error': f'{type(e).__name__} : {e}'}, status=500)
+
+
+@csrf_exempt
+def conversations_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+
+    if request.method == 'GET':
+        conversations = _get_or_create_active_conversation(request.user)
+        return JsonResponse({'conversations': [_serialize_conversation(c) for c in conversations]})
+
+    if request.method == 'POST':
+        conversation = Conversation.objects.create(user=request.user)
+        Message.objects.create(conversation=conversation, role='assistant', content=SANA_WELCOME_MESSAGE)
+        return JsonResponse(_serialize_conversation(conversation), status=201)
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def conversation_detail_api(request, conversation_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+
+    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
+
+    if request.method == 'GET':
+        messages = conversation.messages.values('role', 'content', 'timestamp')
+        return JsonResponse({
+            'conversation': _serialize_conversation(conversation),
+            'messages': [
+                {
+                    'role':      m['role'],
+                    'content':   m['content'],
+                    'timestamp': m['timestamp'].isoformat(),
+                }
+                for m in messages
+            ],
+        })
+
+    if request.method == 'PATCH':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON invalide'}, status=400)
+        title = (body.get('title') or '').strip()
+        if not title:
+            return JsonResponse({'error': 'Titre requis'}, status=400)
+        conversation.title = title[:100]
+        conversation.save(update_fields=['title'])
+        return JsonResponse(_serialize_conversation(conversation))
+
+    if request.method == 'DELETE':
+        conversation.delete()
+        return JsonResponse({'ok': True})
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
 
 
 def dashboard(request):
@@ -266,13 +528,13 @@ def dashboard(request):
     profile = getattr(request.user, 'profile', None)
 
     # Real groups
-    groups = SanaGroup.objects.all()[:6]
+    groups = SanaGroup.objects.annotate(member_count_annotated=Count('members', distinct=True)).all()[:6]
     user_group_ids = set(request.user.sana_groups.values_list('id', flat=True))
 
     # Real community posts
     posts = CommunityPost.objects.select_related(
         'author', 'author__profile'
-    ).prefetch_related('likes')[:15]
+    ).annotate(like_count_annotated=Count('likes', distinct=True))[:15]
     user_liked_ids = set(request.user.liked_posts.values_list('id', flat=True))
 
     # Mood entries this week (Mon→Sun)
@@ -326,7 +588,7 @@ def group_page(request):
     if not request.user.is_authenticated:
         return redirect('sanasource:login')
     profile = getattr(request.user, 'profile', None)
-    groups  = SanaGroup.objects.all()
+    groups  = SanaGroup.objects.annotate(member_count_annotated=Count('members', distinct=True)).all()
     user_group_ids = set(request.user.sana_groups.values_list('id', flat=True))
     return render(request, 'page/group.html', {
         'user':           request.user,
@@ -370,7 +632,7 @@ def join_leave_group(request, group_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
     group = get_object_or_404(SanaGroup, id=group_id)
-    if request.user in group.members.all():
+    if group.members.filter(id=request.user.id).exists():
         group.members.remove(request.user)
         is_member = False
     else:
@@ -412,7 +674,7 @@ def group_messages_api(request, group_id):
         for m in msgs:
             prof = getattr(m.sender, 'profile', None)
             name = prof.username_anonyme if prof else (m.sender.first_name or m.sender.username)
-            seen_count = m.seen_by.exclude(id=m.sender_id).count()
+            seen_count = sum(1 for u in m.seen_by.all() if u.id != m.sender_id)
             data.append({
                 'id':             m.id,
                 'sender_id':      m.sender_id,
@@ -426,7 +688,7 @@ def group_messages_api(request, group_id):
         return JsonResponse({'messages': data})
 
     if request.method == 'POST':
-        if request.user not in group.members.all():
+        if not group.members.filter(id=request.user.id).exists():
             return JsonResponse(
                 {'error': 'Rejoins le groupe pour envoyer des messages'}, status=403
             )
@@ -486,6 +748,660 @@ def save_mood(request):
 
 
 # ============================================================
+# JOURNAL
+# ============================================================
+
+def journal_home(request):
+    """The Journal landing page — two large cards: Journal personnel and
+    Burn After Writing. Both open into the same book engine (journal_book)."""
+    if not request.user.is_authenticated:
+        return redirect('sanasource:login')
+    return render(request, 'page/journal_landing.html')
+
+
+def journal_bookshelf(request):
+    if not request.user.is_authenticated:
+        return redirect('sanasource:login')
+    return render(request, 'page/journal_bookshelf.html')
+
+
+def _pick_prompt(journal):
+    """A random reflection question not yet used on this Burn After Writing
+    journal's pages; once every question has been used, the pool quietly
+    reshuffles rather than ever leaving a page without one."""
+    used = set(journal.pages.exclude(prompt='').values_list('prompt', flat=True))
+    available = [q for q in REFLECTION_QUESTIONS if q not in used]
+    if not available:
+        available = REFLECTION_QUESTIONS
+    return random.choice(available)
+
+
+def journal_burn_open(request):
+    """Entry point for Burn After Writing — one ongoing journal per user,
+    opened straight into the exact same book engine as the personal journal."""
+    if not request.user.is_authenticated:
+        return redirect('sanasource:login')
+    journal = request.user.journals.filter(kind='burn').first()
+    if not journal:
+        journal = Journal.objects.create(
+            user=request.user, kind='burn', title='Burn After Writing',
+            icon='🕊️', color='charcoal',
+        )
+    return redirect('sanasource:journal_book', journal_id=journal.id)
+
+
+def journal_book(request, journal_id):
+    if not request.user.is_authenticated:
+        return redirect('sanasource:login')
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    journal.last_opened = timezone.now()
+    journal.save(update_fields=['last_opened'])
+    last_page = journal.pages.order_by('-page_number').first()
+    if not last_page:
+        last_page = JournalPage.objects.create(
+            journal=journal, page_number=1, date=date.today(),
+            prompt=_pick_prompt(journal) if journal.kind == 'burn' else '',
+        )
+    back_url = reverse('sanasource:journal_home' if journal.kind == 'burn' else 'sanasource:journal_bookshelf')
+    return render(request, 'page/journal_book.html', {
+        'journal':             journal,
+        'initial_page_number': last_page.page_number,
+        'back_url':            back_url,
+    })
+
+
+def _serialize_journal(journal):
+    return {
+        'id':          journal.id,
+        'kind':        journal.kind,
+        'title':       journal.title,
+        'icon':        journal.icon,
+        'color':       journal.color,
+        'color_hex':   journal.color_hex,
+        'cover_style': journal.cover_style,
+        'created_at':  journal.created_at.isoformat(),
+        'updated_at':  journal.updated_at.isoformat(),
+        'last_opened': journal.last_opened.isoformat() if journal.last_opened else None,
+    }
+
+
+def _populated_journal_entries(journal):
+    return journal.entries.exclude(content='', title='')
+
+
+@csrf_exempt
+def journals_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+
+    if request.method == 'GET':
+        data = []
+        for journal in request.user.journals.filter(kind='personal'):
+            populated = _populated_journal_entries(journal)
+            last_entry = populated.order_by('-entry_date').first()
+            payload = _serialize_journal(journal)
+            payload['entry_count'] = populated.count()
+            payload['last_entry_date'] = last_entry.entry_date.isoformat() if last_entry else None
+            data.append(payload)
+        return JsonResponse({'journals': data})
+
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON invalide'}, status=400)
+        title = (body.get('title') or '').strip() or 'Mon journal'
+        icon = (body.get('icon') or '').strip() or Journal.ICON_DEFAULT
+        color = body.get('color') or 'burgundy'
+        if color not in dict(Journal.COLOR_CHOICES):
+            color = 'burgundy'
+        cover_style = body.get('cover_style') or 'classic'
+        if cover_style not in dict(Journal.COVER_STYLE_CHOICES):
+            cover_style = 'classic'
+        journal = Journal.objects.create(
+            user=request.user, kind='personal', title=title[:100], icon=icon[:8], color=color, cover_style=cover_style,
+        )
+        return JsonResponse(_serialize_journal(journal), status=201)
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def journal_detail_api(request, journal_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+
+    if request.method == 'PATCH':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON invalide'}, status=400)
+        if 'title' in body:
+            title = (body.get('title') or '').strip()
+            if title:
+                journal.title = title[:100]
+        if 'icon' in body:
+            icon = (body.get('icon') or '').strip()
+            if icon:
+                journal.icon = icon[:8]
+        if 'color' in body and body['color'] in dict(Journal.COLOR_CHOICES):
+            journal.color = body['color']
+        if 'cover_style' in body and body['cover_style'] in dict(Journal.COVER_STYLE_CHOICES):
+            journal.cover_style = body['cover_style']
+        journal.save()
+        return JsonResponse(_serialize_journal(journal))
+
+    if request.method == 'DELETE':
+        journal.delete()
+        return JsonResponse({'ok': True})
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def journal_duplicate_api(request, journal_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    copy = Journal.objects.create(
+        user=request.user,
+        title=(journal.title + ' (copie)')[:100],
+        icon=journal.icon,
+        color=journal.color,
+        cover_style=journal.cover_style,
+    )
+    JournalEntry.objects.bulk_create([
+        JournalEntry(
+            journal=copy, entry_date=e.entry_date,
+            title=e.title, content=e.content, mood=e.mood,
+        )
+        for e in journal.entries.all()
+    ])
+    # Copy the page-based content too (the live book, as opposed to the legacy dated entries above).
+    for p in journal.pages.order_by('page_number'):
+        JournalPage.objects.create(
+            journal=copy, page_number=p.page_number,
+            content=p.content, mood=p.mood, date=p.date,
+        )
+    payload = _serialize_journal(copy)
+    payload['entry_count'] = _populated_journal_entries(copy).count()
+    return JsonResponse(payload, status=201)
+
+
+@csrf_exempt
+def journal_dates_api(request, journal_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    entries = _populated_journal_entries(journal).order_by('entry_date')
+    data = [
+        {'date': e.entry_date.isoformat(), 'title': e.title, 'mood': e.mood}
+        for e in entries
+    ]
+    return JsonResponse({'dates': data})
+
+
+# ── Journal book (page-based, the live reading/writing UI) ───────────────────
+
+def _page_nav(journal, page_number, total_pages):
+    return {
+        'total_pages': total_pages,
+        'prev_page':   page_number - 1 if page_number > 1 else None,
+        'next_page':   page_number + 1 if page_number < total_pages else None,
+        'is_last':     page_number >= total_pages,
+    }
+
+
+@csrf_exempt
+def journal_pages_list_api(request, journal_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    pages = journal.pages.order_by('page_number')
+    data = [
+        {
+            'page_number':    p.page_number,
+            'date':           p.date.isoformat(),
+            'day_of_week':    p.day_of_week,
+            'has_content':    bool(p.content.strip() or p.mood),
+            'is_archived':    p.is_archived,
+            'is_locked':      p.is_locked,
+            'is_released':    p.is_released,
+            'release_ritual': p.release_ritual,
+        }
+        for p in pages
+    ]
+    return JsonResponse({'pages': data, 'total': len(data)})
+
+
+@csrf_exempt
+def journal_page_api(request, journal_id, page_number):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    total_pages = journal.pages.count()
+
+    if request.method == 'GET':
+        page = journal.pages.filter(page_number=page_number).first()
+        if not page:
+            return JsonResponse({'error': 'Page introuvable'}, status=404)
+        just_expired = _maybe_burn_expired(page)
+        return JsonResponse({
+            'page':         serialize_journal_page(page, include_attachments=True),
+            'nav':          _page_nav(journal, page_number, total_pages),
+            'just_expired': just_expired,
+        })
+
+    if request.method == 'PUT':
+        page = journal.pages.filter(page_number=page_number).first()
+        if not page:
+            return JsonResponse({'error': 'Page introuvable'}, status=404)
+        if page.is_released:
+            return JsonResponse({'error': 'This page has been released and can no longer be edited'}, status=400)
+        if page.is_locked:
+            return JsonResponse({'error': 'This page is locked'}, status=400)
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+        page.content = body.get('content', page.content)
+        mood = body.get('mood', page.mood) or ''
+        if mood and mood not in dict(MoodEntry.MOOD_CHOICES):
+            mood = page.mood
+        page.mood = mood
+        if 'date' in body:
+            try:
+                page.date = datetime.strptime(body['date'], '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                return JsonResponse({'error': 'Date invalide'}, status=400)
+        page.save()
+        journal.save()  # bump updated_at so the bookshelf reflects recent writing
+        return JsonResponse({
+            'page': serialize_journal_page(page, include_attachments=True),
+            'nav':  _page_nav(journal, page_number, total_pages),
+        })
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def journal_page_next_api(request, journal_id, page_number):
+    """Create the page right after `page_number` (idempotent) — used both when
+    the user turns past the last page and when a full page auto-continues."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    source = journal.pages.filter(page_number=page_number).first()
+    if not source:
+        return JsonResponse({'error': 'Page introuvable'}, status=404)
+
+    next_number = page_number + 1
+    page = journal.pages.filter(page_number=next_number).first()
+    created = False
+    if not page:
+        if journal.kind == 'burn':
+            page = JournalPage.objects.create(
+                journal=journal, page_number=next_number, date=date.today(),
+                prompt=_pick_prompt(journal),
+            )
+        else:
+            try:
+                body = json.loads(request.body or '{}')
+            except json.JSONDecodeError:
+                body = {}
+            content = body.get('content') or ''
+            page = JournalPage.objects.create(
+                journal=journal, page_number=next_number, date=source.date, content=content,
+            )
+        created = True
+    total_pages = journal.pages.count()
+    return JsonResponse({
+        'page':    serialize_journal_page(page, include_attachments=True),
+        'nav':     _page_nav(journal, next_number, total_pages),
+        'created': created,
+    }, status=201 if created else 200)
+
+
+@csrf_exempt
+def journal_page_by_date_api(request, journal_id, date_str):
+    """Find (or start) the page for a given date, so the reader can jump straight to it."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'error': 'Date invalide'}, status=400)
+
+    page = journal.pages.filter(date=target_date).order_by('page_number').first()
+    created = False
+    if not page:
+        next_number = (journal.pages.aggregate(Max('page_number'))['page_number__max'] or 0) + 1
+        page = JournalPage.objects.create(journal=journal, page_number=next_number, date=target_date)
+        created = True
+    total_pages = journal.pages.count()
+    return JsonResponse({
+        'page':    serialize_journal_page(page, include_attachments=True),
+        'nav':     _page_nav(journal, page.page_number, total_pages),
+        'created': created,
+    })
+
+
+# ── Scrapbook attachments (photos, stickers, drawings, voice notes, weather, location) ──
+
+MAX_ATTACHMENT_SIZE = 8 * 1024 * 1024  # 8 Mo
+
+
+def _clamp_float(value, lo, hi, default):
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(lo, min(hi, v))
+
+
+@csrf_exempt
+def journal_page_attachments_api(request, journal_id, page_number):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    page = journal.pages.filter(page_number=page_number).first()
+    if not page:
+        return JsonResponse({'error': 'Page introuvable'}, status=404)
+
+    attachment_type = request.POST.get('attachment_type', '')
+    if attachment_type not in dict(Attachment.TYPE_CHOICES):
+        return JsonResponse({'error': 'Type de pièce jointe invalide'}, status=400)
+
+    uploaded = request.FILES.get('file')
+    if uploaded:
+        if uploaded.size > MAX_ATTACHMENT_SIZE:
+            return JsonResponse({'error': 'Fichier trop volumineux (8 Mo max)'}, status=400)
+        content_type = uploaded.content_type or ''
+        if attachment_type in ('image', 'drawing') and not content_type.startswith('image/'):
+            return JsonResponse({'error': 'Le fichier doit être une image'}, status=400)
+        if attachment_type == 'voice_note' and not content_type.startswith('audio/'):
+            return JsonResponse({'error': 'Le fichier doit être un enregistrement audio'}, status=400)
+    elif attachment_type in ('image', 'drawing', 'voice_note'):
+        return JsonResponse({'error': 'Un fichier est requis pour ce type de contenu'}, status=400)
+
+    next_order = (page.attachments.aggregate(Max('order'))['order__max'] or 0) + 1
+    attachment = Attachment(
+        page=page,
+        attachment_type=attachment_type,
+        sticker_code=(request.POST.get('sticker_code') or '')[:50],
+        label=(request.POST.get('label') or '')[:200],
+        order=next_order,
+        position_x=_clamp_float(request.POST.get('position_x'), 0, 100, 50),
+        position_y=_clamp_float(request.POST.get('position_y'), 0, 100, 50),
+        width_pct=_clamp_float(request.POST.get('width_pct'), 5, 90, 25),
+        rotation=_clamp_float(request.POST.get('rotation'), -180, 180, 0),
+    )
+    if uploaded:
+        attachment.file = uploaded
+    attachment.save()
+    return JsonResponse(serialize_attachment(attachment), status=201)
+
+
+@csrf_exempt
+def journal_attachment_detail_api(request, journal_id, page_number, attachment_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    page = journal.pages.filter(page_number=page_number).first()
+    if not page:
+        return JsonResponse({'error': 'Page introuvable'}, status=404)
+    attachment = page.attachments.filter(id=attachment_id).first()
+    if not attachment:
+        return JsonResponse({'error': 'Pièce jointe introuvable'}, status=404)
+
+    if request.method == 'PATCH':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON invalide'}, status=400)
+        if 'position_x' in body:
+            attachment.position_x = _clamp_float(body['position_x'], 0, 100, attachment.position_x)
+        if 'position_y' in body:
+            attachment.position_y = _clamp_float(body['position_y'], 0, 100, attachment.position_y)
+        if 'width_pct' in body:
+            attachment.width_pct = _clamp_float(body['width_pct'], 5, 90, attachment.width_pct)
+        if 'rotation' in body:
+            attachment.rotation = _clamp_float(body['rotation'], -180, 180, attachment.rotation)
+        if 'order' in body:
+            try:
+                attachment.order = max(0, int(body['order']))
+            except (TypeError, ValueError):
+                pass
+        if 'label' in body:
+            attachment.label = (body.get('label') or '')[:200]
+        attachment.save()
+        return JsonResponse(serialize_attachment(attachment))
+
+    if request.method == 'DELETE':
+        attachment.delete()
+        return JsonResponse({'ok': True})
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def journal_page_archive_api(request, journal_id, page_number):
+    """Toggle a single page's archived flag — a soft, reversible set-aside."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    page = journal.pages.filter(page_number=page_number).first()
+    if not page:
+        return JsonResponse({'error': 'Page introuvable'}, status=404)
+    if page.is_released:
+        return JsonResponse({'error': 'This page has already been released'}, status=400)
+    page.is_archived = not page.is_archived
+    page.save(update_fields=['is_archived'])
+    return JsonResponse(serialize_journal_page(page))
+
+
+@csrf_exempt
+def journal_page_lock_api(request, journal_id, page_number):
+    """Toggle a single page's locked flag — locked pages become read-only
+    until unlocked again (no password; a gentle deterrent, not a vault)."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    page = journal.pages.filter(page_number=page_number).first()
+    if not page:
+        return JsonResponse({'error': 'Page introuvable'}, status=404)
+    if page.is_released:
+        return JsonResponse({'error': 'This page has already been released'}, status=400)
+    page.is_locked = not page.is_locked
+    page.save(update_fields=['is_locked'])
+    return JsonResponse(serialize_journal_page(page))
+
+
+def _burn_page(page, ritual='fire'):
+    """Permanently wipes a page's words (Burn After Writing). The row stays
+    as a placeholder — no gap, no renumbering — but the text is gone for good."""
+    page.attachments.all().delete()
+    page.content = ''
+    page.mood = ''
+    page.is_archived = False
+    page.is_locked = False
+    page.is_released = True
+    page.released_at = timezone.now()
+    page.release_ritual = ritual
+    page.expires_at = None
+    page.save()
+
+
+def _maybe_burn_expired(page):
+    """Lazily burns a Burn After Writing page whose disposition timer has
+    passed (there's no background worker in this project). Returns True if
+    this call is what triggered the burn, so the caller can tell the client
+    to play the ceremony once, live, instead of showing an already-burned page."""
+    if page.expires_at and not page.is_released and page.expires_at <= timezone.now():
+        _burn_page(page, ritual='fire')
+        return True
+    return False
+
+
+@csrf_exempt
+def journal_page_release_api(request, journal_id, page_number):
+    """Burn immediately — called once the client-side ceremony has finished
+    playing. Wipes this page's words for good and leaves a symbolic
+    placeholder in its place; every other page, and the journal itself, are
+    left completely untouched."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    page = journal.pages.filter(page_number=page_number).first()
+    if not page:
+        return JsonResponse({'error': 'Page introuvable'}, status=404)
+
+    if page.is_released:
+        # Idempotent: a retried request after a flaky connection shouldn't error.
+        return JsonResponse(serialize_journal_page(page))
+
+    try:
+        body = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        body = {}
+    ritual = body.get('ritual', 'fire')
+    if ritual not in dict(JournalPage.RITUAL_CHOICES):
+        return JsonResponse({'error': 'Invalid ritual'}, status=400)
+
+    _burn_page(page, ritual=ritual)
+    journal.save()  # bump updated_at
+    return JsonResponse(serialize_journal_page(page))
+
+
+@csrf_exempt
+def journal_page_disposition_api(request, journal_id, page_number):
+    """Burn After Writing only: what should happen to this entry once the
+    user has finished answering — keep it forever, let it expire after a
+    delay, or burn it immediately."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+    page = journal.pages.filter(page_number=page_number).first()
+    if not page:
+        return JsonResponse({'error': 'Page introuvable'}, status=404)
+    if page.is_released:
+        return JsonResponse(serialize_journal_page(page))
+
+    try:
+        body = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        body = {}
+    disposition = body.get('disposition', '')
+
+    if disposition == 'burn':
+        _burn_page(page, ritual='fire')
+        journal.save()
+        return JsonResponse(serialize_journal_page(page))
+
+    deltas = {'24h': timedelta(hours=24), '7d': timedelta(days=7), '30d': timedelta(days=30)}
+    if disposition == 'forever':
+        page.expires_at = None
+    elif disposition in deltas:
+        page.expires_at = timezone.now() + deltas[disposition]
+    else:
+        return JsonResponse({'error': 'Invalid disposition'}, status=400)
+    page.save(update_fields=['expires_at'])
+    return JsonResponse(serialize_journal_page(page))
+
+
+def _serialize_journal_entry(entry, entry_date):
+    if entry:
+        return {
+            'date':       entry_date.isoformat(),
+            'title':      entry.title,
+            'content':    entry.content,
+            'mood':       entry.mood,
+            'updated_at': entry.updated_at.isoformat(),
+            'exists':     True,
+        }
+    return {
+        'date': entry_date.isoformat(), 'title': '', 'content': '', 'mood': '',
+        'updated_at': None, 'exists': False,
+    }
+
+
+@csrf_exempt
+def journal_entry_api(request, journal_id, date_str):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    journal = get_object_or_404(Journal, id=journal_id, user=request.user)
+
+    try:
+        entry_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'error': 'Date invalide'}, status=400)
+
+    if request.method == 'GET':
+        entry = journal.entries.filter(entry_date=entry_date).first()
+
+        today = date.today()
+        populated_dates = set(_populated_journal_entries(journal).values_list('entry_date', flat=True))
+        populated_dates.add(today)
+        earlier = sorted(d for d in populated_dates if d < entry_date)
+        later   = sorted(d for d in populated_dates if d > entry_date)
+        prev_date = earlier[-1] if earlier else None
+        next_date = later[0] if later else None
+
+        return JsonResponse({
+            'journal': _serialize_journal(journal),
+            'entry':   _serialize_journal_entry(entry, entry_date),
+            'nav': {
+                'prev_date': prev_date.isoformat() if prev_date else None,
+                'next_date': next_date.isoformat() if next_date else None,
+                'is_today':  entry_date == today,
+            },
+        })
+
+    if request.method == 'PUT':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON invalide'}, status=400)
+        title = (body.get('title') or '').strip()
+        content = (body.get('content') or '').strip()
+        mood = body.get('mood') or ''
+        if mood and mood not in dict(MoodEntry.MOOD_CHOICES):
+            mood = ''
+
+        if not title and not content:
+            journal.entries.filter(entry_date=entry_date).delete()
+            journal.save()  # bump updated_at
+            return JsonResponse({'deleted': True})
+
+        entry, _created = JournalEntry.objects.update_or_create(
+            journal=journal, entry_date=entry_date,
+            defaults={'title': title, 'content': content, 'mood': mood},
+        )
+        journal.save()  # bump updated_at so the bookshelf reflects recent writing
+        return JsonResponse(_serialize_journal_entry(entry, entry_date))
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+# ============================================================
 # COMMUNAUTÉ
 # ============================================================
 
@@ -524,7 +1440,7 @@ def toggle_like(request, post_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
     post = get_object_or_404(CommunityPost, id=post_id)
-    if request.user in post.likes.all():
+    if post.likes.filter(id=request.user.id).exists():
         post.likes.remove(request.user)
         is_liked = False
     else:
@@ -634,9 +1550,11 @@ def dm_api(request, user_id):
         return JsonResponse({'error': 'Impossible de s\'envoyer un message à soi-même'}, status=400)
 
     if request.method == 'GET':
+        since_id = int(request.GET.get('since', 0) or 0)
         msgs = DirectMessage.objects.filter(
             sender__in=[request.user, other],
             receiver__in=[request.user, other],
+            id__gt=since_id,
         ).select_related('sender', 'sender__profile').order_by('sent_at')[:100]
         # Mark received messages as read
         DirectMessage.objects.filter(sender=other, receiver=request.user, read=False).update(read=True)
@@ -652,10 +1570,12 @@ def dm_api(request, user_id):
                 'is_me':   is_me,
                 'read':    m.read,
             })
+        unread_total = DirectMessage.objects.filter(sender=other, receiver=request.user, read=False).count()
         return JsonResponse({
             'messages':      data,
             'other_name':    other_prof.username_anonyme if other_prof else (other.first_name or 'Anonyme'),
             'other_initial': (other_prof.username_anonyme[0].upper() if other_prof else (other.first_name or 'A')[0].upper()),
+            'unread_total':  unread_total,
         })
 
     if request.method == 'POST':
@@ -709,26 +1629,40 @@ def dm_page(request, user_id):
 def dm_conversations(request):
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Non authentifié'}, status=401)
-    from django.db.models import Q, Max
-    # Get latest message per conversation partner
-    partners = User.objects.filter(
-        Q(sent_dms__receiver=request.user) | Q(received_dms__sender=request.user)
-    ).distinct()
+    # Get latest message and unread count per conversation partner in a single query.
+    last_message_qs = DirectMessage.objects.filter(
+        Q(sender=request.user, receiver=OuterRef('pk')) |
+        Q(sender=OuterRef('pk'), receiver=request.user)
+    ).order_by('-sent_at')
+
+    unread_qs = DirectMessage.objects.filter(
+        sender=OuterRef('pk'), receiver=request.user, read=False
+    ).values('receiver').annotate(c=Count('id')).values('c')
+
+    partners = (
+        User.objects.filter(
+            Q(sent_dms__receiver=request.user) | Q(received_dms__sender=request.user)
+        )
+        .distinct()
+        .select_related('profile')
+        .annotate(
+            last_content=Subquery(last_message_qs.values('content')[:1]),
+            last_sent_at=Subquery(last_message_qs.values('sent_at')[:1]),
+            last_sender_id=Subquery(last_message_qs.values('sender_id')[:1]),
+            unread_count=Coalesce(Subquery(unread_qs[:1]), 0, output_field=IntegerField()),
+        )
+    )
     convs = []
     for p in partners:
-        last = DirectMessage.objects.filter(
-            Q(sender=request.user, receiver=p) | Q(sender=p, receiver=request.user)
-        ).order_by('-sent_at').first()
-        unread = DirectMessage.objects.filter(sender=p, receiver=request.user, read=False).count()
         prof = getattr(p, 'profile', None)
         convs.append({
             'user_id':   p.id,
             'name':      prof.username_anonyme if prof else (p.first_name or 'Anonyme'),
             'initial':   (prof.username_anonyme[0].upper() if prof else (p.first_name or 'A')[0].upper()),
-            'last_msg':  last.content[:60] if last else '',
-            'sent_at':   last.sent_at.strftime('%H:%M') if last else '',
-            'unread':    unread,
-            'is_me':     last.sender == request.user if last else False,
+            'last_msg':  (p.last_content or '')[:60],
+            'sent_at':   p.last_sent_at.strftime('%H:%M') if p.last_sent_at else '',
+            'unread':    int(p.unread_count or 0),
+            'is_me':     p.last_sender_id == request.user.id if p.last_sender_id else False,
         })
     convs.sort(key=lambda c: c['sent_at'], reverse=True)
     dm_unread_total = sum(c['unread'] for c in convs)

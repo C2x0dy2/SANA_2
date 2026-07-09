@@ -1,20 +1,23 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SANA — Message privé</title>
+{% block title %}
+SANA — Message privé
+{% endblock %}
+
+{% block fonts %}
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;1,300&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
-{% csrf_token %}
-<style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+{% endblock %}
+
+{% block theme_vars %}
 :root{
   --p950:#1e0d17;--p700:#5e2f47;--p400:#9a5e79;
   --r500:#c26e8a;--r300:#dca8bc;--r100:#f2d8e4;--r50:#fce8f0;
   --blush:#fdf3f7;--txt:#1a0d14;--txt-m:#6b4a58;--txt-s:#9a7585;
   --white:#fff;--nav-h:60px;
 }
+{% endblock %}
+
+{% block page_styles %}
 html,body{height:100%;overflow:hidden;}
 body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);display:flex;flex-direction:column;}
 
@@ -108,22 +111,20 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);disp
 }
 .send-btn:hover{opacity:.88;transform:scale(1.05);}
 .send-btn svg{width:15px;height:15px;stroke:white;fill:none;stroke-width:2.5;}
-</style>
-</head>
-<body>
+{% endblock %}
 
+{% block navbar %}
 <div class="topbar">
-  <button class="back-btn" onclick="history.back()">
-    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-    Retour
-  </button>
+  {% include "includes/back_button.html" with back_label="Retour" %}
   <div class="user-av" id="userAv">{{ other_initial }}</div>
   <div class="user-info">
     <div class="user-name">{{ other_name }}</div>
     <div class="user-status"><span class="status-dot"></span>Message anonyme · Privé</div>
   </div>
 </div>
+{% endblock %}
 
+{% block content %}
 <div class="messages-area" id="messagesArea">
   <div class="empty-msg" id="emptyMsg" style="display:none">
     <span>💬</span>
@@ -140,7 +141,9 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);disp
     <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
   </button>
 </div>
+{% endblock %}
 
+{% block page_scripts %}
 <script>
 const OTHER_USER_ID = {{ other_user_id }};
 const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -149,7 +152,7 @@ let pollTimer = null;
 
 async function loadMessages(initial) {
   try {
-    const res = await fetch('/api/dm/' + OTHER_USER_ID + '/');
+    const res = await fetch('/api/dm/' + OTHER_USER_ID + '/?since=' + lastId);
     const data = await res.json();
     if (data.error) return;
     const area = document.getElementById('messagesArea');
@@ -220,5 +223,5 @@ function esc(s) {
 loadMessages(true);
 pollTimer = setInterval(() => loadMessages(false), 3000);
 </script>
-</body>
-</html>
+{% endblock %}
+

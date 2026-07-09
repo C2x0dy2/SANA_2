@@ -1,16 +1,15 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANA - Tu n'es pas seul·e</title>
+{% block title %}
+SANA - Tu n'es pas seul·e
+{% endblock %}
+
+{% block fonts %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-    <style>
-        /* ===== VARIABLES & RESET ===== */
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+{% endblock %}
 
+{% block theme_vars %}
         :root {
             --blush: #f9e8ee;
             --blush-mid: #f0ccd9;
@@ -32,7 +31,9 @@
             --r-xl: clamp(2rem, 6vw, 4rem);
             --r-xxl: clamp(3rem, 8vw, 6rem);
         }
+{% endblock %}
 
+{% block page_styles %}
         html { scroll-behavior: smooth; }
 
         body {
@@ -1077,14 +1078,15 @@
             .hero-h1 { font-size: 2.6rem; }
             .manifesto h2 { font-size: 2rem; }
         }
-    </style>
-</head>
-<body>
+{% endblock %}
 
+{% block background %}
     <!-- Curseur personnalisé -->
     <div class="cursor-dot" id="cursorDot"></div>
     <div class="cursor-ring" id="cursorRing"></div>
+{% endblock %}
 
+{% block navbar %}
     <!-- ===== NAVIGATION ===== -->
     <nav id="navbar">
         <a href="{% url 'sanasource:accueil' %}" class="nav-logo">SANA</a>
@@ -1110,7 +1112,9 @@
         <a href="{% url 'sanasource:help' %}" onclick="closeMobile()">Ressources</a>
         <a href="{% url 'sanasource:help' %}" onclick="closeMobile()">Obtenir de l'aide</a>
     </div>
+{% endblock %}
 
+{% block content %}
     <!-- ===== HERO ===== -->
     <section class="hero">
         <div class="hero-left">
@@ -1327,44 +1331,13 @@
             </div>
         </div>
     </section>
+{% endblock %}
 
-    <!-- ===== FOOTER ===== -->
-    <footer>
-        <div class="footer-grid">
-            <div class="footer-brand">
-                <span class="logo-text">SANA</span>
-                <p>Une plateforme de soutien mental bienveillante, disponible et gratuite. Parce que ta santé mentale est une priorité, pas un luxe.</p>
-            </div>
+{% block footer %}
+{% include "includes/footer.html" %}
+{% endblock %}
 
-            <div class="footer-col">
-                <h4>Services</h4>
-                <ul>
-                    <li><a href="{% url 'sanasource:help' %}">Écoute & soutien</a></li>
-                    <li><a href="{% url 'sanasource:help' %}">Lutte anti-harcèlement</a></li>
-                    <li><a href="{% url 'sanasource:help' %}">Ressources bien-être</a></li>
-                    <li><a href="#">Communauté</a></li>
-                    <li><a href="{% url 'sanasource:help' %}">Urgence & crise</a></li>
-                </ul>
-            </div>
-
-            <div class="footer-col">
-                <h4>Liens</h4>
-                <ul>
-                    <li><a href="#manifesto">À propos</a></li>
-                    <li><a href="{% url 'sanasource:help' %}">Contact</a></li>
-                    <li><a href="#">Mentions légales</a></li>
-                    <li><a href="#">Confidentialité</a></li>
-                    <li><a href="{% url 'sanasource:help' %}">Aide</a></li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="footer-bottom">
-            <span>© 2025 SANA — Tous droits réservés</span>
-            <span>Fait avec soin 🌸 pour toi</span>
-        </div>
-    </footer>
-
+{% block page_scripts %}
     <!-- ===== SCRIPTS ===== -->
     <script>
         // Curseur personnalisé
@@ -1465,5 +1438,5 @@
         const statsEl = document.querySelector('.hero-stats');
         if (statsEl) statsObserver.observe(statsEl);
     </script>
-</body>
-</html>
+{% endblock %}
+

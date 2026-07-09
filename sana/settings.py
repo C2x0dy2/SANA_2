@@ -1,20 +1,31 @@
 from pathlib import Path
+import logging
 import os
 import dj_database_url
 from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ========================
 # BASE
 # ========================
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
+ENV_FILE = BASE_DIR / '.env'
+
+if ENV_FILE.exists():
+    load_dotenv(ENV_FILE, override=False)
+    if not (os.getenv('GEMINI_API_KEY') or '').strip():
+        load_dotenv(ENV_FILE, override=True)
+else:
+    logger.warning('Environment file not found at %s', ENV_FILE)
 
 # ========================
 # SECURITY
 # ========================
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-production')
 
-DEBUG = os.getenv('DJANGO_DEBUG', 'True').strip().lower() in {
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').strip().lower() in {
     '1', 'true', 'yes', 'on'
 }
 
@@ -137,6 +148,9 @@ STATICFILES_DIRS = [
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 STORAGES = {
     'default': {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
@@ -165,7 +179,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ========================
 # API KEYS
 # ========================
-ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '').strip()
+GEMINI_API_KEY = (os.getenv('GEMINI_API_KEY', '') or '').strip().strip('"').strip("'")
+GEMINI_KEY_LOADED = bool(GEMINI_API_KEY)
+GEMINI_KEY_LENGTH = len(GEMINI_API_KEY)
+logger.info('Gemini key load status: loaded=%s length=%s', GEMINI_KEY_LOADED, GEMINI_KEY_LENGTH)
 
 # ========================
 # VAPID (Web Push)

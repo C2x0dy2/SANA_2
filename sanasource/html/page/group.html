@@ -1,15 +1,10 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SANA — Groupes de soutien</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
-{% csrf_token %}
-<style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+{% block title %}
+SANA — Groupes de soutien
+{% endblock %}
+
+{% block theme_vars %}
 :root{
   --p950:#1e0d17;--p800:#3d1d2e;--p700:#5e2f47;--p400:#9a5e79;
   --r500:#c26e8a;--r300:#dca8bc;--r100:#f2d8e4;--r50:#fce8f0;
@@ -21,6 +16,9 @@
   --white:#fff;--glass:rgba(255,255,255,.78);
   --nav-h:60px;--rad:20px;
 }
+{% endblock %}
+
+{% block page_styles %}
 html{scroll-behavior:smooth;}
 body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);overflow:hidden;height:100vh;display:flex;flex-direction:column;}
 
@@ -339,17 +337,14 @@ textarea.form-input{resize:vertical;min-height:72px;}
   font-size:.62rem;color:var(--txt-s);text-transform:uppercase;letter-spacing:2px;
 }
 .date-sep::before,.date-sep::after{content:'';flex:1;height:1px;background:rgba(194,110,138,.12);}
-</style>
-</head>
-<body>
+{% endblock %}
 
+{% block navbar %}
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-left">
-    <button class="back-btn" onclick="location.href='{% url 'sanasource:dashboard' %}'">
-      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-      Dashboard
-    </button>
+    {% url 'sanasource:dashboard' as dash_url %}
+    {% include "includes/back_button.html" with back_href=dash_url back_label="Dashboard" %}
     <span class="topbar-title">Groupes de soutien</span>
   </div>
   <div class="topbar-right">
@@ -358,7 +353,9 @@ textarea.form-input{resize:vertical;min-height:72px;}
     </div>
   </div>
 </div>
+{% endblock %}
 
+{% block content %}
 <!-- LAYOUT -->
 <div class="layout">
 
@@ -463,7 +460,9 @@ textarea.form-input{resize:vertical;min-height:72px;}
 
   </div><!-- /panel-right -->
 </div><!-- /layout -->
+{% endblock %}
 
+{% block modals %}
 <!-- CREATE GROUP MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
   <div class="modal">
@@ -515,7 +514,9 @@ textarea.form-input{resize:vertical;min-height:72px;}
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+{% endblock %}
 
+{% block page_scripts %}
 <script>
 const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
 let currentGroupId = null;
@@ -828,5 +829,5 @@ if (window.innerWidth > 768) {
   document.getElementById('panelLeft').style.transform = '';
 }
 </script>
-</body>
-</html>
+{% endblock %}
+

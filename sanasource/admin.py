@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment
 
 
 @admin.register(UserProfile)
@@ -64,6 +64,57 @@ class MoodEntryAdmin(admin.ModelAdmin):
         return obj.note[:60]
 
 
+class MessageInline(admin.TabularInline):
+    model = Message
+    extra = 0
+    readonly_fields = ['role', 'content', 'timestamp']
+    can_delete = False
+
+
+@admin.register(Conversation)
+class ConversationAdmin(admin.ModelAdmin):
+    list_display  = ['title', 'user', 'created_at', 'updated_at']
+    search_fields = ['title', 'user__username']
+    inlines       = [MessageInline]
+
+
+class JournalEntryInline(admin.TabularInline):
+    model = JournalEntry
+    extra = 0
+    readonly_fields = ['entry_date', 'title', 'content', 'mood', 'created_at', 'updated_at']
+    can_delete = False
+
+
+class AttachmentInline(admin.TabularInline):
+    model = Attachment
+    extra = 0
+    readonly_fields = ['attachment_type', 'file', 'sticker_code', 'order', 'created_at']
+    can_delete = False
+
+
+class JournalPageInline(admin.TabularInline):
+    model = JournalPage
+    extra = 0
+    readonly_fields = ['page_number', 'date', 'day_of_week', 'mood', 'created_at', 'updated_at']
+    can_delete = False
+
+
+@admin.register(Journal)
+class JournalAdmin(admin.ModelAdmin):
+    list_display  = ['title', 'user', 'icon', 'color', 'cover_style', 'is_locked', 'created_at', 'updated_at', 'last_opened']
+    list_filter   = ['color', 'cover_style', 'is_locked']
+    search_fields = ['title', 'user__username']
+    inlines       = [JournalEntryInline, JournalPageInline]
+
+
+@admin.register(JournalPage)
+class JournalPageAdmin(admin.ModelAdmin):
+    list_display  = ['journal', 'page_number', 'date', 'day_of_week', 'mood', 'updated_at']
+    list_filter   = ['mood']
+    search_fields = ['journal__title', 'content']
+    inlines       = [AttachmentInline]
+
+
 @admin.register(CommunityPost)
 class CommunityPostAdmin(admin.ModelAdmin):
     list_display  = ['author', 'tag', 'content_preview', 'like_count', 'created_at']
@@ -77,3 +128,5 @@ class CommunityPostAdmin(admin.ModelAdmin):
     @admin.display(description='Likes')
     def like_count(self, obj):
         return obj.likes.count()
+
+
