@@ -45,18 +45,20 @@ if not DEBUG and SECRET_KEY == _INSECURE_SECRET_KEY_DEFAULT:
     )
 
 # Comma-separated env override; defaults to the known Render hostnames plus
-# localhost for local testing with DEBUG=False. Kept separate from
-# CSRF_TRUSTED_ORIGINS below (different formats: bare host vs. full origin).
+# localhost for local testing with DEBUG=False.
 ALLOWED_HOSTS = [
     h.strip() for h in os.getenv(
         'DJANGO_ALLOWED_HOSTS',
-        'sana-w4ru.onrender.com,sana-2-2.onrender.com,localhost,127.0.0.1',
+        'sana-w4ru.onrender.com,sana-2-2.onrender.com,sana-2-1.onrender.com,localhost,127.0.0.1',
     ).split(',') if h.strip()
 ]
 
+# Derived from ALLOWED_HOSTS (minus localhost, which browsers never send an
+# HTTPS origin for) instead of a separately hardcoded list — the Render
+# hostname has changed across service recreations before, and duplicating it
+# in two places meant fixing DisallowedHost errors without also fixing CSRF.
 CSRF_TRUSTED_ORIGINS = [
-    'https://sana-w4ru.onrender.com',
-    'https://sana-2-2.onrender.com',
+    f'https://{h}' for h in ALLOWED_HOSTS if h not in {'localhost', '127.0.0.1'}
 ]
 
 # ========================
