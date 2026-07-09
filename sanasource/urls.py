@@ -1,5 +1,7 @@
-from django.urls import path
+from django.urls import path, reverse_lazy
+from django.contrib.auth import views as auth_views
 from . import views
+from .forms import FrenchPasswordResetForm, FrenchSetPasswordForm
 
 app_name = 'sanasource'
 urlpatterns = [
@@ -10,6 +12,30 @@ urlpatterns = [
     path('register/', views.register_view, name='register'),
     path('help/', views.help_view, name='help'),
     path('logout/', views.logout_view, name='logout'),
+
+    # ── Email verification ──
+    path('verify-email/<uidb64>/<token>/', views.verify_email_view, name='verify_email'),
+    path('verify-email/resend/', views.resend_verification_view, name='resend_verification'),
+
+    # ── Password reset (Django's built-in views, French forms + our templates) ──
+    path('password-reset/', auth_views.PasswordResetView.as_view(
+        template_name='page/password_reset.html',
+        email_template_name='email/password_reset_email.txt',
+        subject_template_name='email/password_reset_subject.txt',
+        form_class=FrenchPasswordResetForm,
+        success_url=reverse_lazy('sanasource:password_reset_done'),
+    ), name='password_reset'),
+    path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
+        template_name='page/password_reset_done.html',
+    ), name='password_reset_done'),
+    path('password-reset/confirm/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
+        template_name='page/password_reset_confirm.html',
+        form_class=FrenchSetPasswordForm,
+        success_url=reverse_lazy('sanasource:password_reset_complete'),
+    ), name='password_reset_confirm'),
+    path('password-reset/complete/', auth_views.PasswordResetCompleteView.as_view(
+        template_name='page/password_reset_complete.html',
+    ), name='password_reset_complete'),
     path('api/chat/', views.sana_chat, name='sana_chat'),
     path('api/conversations/', views.conversations_api, name='conversations_api'),
     path('api/conversations/<int:conversation_id>/', views.conversation_detail_api, name='conversation_detail_api'),

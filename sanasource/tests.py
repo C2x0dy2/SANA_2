@@ -1,13 +1,17 @@
 import json
 import os
+import re
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth.models import User
+from django.core import mail
+from django.core.cache import cache
 from django.test import SimpleTestCase, TestCase, override_settings
+from django.urls import reverse
 
 from datetime import date, timedelta
 
-from .models import Conversation, Journal, JournalEntry
+from .models import Conversation, Journal, JournalEntry, UserProfile
 from .views import _detect_emotional_state, _fallback_reply, _normalize_messages, _get_valid_gemini_key
 
 
@@ -233,3 +237,295 @@ class JournalApiTests(TestCase):
         dates = response.json()['dates']
         self.assertEqual(len(dates), 1)
         self.assertEqual(dates[0]['date'], date.today().isoformat())
+
+
+# ============================================================
+# AUTHENTICATION
+# ============================================================
+
+class SignalTests(TestCase):
+    """UserProfile auto-creation via the post_save signal (signals.py)."""
+
+    def test_profile_auto_created_for_user_made_outside_register_view(self):
+        user = User.objects.create(username='outside@test.com', email='outside@test.com')
+        profile = UserProfile.objects.get(user=user)
+        self.assertEqual(profile.username_anonyme, f'user_{user.pk}')
+
+    def test_two_profile_less_users_dont_collide_on_username_anonyme(self):
+        user1 = User.objects.create(username='a@test.com', email='a@test.com')
+        user2 = User.objects.create(username='b@test.com', email='b@test.com')
+        self.assertNotEqual(
+            UserProfile.objects.get(user=user1).username_anonyme,
+            UserProfile.objects.get(user=user2).username_anonyme,
+        )
+
+
+class RegistrationTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def _register(self, **overrides):
+        data = {
+            'first_name': 'Alex', 'email': 'alex@test.com',
+            'password1': 'Zr8!qLm2#Wp9x', 'password2': 'Zr8!qLm2#Wp9x',
+            'username_anonyme': 'alex_anon',
+        }
+        data.update(overrides)
+        return self.client.post(reverse('sanasource:register'), data)
+
+    def test_weak_password_rejected_in_french_and_no_user_created(self):
+        response = self._register(password1='password', password2='password')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('courant', response.context['error'])
+        self.assertFalse(User.objects.filter(username='alex@test.com').exists())
+
+    def test_mismatched_passwords_rejected(self):
+        response = self._register(password2='Different1!')
+        self.assertEqual(response.context['error'], 'Les mots de passe ne correspondent pas.')
+        self.assertFalse(User.objects.filter(username='alex@test.com').exists())
+
+    def test_invalid_email_format_rejected(self):
+        response = self._register(email='not-an-email')
+        self.assertIn('valide', response.context['error'])
+        self.assertFalse(User.objects.filter(username='not-an-email').exists())
+
+    @patch('sanasource.views.send_verification_email')
+    def test_successful_registration_creates_inactive_user_and_sends_verification_email(self, mock_send_verification):
+        response = self._register()
+        self.assertEqual(response.status_code, 200)  # "check your email" page, not a redirect
+        user = User.objects.get(username='alex@test.com')
+        self.assertFalse(user.is_active)
+        self.assertEqual(user.profile.username_anonyme, 'alex_anon')
+        mock_send_verification.assert_called_once()
+        self.assertEqual(mock_send_verification.call_args[0][1], user)
+        # Not logged in — an inactive account isn't authenticated yet.
+        self.assertNotIn('_auth_user_id', self.client.session)
+        dash = self.client.get(reverse('sanasource:dashboard'))
+        self.assertRedirects(dash, reverse('sanasource:login'))
+
+    def test_verification_email_send_failure_still_shows_confirmation_page(self):
+        with patch('sanasource.views.send_verification_email', side_effect=Exception('smtp down')):
+            response = self._register()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(User.objects.filter(username='alex@test.com', is_active=False).exists())
+        self.assertContains(response, 'compte a bien été créé')
+
+    def test_duplicate_email_rejected(self):
+        User.objects.create_user(username='alex@test.com', email='alex@test.com', password='Xk9#mQ2vLp!7Rz')
+        response = self._register()
+        self.assertIn('existe déjà', response.context['error'])
+
+    def test_duplicate_username_anonyme_rejected(self):
+        other = User.objects.create_user(username='other@test.com', email='other@test.com', password='Xk9#mQ2vLp!7Rz')
+        other.profile.username_anonyme = 'alex_anon'
+        other.profile.save()
+        response = self._register()
+        self.assertIn('déjà pris', response.context['error'])
+
+    def test_registration_rate_limited_after_five_per_hour(self):
+        for i in range(5):
+            self._register(email=f'user{i}@test.com', username_anonyme=f'user{i}_anon')
+            self.client.logout()  # each successful registration logs the client in
+        response = self._register(email='oneMore@test.com', username_anonyme='oneMore_anon')
+        self.assertEqual(response.status_code, 429)
+        self.assertFalse(User.objects.filter(username='oneMore@test.com').exists())
+
+
+@override_settings(PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
+class LoginTests(TestCase):
+    # A fast, non-cryptographic hasher here is the standard Django testing
+    # practice for auth-heavy suites — PBKDF2's deliberate slowness (~1s per
+    # check_password() call) made the rate-limit loop below vulnerable to
+    # occasionally straddling django-ratelimit's fixed one-minute window
+    # under load, which is a test-timing flake, not a bug in the rate limiter.
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(username='login@test.com', email='login@test.com', password='Xk9#mQ2vLp!7Rz')
+
+    def test_correct_credentials_log_in(self):
+        response = self.client.post(reverse('sanasource:login'), {'email': 'login@test.com', 'password': 'Xk9#mQ2vLp!7Rz'})
+        self.assertRedirects(response, reverse('sanasource:dashboard'))
+
+    def test_incorrect_password_shows_generic_error(self):
+        response = self.client.post(reverse('sanasource:login'), {'email': 'login@test.com', 'password': 'wrong'})
+        self.assertEqual(response.context['error'], 'Identifiants invalides')
+
+    def test_unknown_email_shows_same_generic_error(self):
+        response = self.client.post(reverse('sanasource:login'), {'email': 'nobody@test.com', 'password': 'whatever'})
+        self.assertEqual(response.context['error'], 'Identifiants invalides')
+
+    def test_remember_me_unchecked_expires_at_browser_close(self):
+        self.client.post(reverse('sanasource:login'), {'email': 'login@test.com', 'password': 'Xk9#mQ2vLp!7Rz'})
+        self.assertTrue(self.client.session.get_expire_at_browser_close())
+
+    def test_remember_me_checked_persists_for_session_cookie_age(self):
+        self.client.post(reverse('sanasource:login'), {
+            'email': 'login@test.com', 'password': 'Xk9#mQ2vLp!7Rz', 'remember': 'on',
+        })
+        self.assertFalse(self.client.session.get_expire_at_browser_close())
+
+    def test_login_rate_limited_after_ten_per_minute(self):
+        for _ in range(10):
+            self.client.post(reverse('sanasource:login'), {'email': 'login@test.com', 'password': 'wrong'})
+        response = self.client.post(reverse('sanasource:login'), {'email': 'login@test.com', 'password': 'wrong'})
+        self.assertEqual(response.status_code, 429)
+
+    def test_unverified_account_with_correct_password_shown_specific_message(self):
+        User.objects.create_user(username='unverified@test.com', email='unverified@test.com', password='Xk9#mQ2vLp!7Rz', is_active=False)
+        response = self.client.post(reverse('sanasource:login'), {'email': 'unverified@test.com', 'password': 'Xk9#mQ2vLp!7Rz'})
+        self.assertIn('pas encore vérifiée', response.context['error'])
+        self.assertEqual(response.context['unverified_email'], 'unverified@test.com')
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_unverified_account_with_wrong_password_shows_generic_error(self):
+        User.objects.create_user(username='unverified2@test.com', email='unverified2@test.com', password='Xk9#mQ2vLp!7Rz', is_active=False)
+        response = self.client.post(reverse('sanasource:login'), {'email': 'unverified2@test.com', 'password': 'wrong'})
+        self.assertEqual(response.context['error'], 'Identifiants invalides')
+        self.assertNotIn('unverified_email', response.context)
+
+
+class LogoutTests(TestCase):
+    def test_logout_clears_session_and_redirects(self):
+        user = User.objects.create_user(username='out@test.com', email='out@test.com', password='Xk9#mQ2vLp!7Rz')
+        self.client.force_login(user)
+        response = self.client.get(reverse('sanasource:logout'))
+        self.assertRedirects(response, reverse('sanasource:page_open'))
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class EmailVerificationTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        mail.outbox = []
+        self.user = User.objects.create_user(
+            username='verifyme@test.com', email='verifyme@test.com',
+            password='Xk9#mQ2vLp!7Rz', first_name='Sam', is_active=False,
+        )
+
+    def _link_for(self, user):
+        from sanasource.tokens import email_verification_token
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = email_verification_token.make_token(user)
+        return reverse('sanasource:verify_email', kwargs={'uidb64': uidb64, 'token': token})
+
+    @patch('sanasource.views.send_welcome_email')
+    def test_valid_link_activates_and_logs_in(self, mock_welcome_email):
+        response = self.client.get(self._link_for(self.user))
+        self.assertRedirects(response, reverse('sanasource:dashboard'))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+        self.assertIn('_auth_user_id', self.client.session)
+        mock_welcome_email.assert_called_once_with(self.user)
+        # can now log in normally too
+        self.client.logout()
+        self.assertTrue(self.client.login(username='verifyme@test.com', password='Xk9#mQ2vLp!7Rz'))
+
+    def test_reusing_link_after_verification_shows_already_verified(self):
+        link = self._link_for(self.user)
+        self.client.get(link)
+        self.client.logout()
+        response = self.client.get(link)
+        self.assertContains(response, 'Déjà')
+
+    def test_tampered_token_rejected(self):
+        response = self.client.get(self._link_for(self.user)[:-5] + 'xxxx/')
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+        self.assertNotContains(response, 'Déjà')
+
+    def test_unknown_uid_rejected_without_error(self):
+        response = self.client.get('/verify-email/bogus/bogus-token/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_registration_email_link_actually_verifies(self):
+        # End-to-end: register -> real email -> click link -> active + logged in.
+        self.client.post(reverse('sanasource:register'), {
+            'first_name': 'Jo', 'email': 'jo@test.com',
+            'password1': 'Zr8!qLm2#Wp9x', 'password2': 'Zr8!qLm2#Wp9x',
+            'username_anonyme': 'jo_anon',
+        })
+        self.assertEqual(len(mail.outbox), 1)
+        body = mail.outbox[0].body
+        m = re.search(r'(/verify-email/[^\s]+/)', body)
+        self.assertIsNotNone(m, f'no verification link found in: {body}')
+        response = self.client.get(m.group(1))
+        self.assertRedirects(response, reverse('sanasource:dashboard'))
+        self.assertTrue(User.objects.get(username='jo@test.com').is_active)
+
+    def test_resend_verification_sends_new_email_for_unverified_account(self):
+        response = self.client.post(reverse('sanasource:resend_verification'), {'email': 'verifyme@test.com'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_resend_verification_is_silent_for_unknown_or_active_accounts(self):
+        active_user = User.objects.create_user(username='active@test.com', email='active@test.com', password='Xk9#mQ2vLp!7Rz')
+        for email in ['nobody@test.com', 'active@test.com']:
+            mail.outbox = []
+            response = self.client.post(reverse('sanasource:resend_verification'), {'email': email})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(len(mail.outbox), 0)  # same page shown either way, no leak
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class PasswordResetFlowTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        mail.outbox = []
+        self.user = User.objects.create_user(username='reset@test.com', email='reset@test.com', password='OldPassw0rd!23')
+
+    def _extract_confirm_url(self, body):
+        m = re.search(r'/password-reset/confirm/([^/]+)/([^/\s]+)/', body)
+        self.assertIsNotNone(m, f'no reset link found in email body: {body}')
+        return f'/password-reset/confirm/{m.group(1)}/{m.group(2)}/'
+
+    def test_full_round_trip(self):
+        response = self.client.post(reverse('sanasource:password_reset'), {'email': 'reset@test.com'})
+        self.assertRedirects(response, reverse('sanasource:password_reset_done'))
+        self.assertEqual(len(mail.outbox), 1)
+
+        confirm_url = self._extract_confirm_url(mail.outbox[0].body)
+        redirect = self.client.get(confirm_url)
+        set_password_url = redirect['Location']
+
+        weak = self.client.post(set_password_url, {'new_password1': 'password', 'new_password2': 'password'})
+        self.assertEqual(weak.status_code, 200)
+        self.assertFalse(self.client.login(username='reset@test.com', password='password'))
+
+        response = self.client.post(set_password_url, {
+            'new_password1': 'Zr8!qLm2#Wp9x', 'new_password2': 'Zr8!qLm2#Wp9x',
+        })
+        self.assertRedirects(response, reverse('sanasource:password_reset_complete'))
+
+        self.assertFalse(self.client.login(username='reset@test.com', password='OldPassw0rd!23'))
+        self.assertTrue(self.client.login(username='reset@test.com', password='Zr8!qLm2#Wp9x'))
+
+    def test_invalid_token_shows_error_not_form(self):
+        response = self.client.get('/password-reset/confirm/bogus/bogus-token/')
+        response = self.client.get(response['Location']) if response.status_code == 302 else response
+        self.assertNotIn(b'name="new_password1"', response.content)
+
+    def test_unknown_email_does_not_reveal_account_existence(self):
+        response = self.client.post(reverse('sanasource:password_reset'), {'email': 'nobody@test.com'})
+        self.assertRedirects(response, reverse('sanasource:password_reset_done'))
+        self.assertEqual(len(mail.outbox), 0)
+
+
+class AuthRegressionSmokeTests(TestCase):
+    """A logged-in user should still be able to reach the app's main pages
+    after the session/middleware/ALLOWED_HOSTS changes in this pass."""
+
+    def setUp(self):
+        user = User.objects.create_user(username='smoke@test.com', email='smoke@test.com', password='Xk9#mQ2vLp!7Rz')
+        self.client.force_login(user)
+
+    def test_dashboard_loads(self):
+        self.assertEqual(self.client.get(reverse('sanasource:dashboard')).status_code, 200)
+
+    def test_journal_landing_loads(self):
+        self.assertEqual(self.client.get(reverse('sanasource:journal_home')).status_code, 200)
+
+    def test_group_page_loads(self):
+        self.assertEqual(self.client.get(reverse('sanasource:group_page')).status_code, 200)

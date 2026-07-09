@@ -603,6 +603,19 @@ SANA — Connexion
             ">{{ error }}</div>
             {% endif %}
 
+            {% if unverified_email %}
+            <form method="POST" action="{% url 'sanasource:resend_verification' %}" style="margin-bottom:18px;">
+                {% csrf_token %}
+                <input type="hidden" name="email" value="{{ unverified_email }}">
+                <button type="submit" style="
+                    width: 100%; padding: 11px; background: rgba(255,255,255,0.6);
+                    border: 1.5px solid rgba(179,112,138,0.25); border-radius: 12px;
+                    font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 500;
+                    color: var(--rose-fonce); cursor: pointer;
+                ">Renvoyer l'e-mail de vérification</button>
+            </form>
+            {% endif %}
+
             <form method="POST" action="{% url 'sanasource:login' %}">
                 {% csrf_token %}
 
@@ -643,7 +656,7 @@ SANA — Connexion
                         <input type="checkbox" name="remember">
                         Se souvenir de moi
                     </label>
-                    <span class="forgot-link" style="cursor:default; opacity:0.4;" title="Fonctionnalité bientôt disponible">Mot de passe oublié ?</span>
+                    <a class="forgot-link" href="{% url 'sanasource:password_reset' %}">Mot de passe oublié ?</a>
                 </div>
 
                   <button type="submit" class="btn-submit">Se connecter</button>

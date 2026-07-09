@@ -1,0 +1,11 @@
+Bonjour {{ user.first_name|default:"" }},
+
+Bienvenue sur SANA. Ton compte a bien été créé.
+
+SANA est un espace pensé pour t'accompagner au quotidien : journal personnel,
+suivi de l'humeur, discussions avec la communauté, et bien plus encore.
+
+Nous sommes là pour toi, à ton rythme.
+
+Prends soin de toi,
+L'équipe SANA

@@ -10,23 +10,31 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.db.models import Count, Max, OuterRef, Subquery, IntegerField, Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
+from django_ratelimit.decorators import ratelimit
 
 from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment
 from .notifications import send_notification
+from .emails import send_welcome_email, send_verification_email
+from .tokens import email_verification_token
+from .password_validation import french_password_errors
 from .serializers import serialize_journal_page, serialize_attachment
 from .reflection_questions import REFLECTION_QUESTIONS
 from google import genai
 from google.genai import types as genai_types
 from google.genai import errors as genai_errors
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s %(name)s %(message)s')
 logger = logging.getLogger(__name__)
+auth_logger = logging.getLogger('sanasource.auth')
 
 # ============================================================
 # PAGES
@@ -43,10 +51,17 @@ def page_open(request):
         return redirect('sanasource:dashboard')
     return render(request, 'page/page_open.html')
 
+@ratelimit(key='ip', rate='5/h', method='POST', block=False)
 def register_view(request):
     if request.user.is_authenticated:
         return redirect('sanasource:dashboard')
     if request.method == 'POST':
+        if getattr(request, 'limited', False):
+            auth_logger.warning('Registration rate limit exceeded, ip=%s', request.META.get('REMOTE_ADDR'))
+            return render(request, 'page/register.html', {
+                'error': 'Trop de tentatives de création de compte. Merci de réessayer dans quelques minutes.',
+            }, status=429)
+
         first_name              = request.POST.get('first_name', '').strip()
         last_name               = request.POST.get('last_name', '').strip()
         email                   = request.POST.get('email', '').strip()
@@ -74,12 +89,23 @@ def register_view(request):
             ctx['error'] = 'Merci de remplir tous les champs obligatoires.'
             return render(request, 'page/register.html', ctx)
 
+        try:
+            validate_email(email)
+        except DjangoValidationError:
+            ctx['error'] = "Merci d'indiquer une adresse e-mail valide."
+            return render(request, 'page/register.html', ctx)
+
         if password1 != password2:
             ctx['error'] = 'Les mots de passe ne correspondent pas.'
             return render(request, 'page/register.html', ctx)
 
-        if len(password1) < 8:
-            ctx['error'] = 'Le mot de passe doit contenir au moins 8 caractères.'
+        # Enforce Django's configured AUTH_PASSWORD_VALIDATORS (min length,
+        # not-too-common, not-entirely-numeric, not-too-similar-to-your-info)
+        # instead of only checking length.
+        password_errors = french_password_errors(password1)
+        if password_errors:
+            ctx['error'] = ' '.join(password_errors)
+            auth_logger.info('Registration rejected (weak password), email=%s', email)
             return render(request, 'page/register.html', ctx)
 
         if User.objects.filter(username=email).exists():
@@ -105,7 +131,7 @@ def register_view(request):
         except (ValueError, TypeError):
             niveau_urgence = 1
 
-        # ── Création User + UserProfile ──────────────────────
+        # ── Création du compte (inactif tant que l'e-mail n'est pas vérifié) ──
         try:
             user = User.objects.create_user(
                 username=email,
@@ -113,47 +139,128 @@ def register_view(request):
                 password=password1,
                 first_name=first_name,
                 last_name=last_name,
-            )
-        except Exception as e:
-            ctx['error'] = f'Erreur lors de la création du compte : {e}'
-            return render(request, 'page/register.html', ctx)
-
-        try:
-            UserProfile.objects.create(
-                user=user,
-                username_anonyme=username_anonyme,
-                age=age,
-                genre=genre,
-                ville=ville,
-                situation=situation,
-                theme_couleur=theme_couleur,
-                comment_tu_te_sens=comment_tu_te_sens,
-                principales_difficultes=principales_difficultes,
-                objectif_principal=objectif_principal,
-                a_deja_consulte=a_deja_consulte,
-                niveau_urgence=niveau_urgence,
-            )
-        except Exception as e:
-            # Profile creation failed (ex: migrations not run), still log user in
-            print(f'⚠️ UserProfile creation failed: {e}')
-
-        login(request, user)
-        try:
-            send_notification(
-                user, 'welcome',
-                'Bienvenue sur SANA !',
-                'Tu es bien arrivé(e). Nous sommes là pour toi.',
-                '/dashboard/',
+                is_active=False,
             )
         except Exception:
-            pass
-        return redirect('sanasource:dashboard')
+            auth_logger.exception('User creation failed, email=%s', email)
+            ctx['error'] = 'Une erreur est survenue lors de la création de votre compte. Merci de réessayer.'
+            return render(request, 'page/register.html', ctx)
+
+        # A placeholder UserProfile was just created by the post_save signal
+        # (see signals.py) — fill in the real fields the user submitted.
+        try:
+            profile = user.profile
+            profile.username_anonyme = username_anonyme
+            profile.age = age
+            profile.genre = genre
+            profile.ville = ville
+            profile.situation = situation
+            profile.theme_couleur = theme_couleur
+            profile.comment_tu_te_sens = comment_tu_te_sens
+            profile.principales_difficultes = principales_difficultes
+            profile.objectif_principal = objectif_principal
+            profile.a_deja_consulte = a_deja_consulte
+            profile.niveau_urgence = niveau_urgence
+            profile.save()
+        except Exception:
+            # The account still works with the placeholder profile — logged,
+            # not fatal, matching the account-creation resilience this view
+            # already had, but now actually visible in the logs.
+            auth_logger.exception('UserProfile update failed, user_id=%s', user.pk)
+
+        auth_logger.info('Registration succeeded (pending verification), user_id=%s', user.pk)
+
+        # Unlike the welcome email/notification (sent once the account is
+        # verified — see verify_email_view), this one is not best-effort: an
+        # inactive account nobody can activate is a dead end, so the user
+        # needs to know right away if we couldn't reach their inbox.
+        try:
+            send_verification_email(request, user)
+        except Exception:
+            auth_logger.exception('Verification email failed, user_id=%s', user.pk)
+            return render(request, 'page/verify_email_sent.html', {
+                'email': email,
+                'send_failed': True,
+            })
+
+        return render(request, 'page/verify_email_sent.html', {'email': email})
 
     return render(request, 'page/register.html')
 
 def logout_view(request):
+    if request.user.is_authenticated:
+        auth_logger.info('Logout, user_id=%s', request.user.pk)
     logout(request)
     return redirect('sanasource:page_open')
+
+
+@ratelimit(key='ip', rate='20/h', method='GET', block=False)
+def verify_email_view(request, uidb64, token):
+    """Activates the account when the emailed link's token is valid, then
+    logs the user straight in — no need to make them log in a second time
+    right after confirming their address."""
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and user.is_active:
+        # Link already used (e.g. clicked twice) — nothing left to verify.
+        auth_logger.info('Verification link reused, user_id=%s (already active)', user.pk)
+        return render(request, 'page/verify_email_invalid.html', {'already_verified': True})
+
+    if user is None or not email_verification_token.check_token(user, token):
+        auth_logger.warning('Invalid or expired verification link, uidb64=%s', uidb64)
+        return render(request, 'page/verify_email_invalid.html', {'already_verified': False})
+
+    user.is_active = True
+    user.save(update_fields=['is_active'])
+    auth_logger.info('Email verified, user_id=%s', user.pk)
+
+    login(request, user)
+
+    try:
+        send_notification(
+            user, 'welcome',
+            'Bienvenue sur SANA !',
+            'Tu es bien arrivé(e). Nous sommes là pour toi.',
+            '/dashboard/',
+        )
+    except Exception:
+        auth_logger.exception('Welcome notification failed, user_id=%s', user.pk)
+
+    send_welcome_email(user)  # best-effort, logs its own failures
+
+    return redirect('sanasource:dashboard')
+
+
+@ratelimit(key='post:email', rate='5/h', method='POST', block=False)
+def resend_verification_view(request):
+    """Re-sends the verification email. Always renders the same generic
+    confirmation regardless of whether the account exists or is already
+    verified, so this endpoint doesn't leak account existence."""
+    if request.method != 'POST':
+        return redirect('sanasource:login')
+
+    if getattr(request, 'limited', False):
+        auth_logger.warning('Resend-verification rate limit exceeded, ip=%s', request.META.get('REMOTE_ADDR'))
+        return render(request, 'page/verify_email_sent.html', {
+            'email': request.POST.get('email', '').strip(),
+            'error': 'Trop de tentatives. Merci de réessayer dans quelques minutes.',
+        })
+
+    email = request.POST.get('email', '').strip()
+    user = User.objects.filter(username=email, is_active=False).first()
+    if user is not None:
+        try:
+            send_verification_email(request, user)
+            auth_logger.info('Verification email resent, user_id=%s', user.pk)
+        except Exception:
+            auth_logger.exception('Resend verification email failed, user_id=%s', user.pk)
+
+    return render(request, 'page/verify_email_sent.html', {'email': email})
+
 
 def help_view(request):
     return render(request, 'page/help.html')
@@ -166,16 +273,42 @@ def service_worker(request):
         content = f.read()
     return HttpResponse(content, content_type='application/javascript')
 
+@ratelimit(key='ip', rate='10/m', method='POST', block=False)
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('sanasource:dashboard')
     if request.method == "POST":
-        email    = request.POST.get('email')
-        password = request.POST.get('password')
+        if getattr(request, 'limited', False):
+            auth_logger.warning('Login rate limit exceeded, ip=%s', request.META.get('REMOTE_ADDR'))
+            return render(request, 'page/login.html', {
+                'error': 'Trop de tentatives. Merci de réessayer dans quelques minutes.',
+            }, status=429)
+
+        email    = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        remember = request.POST.get('remember') == 'on'
         user     = authenticate(request, username=email, password=password)
         if user is not None:
             login(request, user)
+            # Unchecked "remember me" -> session dies when the browser closes
+            # (SESSION_EXPIRE_AT_BROWSER_CLOSE default); checked -> persists
+            # for SESSION_COOKIE_AGE (14 days).
+            request.session.set_expiry(settings.SESSION_COOKIE_AGE if remember else 0)
+            auth_logger.info('Login succeeded, user_id=%s', user.pk)
             return redirect('sanasource:dashboard')
+
+        # authenticate() returns None for an inactive (unverified) account
+        # even with the right password — check that case separately so we can
+        # point the user at "verify your email" instead of a generic error.
+        candidate = User.objects.filter(username=email).first()
+        if candidate is not None and not candidate.is_active and candidate.check_password(password):
+            auth_logger.info('Login blocked (unverified account), user_id=%s', candidate.pk)
+            return render(request, 'page/login.html', {
+                'error': "Ton adresse e-mail n'est pas encore vérifiée. Vérifie ta boîte mail, ou renvoie l'e-mail de vérification ci-dessous.",
+                'unverified_email': email,
+            })
+
+        auth_logger.warning('Login failed, email=%s', email)
         return render(request, 'page/login.html', {'error': 'Identifiants invalides'})
     return render(request, 'page/login.html')
 

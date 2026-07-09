@@ -1,0 +1,10 @@
+Bienvenue sur SANA{% if first_name %}, {{ first_name }}{% endif %} !
+
+Pour activer ton compte, confirme ton adresse e-mail en ouvrant ce lien :
+
+{{ verification_url }}
+
+Ce lien est valable quelques jours. Si tu n'es pas à l'origine de cette
+inscription, tu peux ignorer cet e-mail — aucun compte ne sera activé.
+
+L'équipe SANA

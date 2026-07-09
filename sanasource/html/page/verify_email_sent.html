@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+SANA — Vérifie ta boîte mail
+{% endblock %}
+
+{% block fonts %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block theme_vars %}
+        :root {
+            --rose-pale:      #fff5f5;
+            --rose-clair:     #ffe9f3;
+            --rose-doux:      #ffd9e8;
+            --rose-principal: #b3708a;
+            --rose-fonce:     #9e6b7e;
+            --texte-doux:     #8f5e75;
+            --error:          #c0392b;
+        }
+{% endblock %}
+
+{% block page_styles %}
+        html { height: 100%; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: linear-gradient(145deg, var(--rose-pale) 0%, var(--rose-clair) 50%, var(--rose-doux) 100%);
+            min-height: 100vh; min-height: 100dvh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px 16px;
+        }
+        .card {
+            width: 100%; max-width: 480px; text-align: center;
+            background: rgba(255,255,255,0.5);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.75); border-radius: 32px;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.5) inset, 0 30px 70px rgba(179,112,138,0.18);
+            padding: 48px;
+            animation: cardIn 0.9s cubic-bezier(0.22,1,0.36,1) forwards;
+            opacity: 0;
+        }
+        @keyframes cardIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .icon-envelope { font-size: 2.6rem; margin-bottom: 18px; }
+        .form-title {
+            font-family: 'Cormorant Garamond', serif; font-size: clamp(1.9rem, 3.5vw, 2.5rem);
+            font-weight: 300; color: var(--rose-fonce); margin-bottom: 12px;
+        }
+        .form-title em { font-style: italic; color: var(--rose-principal); }
+        .form-desc { font-size: 0.9rem; color: var(--texte-doux); font-weight: 300; line-height: 1.7; opacity: 0.9; margin-bottom: 8px; }
+        .form-email { font-weight: 500; color: var(--rose-fonce); }
+
+        .alert-error {
+            text-align: left; background: rgba(220,80,80,0.08); border: 1px solid rgba(220,80,80,0.25);
+            border-radius: 12px; padding: 12px 16px; font-size: 0.84rem; color: var(--error); margin: 18px 0;
+        }
+
+        .resend-form { margin-top: 26px; padding-top: 22px; border-top: 1px solid rgba(179,112,138,0.15); }
+        .resend-text { font-size: 0.8rem; color: var(--texte-doux); opacity: 0.85; margin-bottom: 12px; }
+        .btn-ghost {
+            display: inline-block; padding: 12px 24px; background: rgba(255,255,255,0.6);
+            border: 1.5px solid rgba(179,112,138,0.25); border-radius: 100px;
+            font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500;
+            color: var(--rose-fonce); cursor: pointer; transition: all 0.25s;
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.9); border-color: var(--rose-principal); }
+
+        .signup-row { text-align: center; margin-top: 18px; font-size: 0.82rem; color: var(--texte-doux); opacity: 0.8; }
+        .signup-row a { color: var(--rose-principal); text-decoration: none; font-weight: 500; }
+        .signup-row a:hover { text-decoration: underline; }
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="icon-envelope">{% if send_failed %}⚠️{% else %}📩{% endif %}</div>
+
+        {% if send_failed %}
+            <h1 class="form-title">Compte créé,<br><em>mais...</em></h1>
+            <p class="form-desc">
+                Ton compte a bien été créé, mais l'e-mail de vérification n'a pas pu être envoyé pour le moment.
+            </p>
+        {% else %}
+            <h1 class="form-title">Vérifie ta<br><em>boîte mail</em></h1>
+            <p class="form-desc">
+                Un e-mail de vérification vient d'être envoyé{% if email %} à <span class="form-email">{{ email }}</span>{% endif %}.
+                Clique sur le lien qu'il contient pour activer ton compte.
+            </p>
+            <p class="form-desc" style="opacity:0.7;font-size:0.78rem;">
+                Pense à vérifier tes courriers indésirables si tu ne le vois pas rapidement.
+            </p>
+        {% endif %}
+
+        {% if error %}
+            <div class="alert-error">{{ error }}</div>
+        {% endif %}
+
+        <div class="resend-form">
+            <p class="resend-text">Tu n'as rien reçu ?</p>
+            <form method="POST" action="{% url 'sanasource:resend_verification' %}">
+                {% csrf_token %}
+                <input type="hidden" name="email" value="{{ email }}">
+                <button type="submit" class="btn-ghost">Renvoyer l'e-mail de vérification</button>
+            </form>
+        </div>
+
+        <div class="signup-row">
+            <a href="{% url 'sanasource:login' %}">Retour à la connexion</a>
+        </div>
+    </div>
+{% endblock %}
