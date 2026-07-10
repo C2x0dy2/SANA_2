@@ -265,9 +265,9 @@ SILENCED_SYSTEM_CHECKS = ['django_ratelimit.E003']
 # EMAIL (password reset, welcome email)
 # ========================
 _EMAIL_HOST = os.getenv('EMAIL_HOST', '').strip()
-if DEBUG or not _EMAIL_HOST:
-    # No real SMTP configured (or running locally): print emails to the
-    # console instead of trying to send them, so nothing hangs or errors.
+if not _EMAIL_HOST:
+    # No SMTP configured at all: print emails to the console instead of
+    # trying to send them, so nothing hangs or errors.
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
     EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
@@ -278,6 +278,11 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '').strip()
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').strip().lower() in {'1', 'true', 'yes', 'on'}
 EMAIL_TIMEOUT = 5  # seconds — fail fast rather than hang the request if SMTP is unreachable
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'SANA <no-reply@sana.app>')
+
+logger.info(
+    'Email configured: backend=%s host=%s port=%s user_set=%s password_length=%s tls=%s',
+    EMAIL_BACKEND, EMAIL_HOST, EMAIL_PORT, bool(EMAIL_HOST_USER), len(EMAIL_HOST_PASSWORD), EMAIL_USE_TLS,
+)
 
 # ========================
 # LOGGING
