@@ -53,6 +53,11 @@ class UserProfile(models.Model):
     niveau_urgence     = models.IntegerField(choices=URGENCE_CHOICES, default=1)
     date_inscription   = models.DateTimeField(auto_now_add=True)
 
+    # Surnoms mutuels dans le chat avec SANA
+    sana_nickname      = models.CharField(max_length=50, blank=True)  # comment l'utilisateur appelle SANA
+    user_nickname      = models.CharField(max_length=50, blank=True)  # comment SANA appelle l'utilisateur
+    has_seen_welcome   = models.BooleanField(default=False)  # "bonne arrivée" affiché une seule fois
+
     def __str__(self):
         return f"{self.username_anonyme} ({self.user.email})"
 

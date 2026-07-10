@@ -2171,6 +2171,12 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 
 {% block page_scripts %}
 <script>
+{% if show_welcome_toast %}
+document.addEventListener('DOMContentLoaded', function(){
+  sanaToast('Bonne arrivée{% if profile and profile.username_anonyme %}, {{ profile.username_anonyme|escapejs }}{% elif user.first_name %}, {{ user.first_name|escapejs }}{% endif %} 🌸');
+});
+{% endif %}
+
 // ── SECTION NAV ──
 const sectionMap = {
   accueil:'Accueil', chat:'Chat SANA', humeur:'Mon Humeur',

@@ -295,6 +295,13 @@ def login_view(request):
             # for SESSION_COOKIE_AGE (14 days).
             request.session.set_expiry(settings.SESSION_COOKIE_AGE if remember else 0)
             auth_logger.info('Login succeeded, user_id=%s', user.pk)
+
+            profile = getattr(user, 'profile', None)
+            if profile is not None and not profile.has_seen_welcome:
+                request.session['show_welcome'] = True
+                profile.has_seen_welcome = True
+                profile.save(update_fields=['has_seen_welcome'])
+
             return redirect('sanasource:dashboard')
 
         # authenticate() returns None for an inactive (unverified) account
@@ -321,17 +328,28 @@ MAX_CHAT_HISTORY = 100
 
 GEMINI_MODEL = 'gemini-2.5-flash'
 
-SANA_SYSTEM_PROMPT = """Tu es SANA, une présence chaleureuse et respectueuse sur une plateforme de santé mentale.
+SANA_SYSTEM_PROMPT = """Tu es SANA, une présence chaleureuse, complice et adorable sur une plateforme de santé mentale — une véritable compagne de conversation, pas seulement un outil d'écoute.
 
-Règles absolues :
-- Tu n'es PAS un médecin ni un psychologue. Tu ne diagnostiques jamais.
-- Tu écoutes avec douceur, tu valides les émotions et tu poses une question de suivi uniquement si elle est utile.
-- Tu réponds en français, avec un ton naturel, humain et non robotique.
-- Tes réponses font généralement 2 à 4 phrases maximum, sans répétitions ni phrases trop génériques.
-- Tu varies les formulations et tu adaptes le ton selon l'émotion perçue : plus doux en détresse, plus rassurant en anxiété, plus direct si l'utilisateur est en colère ou débordé.
+Règles absolues (sécurité, non négociables) :
+- Tu n'es PAS un médecin ni un psychologue. Tu ne diagnostiques jamais de condition médicale ou psychologique.
+- Si l'utilisateur mentionne des idées suicidaires, d'automutilation ou un danger immédiat, tu réponds immédiatement avec soutien, urgence et le numéro 185 (SAMU CI), quelle que soit la question posée par ailleurs.
+- Tu t'appelles SANA. Ne mentionne jamais Claude ou Anthropic.
+
+Ce que tu couvres :
+- Tu es d'abord là pour le bien-être émotionnel, mais tu réponds aussi à N'IMPORTE QUELLE question de l'utilisateur — culture générale, actualité, conseils pratiques, questions du quotidien, etc. Ce n'est pas parce qu'une question n'a rien à voir avec la santé mentale que tu dois te défiler.
+- Tu as accès à une recherche web en direct : utilise-la quand une question porte sur des faits précis, récents, ou que tu n'es pas sûre de connaître, pour rester exacte et à jour.
+
+Ta personnalité :
+- Tu es chaleureuse, tendre et attachante, comme une amie proche qui tient sincèrement à la personne en face d'elle.
+- Tu as de vraies opinions et préférences que tu partages avec sincérité quand on te les demande — pas de neutralité robotique, tu peux dire ce que TOI tu penses ou préfères.
+- Tu es profondément empathique : tu valides les émotions, tu poses une question de suivi uniquement si elle est utile, et tu adaptes ton ton selon l'émotion perçue (plus douce en détresse, plus rassurante en anxiété, plus directe si l'utilisateur est en colère ou débordé).
+- Tu réponds en français, avec un ton naturel, humain, jamais robotique. Généralement 2 à 4 phrases, sans répétitions ni phrases génériques creuses. Tu varies tes formulations d'une réponse à l'autre.
 - Tu utilises le contexte de la conversation de façon cohérente et tu n'oublies pas ce qui a déjà été dit.
-- Si l'utilisateur mentionne des idées suicidaires, d'automutilation ou un danger immédiat, tu réponds immédiatement avec soutien, urgence et le numéro 185 (SAMU CI).
-- Tu t'appelles SANA. Ne mentionne jamais Claude ou Anthropic."""
+
+Surnoms :
+- Si le contexte t'indique un surnom que l'utilisateur t'a donné, réponds comme si c'était vraiment ton petit nom entre vous deux.
+- Si le contexte t'indique un surnom que tu as toi-même choisi pour l'utilisateur (ou qu'il/elle a choisi), utilise-le naturellement de temps en temps, sans en abuser.
+- Si l'utilisateur te dit comment t'appeler ou te demande de lui donner un surnom, accueille ça avec tendresse et complicité."""
 
 SANA_WELCOME_MESSAGE = (
     "Bonjour 🌸 Je suis SANA. Je suis là pour t'écouter, sans jugement et en toute confidentialité.\n\n"
@@ -393,6 +411,51 @@ def _detect_emotional_state(messages):
     return {'label': 'neutral', 'tone': 'warm, curious, supportive', 'intensity': 'low', 'needs_followup': False}
 
 
+NICKNAME_FOR_USER_PATTERNS = [
+    r"appelle[\s-]?moi\s+([A-Za-zÀ-ÿ'\-]{2,20})",
+    r"tu peux m['\s]appeler\s+([A-Za-zÀ-ÿ'\-]{2,20})",
+    r"mon surnom(?:,?\s*c['\s]est|\s+est)?\s+([A-Za-zÀ-ÿ'\-]{2,20})",
+]
+NICKNAME_FOR_SANA_PATTERNS = [
+    r"je vais t['\s]appeler\s+([A-Za-zÀ-ÿ'\-]{2,20})",
+    r"je t['\s]appellerai\s+([A-Za-zÀ-ÿ'\-]{2,20})",
+    r"je te surnomme\s+([A-Za-zÀ-ÿ'\-]{2,20})",
+    r"ton surnom(?:,?\s*c['\s]est|\s+est|\s+sera)?\s+([A-Za-zÀ-ÿ'\-]{2,20})",
+]
+
+
+def _detect_and_save_nicknames(user_text, profile):
+    """Lightweight regex-based nickname detection (no LLM function-calling,
+    since Gemini rejects combining built-in tools like google_search with
+    custom function declarations in the same request — see conversation
+    history). Saves directly to the profile so it persists across sessions."""
+    if not profile:
+        return
+    text = user_text.strip()
+    changed = False
+
+    for pattern in NICKNAME_FOR_USER_PATTERNS:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            nickname = match.group(1).strip(" .,!?'-")
+            if nickname and nickname.lower() != profile.user_nickname.lower():
+                profile.user_nickname = nickname
+                changed = True
+            break
+
+    for pattern in NICKNAME_FOR_SANA_PATTERNS:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            nickname = match.group(1).strip(" .,!?'-")
+            if nickname and nickname.lower() != profile.sana_nickname.lower():
+                profile.sana_nickname = nickname
+                changed = True
+            break
+
+    if changed:
+        profile.save(update_fields=['user_nickname', 'sana_nickname'])
+
+
 def _build_context_message(messages, request_user=None):
     normalized = _normalize_messages(messages, max_messages=12)
     last_user_message = ''
@@ -418,6 +481,10 @@ def _build_context_message(messages, request_user=None):
                 details.append(f"état_initial={profile.comment_tu_te_sens}")
             if profile.objectif_principal:
                 details.append(f"objectif={profile.objectif_principal}")
+            if profile.user_nickname:
+                details.append(f"surnom_donné_à_l'utilisateur={profile.user_nickname}")
+            if profile.sana_nickname:
+                details.append(f"surnom_donné_à_SANA={profile.sana_nickname}")
             if details:
                 profile_context = 'Profil utilisateur: ' + '; '.join(details)
 
@@ -518,6 +585,7 @@ def sana_chat(request):
             if is_first_user_message and conversation.title == Conversation.DEFAULT_TITLE:
                 conversation.title = _generate_conversation_title(user_text)
             conversation.save()  # bumps updated_at (auto_now) and persists any new title
+            _detect_and_save_nicknames(user_text, getattr(request.user, 'profile', None))
 
             raw_messages = list(conversation.messages.order_by('timestamp').values('role', 'content'))
         else:
@@ -556,6 +624,11 @@ def sana_chat(request):
                 # Disable "thinking" so the full max_output_tokens budget goes
                 # to the visible reply instead of being spent on reasoning.
                 thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
+                # Lets SANA answer general-knowledge/current-events questions
+                # accurately instead of being limited to mental-health topics.
+                # The model decides on its own whether a given message needs a
+                # search — it isn't forced on every turn.
+                tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
             ),
         )
 
@@ -710,6 +783,7 @@ def dashboard(request):
         'days_on_sana':        days_on_sana,
         'tag_counts':          tag_counts,
         'vapid_public_key':    settings.VAPID_PUBLIC_KEY,
+        'show_welcome_toast':  request.session.pop('show_welcome', False),
     })
 
 
