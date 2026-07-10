@@ -262,43 +262,6 @@ def resend_verification_view(request):
     return render(request, 'page/verify_email_sent.html', {'email': email})
 
 
-def debug_email_test(request):
-    """Temporary diagnostic endpoint — sends a test email and reports the
-    exact result/exception on screen. Remove once the Render SMTP issue is
-    resolved."""
-    import traceback
-    from django.core.mail import send_mail
-
-    to = request.GET.get('to', '').strip()
-    if not to:
-        return HttpResponse('Add ?to=your@email.com to the URL', status=400)
-
-    lines = [
-        f'EMAIL_BACKEND={settings.EMAIL_BACKEND}',
-        f'EMAIL_HOST={settings.EMAIL_HOST}',
-        f'EMAIL_PORT={settings.EMAIL_PORT}',
-        f'EMAIL_HOST_USER set={bool(settings.EMAIL_HOST_USER)}',
-        f'EMAIL_HOST_PASSWORD length={len(settings.EMAIL_HOST_PASSWORD)}',
-        f'EMAIL_USE_TLS={settings.EMAIL_USE_TLS}',
-        f'EMAIL_TIMEOUT={settings.EMAIL_TIMEOUT}',
-        '',
-    ]
-    try:
-        result = send_mail(
-            'SANA debug test',
-            'Test email from /debug-email-test/.',
-            settings.DEFAULT_FROM_EMAIL,
-            [to],
-            fail_silently=False,
-        )
-        lines.append(f'SUCCESS: send_mail returned {result}')
-    except Exception:
-        lines.append('FAILED:')
-        lines.append(traceback.format_exc())
-
-    return HttpResponse('\n'.join(lines), content_type='text/plain')
-
-
 def help_view(request):
     return render(request, 'page/help.html')
 
