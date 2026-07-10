@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'sanasource',
     'channels',
     'django_ratelimit',
+    'anymail',
 ]
 
 # ========================
@@ -264,8 +265,16 @@ SILENCED_SYSTEM_CHECKS = ['django_ratelimit.E003']
 # ========================
 # EMAIL (password reset, welcome email)
 # ========================
+# Render blocks outbound SMTP ports (25/465/587), so raw SMTP (Gmail or
+# otherwise) can't be used from there — Resend's HTTPS API (via Anymail)
+# is used instead whenever RESEND_API_KEY is set. SMTP is kept as a path
+# for local dev / other hosts that don't block it.
+RESEND_API_KEY = os.getenv('RESEND_API_KEY', '').strip()
 _EMAIL_HOST = os.getenv('EMAIL_HOST', '').strip()
-if not _EMAIL_HOST:
+if RESEND_API_KEY:
+    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
+    ANYMAIL = {'RESEND_API_KEY': RESEND_API_KEY}
+elif not _EMAIL_HOST:
     # No SMTP configured at all: print emails to the console instead of
     # trying to send them, so nothing hangs or errors.
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -280,8 +289,9 @@ EMAIL_TIMEOUT = 5  # seconds — fail fast rather than hang the request if SMTP 
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'SANA <no-reply@sana.app>')
 
 logger.info(
-    'Email configured: backend=%s host=%s port=%s user_set=%s password_length=%s tls=%s',
+    'Email configured: backend=%s host=%s port=%s user_set=%s password_length=%s tls=%s resend_key_set=%s',
     EMAIL_BACKEND, EMAIL_HOST, EMAIL_PORT, bool(EMAIL_HOST_USER), len(EMAIL_HOST_PASSWORD), EMAIL_USE_TLS,
+    bool(RESEND_API_KEY),
 )
 
 # ========================
