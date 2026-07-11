@@ -26,6 +26,16 @@
                     <li><a href="{% url 'sanasource:help' %}">Aide</a></li>
                 </ul>
             </div>
+
+            <div class="footer-col footer-newsletter">
+                <h4>Newsletter</h4>
+                <p class="footer-newsletter-desc">Actualités et ressources bien-être, sans spam.</p>
+                <form class="footer-newsletter-form" onsubmit="return submitNewsletter(event)">
+                    <input type="email" name="email" id="newsletterEmail" placeholder="ton@email.com" required autocomplete="email">
+                    <button type="submit">S'abonner</button>
+                </form>
+                <p class="footer-newsletter-msg" id="newsletterMsg"></p>
+            </div>
         </div>
 
         <div class="footer-bottom">

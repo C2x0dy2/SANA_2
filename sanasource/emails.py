@@ -48,6 +48,31 @@ def build_verification_url(request, user):
     )
 
 
+def send_newsletter_confirmation_email(request, subscriber):
+    """Sends the double opt-in confirmation email for a newsletter signup.
+    Best-effort like send_welcome_email — a delivery hiccup shouldn't block
+    the subscribe form from succeeding."""
+    context = {
+        'confirm_url': request.build_absolute_uri(
+            reverse('sanasource:newsletter_confirm', kwargs={'token': subscriber.token})
+        ),
+    }
+    text_body = render_to_string('email/newsletter_confirmation.txt', context)
+    html_body = render_to_string('email/newsletter_confirmation.html', context)
+    message = EmailMultiAlternatives(
+        subject='Confirme ton abonnement à la newsletter — SANA',
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[subscriber.email],
+    )
+    message.attach_alternative(html_body, 'text/html')
+    try:
+        message.send(fail_silently=False)
+        logger.info('Newsletter confirmation email sent, subscriber_id=%s', subscriber.pk)
+    except Exception:
+        logger.exception('Newsletter confirmation email failed, subscriber_id=%s', subscriber.pk)
+
+
 def send_verification_email(request, user):
     """Sends the account-activation email (HTML + plain-text). Raises on
     failure — see module docstring for why this one isn't best-effort."""

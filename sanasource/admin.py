@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
 
 
 @admin.register(UserProfile)
@@ -128,5 +128,33 @@ class CommunityPostAdmin(admin.ModelAdmin):
     @admin.display(description='Likes')
     def like_count(self, obj):
         return obj.likes.count()
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display   = ['author', 'rating', 'content_preview', 'is_approved', 'created_at']
+    list_filter    = ['is_approved', 'rating']
+    list_editable  = ['is_approved']
+    search_fields  = ['author__username', 'content']
+    actions        = ['approve_reviews', 'unapprove_reviews']
+
+    @admin.display(description='Avis')
+    def content_preview(self, obj):
+        return obj.content[:60]
+
+    @admin.action(description='Approuver les avis sélectionnés')
+    def approve_reviews(self, request, queryset):
+        queryset.update(is_approved=True)
+
+    @admin.action(description='Retirer les avis sélectionnés')
+    def unapprove_reviews(self, request, queryset):
+        queryset.update(is_approved=False)
+
+
+@admin.register(NewsletterSubscriber)
+class NewsletterSubscriberAdmin(admin.ModelAdmin):
+    list_display  = ['email', 'is_confirmed', 'subscribed_at']
+    list_filter   = ['is_confirmed']
+    search_fields = ['email']
 
 

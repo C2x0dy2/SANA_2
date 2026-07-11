@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+SANA — Désabonnement confirmé
+{% endblock %}
+
+{% block fonts %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block theme_vars %}
+        :root {
+            --rose-pale:      #fff5f5;
+            --rose-clair:     #ffe9f3;
+            --rose-doux:      #ffd9e8;
+            --rose-principal: #b3708a;
+            --rose-fonce:     #9e6b7e;
+            --texte-doux:     #8f5e75;
+        }
+{% endblock %}
+
+{% block page_styles %}
+        html { height: 100%; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: linear-gradient(145deg, var(--rose-pale) 0%, var(--rose-clair) 50%, var(--rose-doux) 100%);
+            min-height: 100vh; min-height: 100dvh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px 16px;
+        }
+        .card {
+            width: 100%; max-width: 480px; text-align: center;
+            background: rgba(255,255,255,0.5);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.75); border-radius: 32px;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.5) inset, 0 30px 70px rgba(179,112,138,0.18);
+            padding: 48px;
+        }
+        .icon-envelope { font-size: 2.6rem; margin-bottom: 18px; }
+        .form-title {
+            font-family: 'Cormorant Garamond', serif; font-size: clamp(1.9rem, 3.5vw, 2.5rem);
+            font-weight: 300; color: var(--rose-fonce); margin-bottom: 12px;
+        }
+        .form-title em { font-style: italic; color: var(--rose-principal); }
+        .form-desc { font-size: 0.9rem; color: var(--texte-doux); font-weight: 300; line-height: 1.7; opacity: 0.9; margin-bottom: 8px; }
+        .form-email { font-weight: 500; color: var(--rose-fonce); }
+        .signup-row { text-align: center; margin-top: 22px; font-size: 0.82rem; color: var(--texte-doux); opacity: 0.8; }
+        .signup-row a { color: var(--rose-principal); text-decoration: none; font-weight: 500; }
+        .signup-row a:hover { text-decoration: underline; }
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="icon-envelope">👋</div>
+        <h1 class="form-title">À bientôt,<br><em>peut-être.</em></h1>
+        <p class="form-desc">
+            {% if email %}<span class="form-email">{{ email }}</span> a été retiré{% else %}Ton adresse a été retirée{% endif %}
+            de notre newsletter. Tu peux te réabonner à tout moment.
+        </p>
+        <div class="signup-row">
+            <a href="{% url 'sanasource:accueil' %}">Retour à l'accueil</a>
+        </div>
+    </div>
+{% endblock %}

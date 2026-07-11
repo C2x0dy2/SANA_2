@@ -917,10 +917,57 @@ SANA - Tu n'es pas seul·e
 
         .footer-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr;
+            grid-template-columns: 1.6fr 1fr 1fr 1.3fr;
             gap: var(--r-xl);
             max-width: 1200px;
             margin: 0 auto var(--r-xl);
+        }
+
+        .footer-newsletter-desc {
+            font-size: clamp(0.78rem, 1.6vw, 0.86rem);
+            color: rgba(253,247,242,0.6);
+            line-height: 1.6;
+            margin-bottom: 0.9rem;
+        }
+        .footer-newsletter-form {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .footer-newsletter-form input {
+            flex: 1;
+            min-width: 0;
+            background: rgba(253,247,242,0.08);
+            border: 1px solid rgba(253,247,242,0.18);
+            border-radius: 100px;
+            padding: 0.6rem 1rem;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.8rem;
+            color: #fff;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .footer-newsletter-form input::placeholder { color: rgba(253,247,242,0.4); }
+        .footer-newsletter-form input:focus { border-color: var(--blush); }
+        .footer-newsletter-form button {
+            background: var(--blush);
+            border: none;
+            border-radius: 100px;
+            padding: 0.6rem 1.1rem;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.76rem;
+            font-weight: 500;
+            color: #2c1c22;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: opacity 0.3s;
+        }
+        .footer-newsletter-form button:hover { opacity: 0.85; }
+        .footer-newsletter-form button:disabled { opacity: 0.5; cursor: default; }
+        .footer-newsletter-msg {
+            font-size: 0.74rem;
+            color: rgba(253,247,242,0.7);
+            margin-top: 0.6rem;
+            min-height: 1em;
         }
 
         .footer-brand .logo-text {
@@ -1263,6 +1310,21 @@ SANA - Tu n'es pas seul·e
         </div>
 
         <div class="testimonials-track">
+            {% if reviews %}
+                {% for review in reviews %}
+                <div class="testi-card reveal">
+                    <div class="testi-stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
+                    <p class="testi-quote">« {{ review.content }} »</p>
+                    <div class="testi-person">
+                        <div class="testi-avatar">{% if review.author.profile %}{{ review.author.profile.username_anonyme|slice:":1"|upper }}{% else %}{{ review.author.first_name|slice:":1"|upper|default:"A" }}{% endif %}</div>
+                        <div>
+                            <div class="testi-name">{% if review.author.profile %}{{ review.author.profile.username_anonyme }}{% else %}{{ review.author.first_name|default:"Anonyme·e" }}{% endif %}</div>
+                            <div class="testi-role">Membre SANA</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
             <div class="testi-card reveal">
                 <div class="testi-stars">★★★★★</div>
                 <p class="testi-quote">« Pendant des mois, je n'osais parler à personne. Le harcèlement au travail m'avait brisée de l'intérieur. SANA m'a appris à mettre des mots sur ce que je vivais. C'est le début de ma reconstruction. »</p>
@@ -1298,6 +1360,7 @@ SANA - Tu n'es pas seul·e
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
     </section>
 
@@ -1437,6 +1500,31 @@ SANA - Tu n'es pas seul·e
 
         const statsEl = document.querySelector('.hero-stats');
         if (statsEl) statsObserver.observe(statsEl);
+
+        // Newsletter
+        function submitNewsletter(event) {
+            event.preventDefault();
+            const input = document.getElementById('newsletterEmail');
+            const msg = document.getElementById('newsletterMsg');
+            const btn = event.target.querySelector('button');
+            const email = input.value.trim();
+            if (!email) return false;
+            btn.disabled = true;
+            msg.textContent = '';
+            fetch('{% url "sanasource:newsletter_subscribe" %}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            })
+                .then(res => res.json().then(data => ({ ok: res.ok, data })))
+                .then(({ ok, data }) => {
+                    msg.textContent = data.message || data.error || (ok ? 'Merci !' : 'Une erreur est survenue.');
+                    if (ok) input.value = '';
+                })
+                .catch(() => { msg.textContent = 'Une erreur est survenue, réessaie plus tard.'; })
+                .finally(() => { btn.disabled = false; });
+            return false;
+        }
     </script>
 {% endblock %}
 

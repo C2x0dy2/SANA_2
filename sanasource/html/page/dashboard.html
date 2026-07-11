@@ -911,6 +911,18 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 .toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:white;transition:transform .3s;}
 .toggle.on::after{transform:translateX(20px);}
 
+.review-stars{display:flex;gap:4px;margin-bottom:12px;}
+.review-star{font-size:1.5rem;color:rgba(194,110,138,.25);cursor:pointer;transition:color .2s,transform .15s;}
+.review-star:hover{transform:scale(1.15);}
+.review-star.active{color:var(--r500);}
+.review-textarea{
+  width:100%;background:var(--blush);border:1.5px solid rgba(194,110,138,.15);border-radius:14px;
+  padding:12px 14px;font-family:'Jost',sans-serif;font-size:.85rem;color:var(--txt);resize:vertical;outline:none;
+  transition:border-color .3s;
+}
+.review-textarea:focus{border-color:var(--r500);}
+.review-msg{font-size:.74rem;color:var(--txt-s);margin-top:8px;min-height:1em;}
+
 /* ══════════════════════════════════
    MOBILE NAV (bottom bar)
 ══════════════════════════════════ */
@@ -1963,6 +1975,21 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
             <div class="toggle" id="toggle-contrast" onclick="toggleA11ySetting('contrast',this)"></div>
           </div>
         </div>
+
+        <div class="settings-card">
+          <div class="eyebrow">Ton avis</div>
+          <p style="font-size:.78rem;color:var(--txt-s);margin:2px 0 14px;">Partage ton expérience — elle pourra être affichée sur la page d'accueil après validation.</p>
+          <div class="review-stars" id="reviewStars">
+            <span class="review-star" data-value="1" onclick="setReviewRating(1)">★</span>
+            <span class="review-star" data-value="2" onclick="setReviewRating(2)">★</span>
+            <span class="review-star" data-value="3" onclick="setReviewRating(3)">★</span>
+            <span class="review-star" data-value="4" onclick="setReviewRating(4)">★</span>
+            <span class="review-star" data-value="5" onclick="setReviewRating(5)">★</span>
+          </div>
+          <textarea id="reviewContent" class="review-textarea" placeholder="Qu'est-ce que SANA t'a apporté ?" rows="3" maxlength="1000"></textarea>
+          <button class="btn-sm btn-primary-sm" style="margin-top:10px;" onclick="submitReview()">Envoyer mon avis</button>
+          <p class="review-msg" id="reviewMsg"></p>
+        </div>
       </div>
     </div>
   </div>
@@ -2255,6 +2282,40 @@ function selectMoodChat(btn, emoji){
   btn.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.5');
   btn.style.opacity='1';btn.style.transform='scale(1.3)';
   setTimeout(()=>{btn.parentElement.querySelectorAll('button').forEach(b=>{b.style.opacity='';b.style.transform='';});}, 800);
+}
+
+// ── AVIS ──
+let reviewRating = 5;
+(function initReviewStars(){
+  document.querySelectorAll('.review-star').forEach(s=>{
+    if(parseInt(s.dataset.value)<=reviewRating) s.classList.add('active');
+  });
+})();
+function setReviewRating(value){
+  reviewRating = value;
+  document.querySelectorAll('.review-star').forEach(s=>{
+    s.classList.toggle('active', parseInt(s.dataset.value)<=value);
+  });
+}
+async function submitReview(){
+  const textarea = document.getElementById('reviewContent');
+  const msg = document.getElementById('reviewMsg');
+  const content = textarea.value.trim();
+  if(content.length<10){ msg.textContent = 'Ton avis est un peu court, dis-en un peu plus 🌸'; return; }
+  msg.textContent = 'Envoi…';
+  try{
+    const res = await fetch('/api/avis/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({content, rating: reviewRating}),
+    });
+    const data = await res.json().catch(()=>({}));
+    msg.textContent = data.message || data.error || 'Une erreur est survenue.';
+    if(res.ok) textarea.value = '';
+  }catch(e){
+    console.error('❌ Review submit failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
 }
 
 // ── LIKE (legacy, kept for compatibility) ──

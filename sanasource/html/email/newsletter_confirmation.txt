@@ -1,0 +1,11 @@
+Confirme ton abonnement à la newsletter SANA !
+
+Pour recevoir nos actualités, ressources et conseils bien-être, confirme
+ton adresse e-mail en ouvrant ce lien :
+
+{{ confirm_url }}
+
+Si tu n'es pas à l'origine de cette inscription, tu peux ignorer cet
+e-mail — tu ne recevras rien.
+
+L'équipe SANA

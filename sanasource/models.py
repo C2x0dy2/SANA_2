@@ -447,3 +447,40 @@ class CommunityPost(models.Model):
         if annotated is not None:
             return annotated
         return self.likes.count()
+
+
+# ── Avis publics (page d'accueil) ──────────────────────────────────────────────
+
+class Review(models.Model):
+    RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
+
+    author      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    content     = models.TextField(max_length=1000)
+    rating      = models.PositiveSmallIntegerField(choices=RATING_CHOICES, default=5)
+    is_approved = models.BooleanField(default=False)  # modéré manuellement avant publication publique
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Avis'
+        verbose_name_plural = 'Avis'
+
+    def __str__(self):
+        return f'{self.author.username} ({self.rating}★): {self.content[:40]}'
+
+
+# ── Newsletter ──────────────────────────────────────────────────────────────
+
+class NewsletterSubscriber(models.Model):
+    email         = models.EmailField(unique=True)
+    is_confirmed  = models.BooleanField(default=False)
+    token         = models.CharField(max_length=64, unique=True)
+    subscribed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-subscribed_at']
+        verbose_name        = 'Abonné newsletter'
+        verbose_name_plural = 'Abonnés newsletter'
+
+    def __str__(self):
+        return self.email

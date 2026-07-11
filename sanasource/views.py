@@ -7,6 +7,7 @@ import mimetypes
 import os
 import random
 import re
+import secrets
 
 from django.core.files.base import ContentFile
 
@@ -26,9 +27,9 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
 from .notifications import send_notification
-from .emails import send_welcome_email, send_verification_email
+from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
 from .password_validation import french_password_errors
 from .serializers import serialize_journal_page, serialize_attachment
@@ -45,7 +46,8 @@ auth_logger = logging.getLogger('sanasource.auth')
 # ============================================================
 
 def accueil(request):
-    return render(request, 'page/accueil.html')
+    reviews = Review.objects.filter(is_approved=True).select_related('author', 'author__profile')[:9]
+    return render(request, 'page/accueil.html', {'reviews': reviews})
 
 def history(request):
     return render(request, 'page/history.html')
@@ -1720,6 +1722,89 @@ def toggle_like(request, post_id):
             except Exception:
                 pass
     return JsonResponse({'is_liked': is_liked, 'like_count': post.likes.count()})
+
+
+# ============================================================
+# AVIS (page d'accueil publique)
+# ============================================================
+
+@csrf_exempt
+@ratelimit(key='user', rate='5/d', method='POST', block=False)
+def submit_review(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    if getattr(request, 'limited', False):
+        return JsonResponse({'error': 'Trop d’avis envoyés aujourd’hui. Réessaie demain.'}, status=429)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    content = (body.get('content') or '').strip()
+    try:
+        rating = int(body.get('rating', 5))
+    except (TypeError, ValueError):
+        rating = 5
+    rating = min(5, max(1, rating))
+
+    if len(content) < 10:
+        return JsonResponse({'error': 'Ton avis est un peu court, dis-en un peu plus 🌸'}, status=400)
+
+    Review.objects.create(author=request.user, content=content[:1000], rating=rating)
+    return JsonResponse({'message': 'Merci pour ton avis ! Il sera visible après validation.'}, status=201)
+
+
+# ============================================================
+# NEWSLETTER
+# ============================================================
+
+@csrf_exempt
+@ratelimit(key='ip', rate='5/h', method='POST', block=False)
+def newsletter_subscribe(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    if getattr(request, 'limited', False):
+        return JsonResponse({'error': 'Trop de tentatives. Merci de réessayer plus tard.'}, status=429)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    email = (body.get('email') or '').strip().lower()
+    try:
+        validate_email(email)
+    except DjangoValidationError:
+        return JsonResponse({'error': 'Adresse e-mail invalide'}, status=400)
+
+    subscriber, created = NewsletterSubscriber.objects.get_or_create(
+        email=email,
+        defaults={'token': secrets.token_urlsafe(32)},
+    )
+    if subscriber.is_confirmed:
+        return JsonResponse({'message': 'Tu es déjà abonné·e à la newsletter 🌸'})
+
+    send_newsletter_confirmation_email(request, subscriber)
+    return JsonResponse({'message': 'Vérifie ta boîte mail pour confirmer ton abonnement !'}, status=201 if created else 200)
+
+
+def newsletter_confirm(request, token):
+    subscriber = get_object_or_404(NewsletterSubscriber, token=token)
+    if not subscriber.is_confirmed:
+        subscriber.is_confirmed = True
+        subscriber.save(update_fields=['is_confirmed'])
+    return render(request, 'page/newsletter_confirmed.html', {'email': subscriber.email})
+
+
+def newsletter_unsubscribe(request, token):
+    subscriber = get_object_or_404(NewsletterSubscriber, token=token)
+    email = subscriber.email
+    subscriber.delete()
+    return render(request, 'page/newsletter_unsubscribed.html', {'email': email})
+
 
 def groupe(request):
     return render(request, 'page/groupe.html')
