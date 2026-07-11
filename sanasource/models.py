@@ -361,6 +361,8 @@ class Message(models.Model):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     role         = models.CharField(max_length=20, choices=ROLE_CHOICES)
     content      = models.TextField()
+    image        = models.FileField(upload_to='chat_attachments/%Y/%m/', blank=True, null=True)
+    voice_note   = models.FileField(upload_to='chat_attachments/%Y/%m/', blank=True, null=True)
     timestamp    = models.DateTimeField(auto_now_add=True)
 
     class Meta:

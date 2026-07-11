@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import urlparse
 import logging
 import os
 import dj_database_url
@@ -77,6 +78,7 @@ INSTALLED_APPS = [
     'channels',
     'django_ratelimit',
     'anymail',
+    'storages',
 ]
 
 # ========================
@@ -195,17 +197,56 @@ STATICFILES_DIRS = [
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-STORAGES = {
-    'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
-    },
-    'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
-    },
-}
+# Render's disk is ephemeral (wiped on every deploy/restart), so uploaded
+# media (chat photos/voice notes, journal attachments) must live in
+# persistent object storage in production. Supabase Storage exposes an
+# S3-compatible API, used here via django-storages whenever its env vars
+# are set; local dev keeps writing to the local filesystem.
+SUPABASE_S3_ENDPOINT_URL = os.getenv('SUPABASE_S3_ENDPOINT_URL', '').strip()
+if SUPABASE_S3_ENDPOINT_URL:
+    AWS_ACCESS_KEY_ID = os.getenv('SUPABASE_S3_ACCESS_KEY_ID', '').strip()
+    AWS_SECRET_ACCESS_KEY = os.getenv('SUPABASE_S3_SECRET_ACCESS_KEY', '').strip()
+    AWS_STORAGE_BUCKET_NAME = os.getenv('SUPABASE_S3_BUCKET', 'media').strip()
+    AWS_S3_ENDPOINT_URL = SUPABASE_S3_ENDPOINT_URL
+    AWS_S3_REGION_NAME = os.getenv('SUPABASE_S3_REGION', 'us-east-1').strip()
+    AWS_S3_ADDRESSING_STYLE = 'path'
+    AWS_DEFAULT_ACL = None  # Supabase manages public access at the bucket level, not per-object ACLs
+    AWS_QUERYSTRING_AUTH = False  # bucket is public, so plain URLs (no signature) work
+    AWS_S3_FILE_OVERWRITE = False
+    # django-storages builds file URLs from AWS_S3_CUSTOM_DOMAIN (not
+    # MEDIA_URL) when set — Supabase's public read path is always on the
+    # project's own *.supabase.co domain (never the S3-specific
+    # storage.supabase.co host), so the project ref is extracted from the S3
+    # endpoint host and re-applied to the canonical public domain.
+    _supabase_project_ref = urlparse(SUPABASE_S3_ENDPOINT_URL).netloc.split('.')[0]
+    AWS_S3_CUSTOM_DOMAIN = f'{_supabase_project_ref}.supabase.co/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
+else:
+    MEDIA_URL = '/media/'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
+
+logger.info(
+    'Media storage configured: backend=%s bucket=%s',
+    STORAGES['default']['BACKEND'],
+    AWS_STORAGE_BUCKET_NAME if SUPABASE_S3_ENDPOINT_URL else 'local-filesystem',
+)
 
 # ========================
 # SECURITY BONUS

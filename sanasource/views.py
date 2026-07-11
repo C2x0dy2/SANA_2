@@ -1,10 +1,14 @@
 from pathlib import Path
 from datetime import date, datetime, timedelta
+import base64
 import json
 import logging
+import mimetypes
 import os
 import random
 import re
+
+from django.core.files.base import ContentFile
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
@@ -328,6 +332,10 @@ MAX_CHAT_HISTORY = 100
 
 GEMINI_MODEL = 'gemini-2.5-flash'
 
+IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+AUDIO_MIME_TYPES = {'audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav', 'audio/x-wav'}
+MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024  # 10 MB
+
 SANA_SYSTEM_PROMPT = """Tu es SANA, une présence chaleureuse, complice et adorable sur une plateforme de santé mentale — une véritable compagne de conversation, pas seulement un outil d'écoute.
 
 Règles absolues (sécurité, non négociables) :
@@ -338,6 +346,7 @@ Règles absolues (sécurité, non négociables) :
 Ce que tu couvres :
 - Tu es d'abord là pour le bien-être émotionnel, mais tu réponds aussi à N'IMPORTE QUELLE question de l'utilisateur — culture générale, actualité, conseils pratiques, questions du quotidien, etc. Ce n'est pas parce qu'une question n'a rien à voir avec la santé mentale que tu dois te défiler.
 - Tu as accès à une recherche web en direct : utilise-la quand une question porte sur des faits précis, récents, ou que tu n'es pas sûre de connaître, pour rester exacte et à jour.
+- L'utilisateur peut t'envoyer des photos et des notes vocales. Quand une image est jointe, regarde-la vraiment et réagis à ce qu'elle montre. Quand une note vocale est jointe, écoute le ton de la voix (pas seulement les mots) : si la personne semble pleurer, avoir la voix qui tremble ou être en grande détresse, réponds avec encore plus de douceur et de présence, sans jamais le lui faire remarquer de façon froide ou clinique — accueille l'émotion avec tendresse.
 
 Ta personnalité :
 - Tu es chaleureuse, tendre et attachante, comme une amie proche qui tient sincèrement à la personne en face d'elle.
@@ -500,14 +509,37 @@ def _build_context_message(messages, request_user=None):
     return {'role': 'user', 'content': context_text}
 
 
-def _to_gemini_contents(messages):
-    return [
-        {
+def _decode_base64_media(payload, allowed_mimes, max_bytes):
+    """payload is the client-sent {'data': base64 str, 'mime': str} dict for
+    an attached image/voice note. Returns (raw_bytes, mime) or None if
+    missing/invalid/oversized — callers just skip the attachment silently."""
+    if not payload or not isinstance(payload, dict):
+        return None
+    mime = (payload.get('mime') or '').split(';')[0].strip().lower()
+    data_b64 = payload.get('data') or ''
+    if mime not in allowed_mimes or not data_b64:
+        return None
+    try:
+        raw = base64.b64decode(data_b64, validate=True)
+    except Exception:
+        return None
+    if not raw or len(raw) > max_bytes:
+        return None
+    return raw, mime
+
+
+def _to_gemini_contents(messages, extra_parts_for_last=None):
+    contents = []
+    last_index = len(messages) - 1
+    for index, message in enumerate(messages):
+        parts = [{'text': message['content']}]
+        if extra_parts_for_last and index == last_index and message['role'] == 'user':
+            parts.extend(extra_parts_for_last)
+        contents.append({
             'role': 'model' if message['role'] == 'assistant' else 'user',
-            'parts': [{'text': message['content']}],
-        }
-        for message in messages
-    ]
+            'parts': parts,
+        })
+    return contents
 
 
 def _generate_conversation_title(text, max_length=40):
@@ -575,15 +607,33 @@ def sana_chat(request):
         if request.user.is_authenticated and conversation_id:
             conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
 
+        extra_parts_for_last = None
+
         if conversation is not None:
             user_text = (body.get('message') or '').strip()
-            if not user_text:
+            image_payload = _decode_base64_media(body.get('image'), IMAGE_MIME_TYPES, MAX_ATTACHMENT_BYTES)
+            audio_payload = _decode_base64_media(body.get('audio'), AUDIO_MIME_TYPES, MAX_ATTACHMENT_BYTES)
+
+            if not user_text and not image_payload and not audio_payload:
                 return JsonResponse({'error': 'Message vide'}, status=400)
 
+            display_text = user_text or ('📷 Photo' if image_payload else '🎙️ Note vocale')
+
             is_first_user_message = not conversation.messages.filter(role='user').exists()
-            Message.objects.create(conversation=conversation, role='user', content=user_text)
+            user_message = Message(conversation=conversation, role='user', content=display_text)
+            extra_parts_for_last = []
+            if image_payload:
+                raw, mime = image_payload
+                user_message.image.save(f'img{mimetypes.guess_extension(mime) or ".jpg"}', ContentFile(raw), save=False)
+                extra_parts_for_last.append({'inline_data': {'mime_type': mime, 'data': base64.b64encode(raw).decode('ascii')}})
+            if audio_payload:
+                raw, mime = audio_payload
+                user_message.voice_note.save(f'voice{mimetypes.guess_extension(mime) or ".webm"}', ContentFile(raw), save=False)
+                extra_parts_for_last.append({'inline_data': {'mime_type': mime, 'data': base64.b64encode(raw).decode('ascii')}})
+            user_message.save()
+
             if is_first_user_message and conversation.title == Conversation.DEFAULT_TITLE:
-                conversation.title = _generate_conversation_title(user_text)
+                conversation.title = _generate_conversation_title(display_text)
             conversation.save()  # bumps updated_at (auto_now) and persists any new title
             _detect_and_save_nicknames(user_text, getattr(request.user, 'profile', None))
 
@@ -607,7 +657,7 @@ def sana_chat(request):
 
         client = genai.Client(api_key=api_key)
         model_messages = [_build_context_message(messages, request.user)] + messages
-        contents = _to_gemini_contents(model_messages)
+        contents = _to_gemini_contents(model_messages, extra_parts_for_last=extra_parts_for_last)
         logger.info("📤 Prompt sent to Gemini:\n%s", json.dumps(model_messages, ensure_ascii=False, indent=2))
 
         response = client.models.generate_content(
@@ -649,6 +699,8 @@ def sana_chat(request):
             response_payload['conversation_id'] = conversation.id
             response_payload['conversation_title'] = conversation.title
             response_payload['updated_at'] = conversation.updated_at.isoformat()
+            response_payload['image_url'] = user_message.image.url if user_message.image else None
+            response_payload['voice_note_url'] = user_message.voice_note.url if user_message.voice_note else None
 
         return JsonResponse(response_payload)
 
@@ -696,14 +748,16 @@ def conversation_detail_api(request, conversation_id):
     conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
 
     if request.method == 'GET':
-        messages = conversation.messages.values('role', 'content', 'timestamp')
+        messages = conversation.messages.all()
         return JsonResponse({
             'conversation': _serialize_conversation(conversation),
             'messages': [
                 {
-                    'role':      m['role'],
-                    'content':   m['content'],
-                    'timestamp': m['timestamp'].isoformat(),
+                    'role':           m.role,
+                    'content':        m.content,
+                    'timestamp':      m.timestamp.isoformat(),
+                    'image_url':      m.image.url if m.image else None,
+                    'voice_note_url': m.voice_note.url if m.voice_note else None,
                 }
                 for m in messages
             ],
