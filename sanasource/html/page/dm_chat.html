@@ -125,7 +125,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);disp
 {% endblock %}
 
 {% block content %}
-<div class="messages-area" id="messagesArea">
+<div class="messages-area" id="messagesArea" style="background-image:url('{{ watermark_uri }}');background-repeat:repeat;">
   <div class="empty-msg" id="emptyMsg" style="display:none">
     <span>💬</span>
     Commence la conversation avec <strong>{{ other_name }}</strong>
@@ -133,6 +133,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);disp
 </div>
 
 <div class="input-area">
+  <p style="font-size:.66rem;color:var(--txt-s);opacity:.85;margin:0 0 6px;">🔒 Évite de partager ton nom complet, ton numéro ou ton adresse, même en privé — tu ne sais jamais vraiment qui est en face.</p>
   <textarea class="msg-input" id="msgInput" rows="1"
     placeholder="Écris un message…"
     oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px'"

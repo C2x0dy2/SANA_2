@@ -1316,9 +1316,9 @@ SANA - Tu n'es pas seul·e
                 <div class="testi-stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
                 <p class="testi-quote">« {{ review.content }} »</p>
                 <div class="testi-person">
-                    <div class="testi-avatar">{% if review.author.profile %}{{ review.author.profile.username_anonyme|slice:":1"|upper }}{% else %}{{ review.author.first_name|slice:":1"|upper|default:"A" }}{% endif %}</div>
+                    <div class="testi-avatar">{% if review.author.profile %}{{ review.author.profile.username_anonyme|slice:":1"|upper }}{% else %}A{% endif %}</div>
                     <div>
-                        <div class="testi-name">{% if review.author.profile %}{{ review.author.profile.username_anonyme }}{% else %}{{ review.author.first_name|default:"Anonyme·e" }}{% endif %}</div>
+                        <div class="testi-name">{% if review.author.profile %}{{ review.author.profile.username_anonyme }}{% else %}Anonyme·e{% endif %}</div>
                         <div class="testi-role">Membre SANA</div>
                     </div>
                 </div>

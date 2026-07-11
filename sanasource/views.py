@@ -57,6 +57,35 @@ def page_open(request):
         return redirect('sanasource:dashboard')
     return render(request, 'page/page_open.html')
 
+
+def _build_watermark_data_uri(user):
+    """A faint, per-viewer repeating text watermark (their own anon handle +
+    user id) for screens where sensitive content is shown (groups, community,
+    DMs). Doesn't block screenshots — nothing on the web can — but if a
+    screenshot leaks, the watermark traces it back to whoever took it."""
+    from django.utils.html import escape
+    prof = getattr(user, 'profile', None)
+    label = escape((prof.username_anonyme if prof else f'user-{user.pk}')[:24])
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="260" height="140">'
+        f'<text x="0" y="80" font-family="sans-serif" font-size="13" '
+        f'fill="rgba(120,80,100,0.05)" transform="rotate(-28 130 70)">{label} · #{user.pk}</text>'
+        '</svg>'
+    )
+    return 'data:image/svg+xml;base64,' + base64.b64encode(svg.encode('utf-8')).decode('ascii')
+
+
+def _looks_like_real_name(anon, first_name, last_name):
+    """True if the anonymous handle embeds the user's real first/last name —
+    guards against accidental self-deanonymization in groups/community."""
+    anon_norm = re.sub(r'[^a-z]', '', (anon or '').lower())
+    for part in (first_name, last_name):
+        part_norm = re.sub(r'[^a-z]', '', (part or '').lower())
+        if part_norm and len(part_norm) >= 3 and part_norm in anon_norm:
+            return True
+    return False
+
+
 @ratelimit(key='ip', rate='5/h', method='POST', block=False)
 def register_view(request):
     if request.user.is_authenticated:
@@ -120,6 +149,10 @@ def register_view(request):
 
         if UserProfile.objects.filter(username_anonyme=username_anonyme).exists():
             ctx['error'] = 'Ce nom anonyme est déjà pris, choisis-en un autre.'
+            return render(request, 'page/register.html', ctx)
+
+        if _looks_like_real_name(username_anonyme, first_name, last_name):
+            ctx['error'] = 'Ton nom anonyme ressemble trop à ton vrai nom — choisis-en un qui ne te rend pas identifiable.'
             return render(request, 'page/register.html', ctx)
 
         # ── Conversions ──────────────────────────────────────
@@ -849,6 +882,7 @@ def dashboard(request):
         'reviews_feed':        reviews_feed,
         'vapid_public_key':    settings.VAPID_PUBLIC_KEY,
         'show_welcome_toast':  request.session.pop('show_welcome', False),
+        'watermark_uri':       _build_watermark_data_uri(request.user),
     })
 
 
@@ -867,6 +901,7 @@ def group_page(request):
         'profile':        profile,
         'groups':         groups,
         'user_group_ids': user_group_ids,
+        'watermark_uri':  _build_watermark_data_uri(request.user),
     })
 
 
@@ -912,7 +947,7 @@ def join_leave_group(request, group_id):
         is_member = True
         if group.created_by != request.user:
             prof = getattr(request.user, 'profile', None)
-            name = prof.username_anonyme if prof else (request.user.first_name or 'Quelqu\'un')
+            name = prof.username_anonyme if prof else 'Anonyme·e'
             try:
                 send_notification(
                     group.created_by, 'join',
@@ -945,7 +980,7 @@ def group_messages_api(request, group_id):
         data = []
         for m in msgs:
             prof = getattr(m.sender, 'profile', None)
-            name = prof.username_anonyme if prof else (m.sender.first_name or m.sender.username)
+            name = prof.username_anonyme if prof else 'Anonyme·e'
             seen_count = sum(1 for u in m.seen_by.all() if u.id != m.sender_id)
             data.append({
                 'id':             m.id,
@@ -973,7 +1008,7 @@ def group_messages_api(request, group_id):
             return JsonResponse({'error': 'Message vide'}, status=400)
         msg  = GroupMessage.objects.create(group=group, sender=request.user, content=content)
         prof = getattr(request.user, 'profile', None)
-        name = prof.username_anonyme if prof else (request.user.first_name or request.user.username)
+        name = prof.username_anonyme if prof else 'Anonyme·e'
         # Notify all group members except sender
         for member in group.members.exclude(id=request.user.id):
             try:
@@ -1732,7 +1767,7 @@ def toggle_like(request, post_id):
         is_liked = True
         if post.author != request.user:
             prof = getattr(request.user, 'profile', None)
-            liker_name = prof.username_anonyme if prof else (request.user.first_name or 'Quelqu\'un')
+            liker_name = prof.username_anonyme if prof else 'Anonyme·e'
             try:
                 send_notification(
                     post.author, 'like',
@@ -1760,7 +1795,7 @@ def toggle_support(request, post_id):
         is_supported = True
         if post.author != request.user:
             prof = getattr(request.user, 'profile', None)
-            supporter_name = prof.username_anonyme if prof else (request.user.first_name or 'Quelqu\'un')
+            supporter_name = prof.username_anonyme if prof else 'Anonyme·e'
             try:
                 send_notification(
                     post.author, 'support',
@@ -2017,6 +2052,8 @@ def update_profile(request):
         return JsonResponse({'error': 'Le nom anonyme est requis'}, status=400)
     if UserProfile.objects.exclude(pk=profile.pk).filter(username_anonyme=username_anon).exists():
         return JsonResponse({'error': 'Ce nom anonyme est déjà pris'}, status=400)
+    if _looks_like_real_name(username_anon, first_name or request.user.first_name, last_name or request.user.last_name):
+        return JsonResponse({'error': 'Ton nom anonyme ressemble trop à ton vrai nom — choisis-en un qui ne te rend pas identifiable.'}, status=400)
     if genre and genre not in dict(UserProfile.GENRE_CHOICES):
         return JsonResponse({'error': 'Genre invalide'}, status=400)
     if situation and situation not in dict(UserProfile.SITUATION_CHOICES):
@@ -2167,8 +2204,8 @@ def dm_api(request, user_id):
         unread_total = DirectMessage.objects.filter(sender=other, receiver=request.user, read=False).count()
         return JsonResponse({
             'messages':      data,
-            'other_name':    other_prof.username_anonyme if other_prof else (other.first_name or 'Anonyme'),
-            'other_initial': (other_prof.username_anonyme[0].upper() if other_prof else (other.first_name or 'A')[0].upper()),
+            'other_name':    other_prof.username_anonyme if other_prof else 'Anonyme·e',
+            'other_initial': (other_prof.username_anonyme[0].upper() if other_prof else 'A'),
             'unread_total':  unread_total,
         })
 
@@ -2211,12 +2248,13 @@ def dm_page(request, user_id):
     if other == request.user:
         return redirect('sanasource:dashboard')
     other_prof = getattr(other, 'profile', None)
-    other_name    = other_prof.username_anonyme if other_prof else (other.first_name or 'Anonyme')
+    other_name    = other_prof.username_anonyme if other_prof else 'Anonyme·e'
     other_initial = other_name[0].upper() if other_name else '?'
     return render(request, 'page/dm_chat.html', {
         'other_user_id': user_id,
         'other_name':    other_name,
         'other_initial': other_initial,
+        'watermark_uri': _build_watermark_data_uri(request.user),
     })
 
 
@@ -2251,8 +2289,8 @@ def dm_conversations(request):
         prof = getattr(p, 'profile', None)
         convs.append({
             'user_id':   p.id,
-            'name':      prof.username_anonyme if prof else (p.first_name or 'Anonyme'),
-            'initial':   (prof.username_anonyme[0].upper() if prof else (p.first_name or 'A')[0].upper()),
+            'name':      prof.username_anonyme if prof else 'Anonyme·e',
+            'initial':   (prof.username_anonyme[0].upper() if prof else 'A'),
             'last_msg':  (p.last_content or '')[:60],
             'sent_at':   p.last_sent_at.strftime('%H:%M') if p.last_sent_at else '',
             'unread':    int(p.unread_count or 0),

@@ -432,7 +432,7 @@ SANA — Mon Espace
     <div class="sec-sub">Partage anonymement, lis des témoignages, ne sois plus seul·e</div>
 
     <div class="comm-layout">
-      <div class="post-feed" id="dashPostFeed">
+      <div class="post-feed" id="dashPostFeed" style="background-image:url('{{ watermark_uri }}');background-repeat:repeat;">
         {% for post in posts %}
         {% with anon=post.author.profile.username_anonyme|default:"Anonyme·e" %}
         <div class="post-card" id="post-{{ post.id }}">
@@ -484,6 +484,7 @@ SANA — Mon Espace
       <div class="comm-sidebar">
         <div class="write-card">
           <div class="eyebrow">Partager anonymement</div>
+          <p class="privacy-hint">🔒 Ne partage pas ton nom, ton numéro ou ton adresse ici — reste anonyme, pour ta sécurité.</p>
           <textarea class="write-input" id="dashWriteContent" rows="4" placeholder="Qu'est-ce qui se passe pour toi en ce moment ?"></textarea>
           <div style="margin-bottom:8px;">
             <select id="dashWriteTag" style="width:100%;padding:7px 10px;border:1.5px solid rgba(194,110,138,.18);border-radius:10px;font-family:'Jost',sans-serif;font-size:.78rem;background:var(--blush);color:var(--txt-m);outline:none;cursor:pointer;">
@@ -596,7 +597,7 @@ SANA — Mon Espace
       {% for review in reviews_feed %}
       <div class="review-card">
         <div class="review-card-head">
-          <div class="review-card-author">{% if review.author.profile %}{{ review.author.profile.username_anonyme }}{% else %}{{ review.author.first_name|default:"Anonyme·e" }}{% endif %}</div>
+          <div class="review-card-author">{% if review.author.profile %}{{ review.author.profile.username_anonyme }}{% else %}Anonyme·e{% endif %}</div>
           {% if review.is_approved %}<span class="review-badge">✓ Publié sur l'accueil</span>{% endif %}
         </div>
         <div class="review-card-stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</div>

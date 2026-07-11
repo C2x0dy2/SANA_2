@@ -437,11 +437,12 @@ textarea.form-input{resize:vertical;min-height:72px;}
         <button class="ch-join-btn" id="chatJoinBtn" onclick="toggleCurrentGroup()">Rejoindre</button>
       </div>
 
-      <div class="messages-area" id="messagesArea">
+      <div class="messages-area" id="messagesArea" style="background-image:url('{{ watermark_uri }}');background-repeat:repeat;">
         <!-- messages injected here -->
       </div>
 
       <div id="chatInputArea" class="chat-input-area" style="display:none;">
+        <p style="font-size:.66rem;color:var(--txt-s);opacity:.85;margin:0 0 6px;">🔒 Ne partage pas ton nom, ton numéro ou ton adresse ici — reste anonyme, pour ta sécurité.</p>
         <div class="chat-input-wrap">
           <textarea class="chat-input" id="msgInput" rows="1" placeholder="Écris un message..."
             onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>

@@ -719,6 +719,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 
 .comm-sidebar{}
 .write-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(16px,2.5vw,22px);margin-bottom:14px;}
+.privacy-hint{font-size:.68rem;color:var(--txt-s);line-height:1.5;margin:2px 0 8px;opacity:.85;}
 .write-input{
   width:100%;border:1.5px solid rgba(194,110,138,.18);border-radius:14px;
   padding:12px 14px;font-family:'Jost',sans-serif;font-size:.82rem;
