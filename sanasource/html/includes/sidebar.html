@@ -41,6 +41,10 @@
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       Groupes
     </div>
+    <div class="nav-item" onclick="showSection('avis',this)">
+      <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+      Avis
+    </div>
     <div class="nav-item" onclick="showSection('messages',this)">
       <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Messages privés
@@ -82,6 +86,10 @@
   </nav>
 
   <div class="sid-footer">
+    <a href="{% url 'sanasource:accueil' %}" style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:8px;padding:9px 14px;border-radius:12px;font-family:'Jost',sans-serif;font-size:.72rem;font-weight:400;color:var(--txt-s);text-decoration:none;transition:background .2s,color .2s;" onmouseover="this.style.background='var(--r50)';this.style.color='var(--r500)'" onmouseout="this.style.background='';this.style.color='var(--txt-s)'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Retour au site public
+    </a>
     <button class="urgence-btn" onclick="openSOS()">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       Urgence — SAMU 185

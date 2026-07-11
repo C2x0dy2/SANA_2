@@ -915,6 +915,15 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 .review-textarea:focus{border-color:var(--r500);}
 .review-msg{font-size:.74rem;color:var(--txt-s);margin-top:8px;min-height:1em;}
 
+.reviews-feed{display:flex;flex-direction:column;gap:14px;}
+.review-card{background:var(--white);border-radius:var(--rad);border:1px solid rgba(194,110,138,.08);padding:clamp(16px,2.5vw,22px);}
+.review-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;}
+.review-card-author{font-size:.85rem;font-weight:500;color:var(--p950);}
+.review-badge{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;background:var(--r50);color:var(--r500);padding:3px 10px;border-radius:100px;font-weight:500;white-space:nowrap;}
+.review-card-stars{color:var(--r500);font-size:.85rem;letter-spacing:2px;margin-bottom:8px;}
+.review-card-text{font-size:.85rem;color:var(--txt-m);line-height:1.7;font-weight:300;margin-bottom:8px;}
+.review-card-meta{font-size:.65rem;color:var(--txt-s);}
+
 /* ══════════════════════════════════
    MOBILE NAV (bottom bar)
 ══════════════════════════════════ */

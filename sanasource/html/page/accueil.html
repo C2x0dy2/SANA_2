@@ -1303,6 +1303,7 @@ SANA - Tu n'es pas seul·e
     </section>
 
     <!-- ===== TÉMOIGNAGES ===== -->
+    {% if reviews %}
     <section class="testimonials">
         <div class="section-header reveal">
             <span class="overline">Témoignages</span>
@@ -1310,59 +1311,22 @@ SANA - Tu n'es pas seul·e
         </div>
 
         <div class="testimonials-track">
-            {% if reviews %}
-                {% for review in reviews %}
-                <div class="testi-card reveal">
-                    <div class="testi-stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
-                    <p class="testi-quote">« {{ review.content }} »</p>
-                    <div class="testi-person">
-                        <div class="testi-avatar">{% if review.author.profile %}{{ review.author.profile.username_anonyme|slice:":1"|upper }}{% else %}{{ review.author.first_name|slice:":1"|upper|default:"A" }}{% endif %}</div>
-                        <div>
-                            <div class="testi-name">{% if review.author.profile %}{{ review.author.profile.username_anonyme }}{% else %}{{ review.author.first_name|default:"Anonyme·e" }}{% endif %}</div>
-                            <div class="testi-role">Membre SANA</div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
+            {% for review in reviews %}
             <div class="testi-card reveal">
-                <div class="testi-stars">★★★★★</div>
-                <p class="testi-quote">« Pendant des mois, je n'osais parler à personne. Le harcèlement au travail m'avait brisée de l'intérieur. SANA m'a appris à mettre des mots sur ce que je vivais. C'est le début de ma reconstruction. »</p>
+                <div class="testi-stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
+                <p class="testi-quote">« {{ review.content }} »</p>
                 <div class="testi-person">
-                    <div class="testi-avatar">L</div>
+                    <div class="testi-avatar">{% if review.author.profile %}{{ review.author.profile.username_anonyme|slice:":1"|upper }}{% else %}{{ review.author.first_name|slice:":1"|upper|default:"A" }}{% endif %}</div>
                     <div>
-                        <div class="testi-name">Léa, 24 ans</div>
-                        <div class="testi-role">Accompagnée pour harcèlement professionnel</div>
+                        <div class="testi-name">{% if review.author.profile %}{{ review.author.profile.username_anonyme }}{% else %}{{ review.author.first_name|default:"Anonyme·e" }}{% endif %}</div>
+                        <div class="testi-role">Membre SANA</div>
                     </div>
                 </div>
             </div>
-
-            <div class="testi-card reveal">
-                <div class="testi-stars">★★★★★</div>
-                <p class="testi-quote">« Je pensais que mon anxiété était "normale", que tout le monde vivait comme ça. SANA m'a montré qu'il existait un autre chemin — et m'a accompagné pour le trouver. »</p>
-                <div class="testi-person">
-                    <div class="testi-avatar">M</div>
-                    <div>
-                        <div class="testi-name">Maxime, 19 ans</div>
-                        <div class="testi-role">Suivi pour anxiété chronique</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="testi-card reveal">
-                <div class="testi-stars">★★★★★</div>
-                <p class="testi-quote">« En tant que mère, j'avais honte de ne "pas aller bien". SANA m'a redonné la permission de prendre soin de moi. Aujourd'hui je vais mieux — et mes enfants aussi. »</p>
-                <div class="testi-person">
-                    <div class="testi-avatar">C</div>
-                    <div>
-                        <div class="testi-name">Clara, 34 ans</div>
-                        <div class="testi-role">Burn-out et reconstruction</div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
+            {% endfor %}
         </div>
     </section>
+    {% endif %}
 
     <!-- ===== TRUST ===== -->
     <section class="trust">

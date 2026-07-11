@@ -830,6 +830,8 @@ def dashboard(request):
         .order_by('-count')[:4]
     )
 
+    reviews_feed = Review.objects.select_related('author', 'author__profile')[:30]
+
     return render(request, 'page/dashboard.html', {
         'user':               request.user,
         'profile':            profile,
@@ -844,6 +846,7 @@ def dashboard(request):
         'user_posts_count':    user_posts_count,
         'days_on_sana':        days_on_sana,
         'tag_counts':          tag_counts,
+        'reviews_feed':        reviews_feed,
         'vapid_public_key':    settings.VAPID_PUBLIC_KEY,
         'show_welcome_toast':  request.session.pop('show_welcome', False),
     })

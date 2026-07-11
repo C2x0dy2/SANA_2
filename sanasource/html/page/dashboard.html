@@ -561,6 +561,45 @@ SANA — Mon Espace
     </div>
   </div>
 
+  <!-- ══ AVIS ══ -->
+  <div id="sec-avis" class="section">
+    <div class="sec-title">Tes <em>avis</em></div>
+    <div class="sec-sub">Partage ton expérience — les meilleurs avis sont mis en avant sur la page d'accueil</div>
+
+    <div class="card" style="padding:clamp(20px,3vw,28px);margin-bottom:clamp(16px,2.5vw,24px);">
+      <div class="eyebrow">Donner mon avis</div>
+      <div class="review-stars" id="reviewStars" style="margin-top:10px;">
+        <span class="review-star" data-value="1" onclick="setReviewRating(1)">★</span>
+        <span class="review-star" data-value="2" onclick="setReviewRating(2)">★</span>
+        <span class="review-star" data-value="3" onclick="setReviewRating(3)">★</span>
+        <span class="review-star" data-value="4" onclick="setReviewRating(4)">★</span>
+        <span class="review-star" data-value="5" onclick="setReviewRating(5)">★</span>
+      </div>
+      <textarea id="reviewContent" class="review-textarea" placeholder="Qu'est-ce que SANA t'a apporté ?" rows="3" maxlength="1000"></textarea>
+      <button class="btn-sm btn-primary-sm" style="margin-top:10px;" onclick="submitReview()">Envoyer mon avis</button>
+      <p class="review-msg" id="reviewMsg"></p>
+    </div>
+
+    <div class="reviews-feed" id="reviewsFeed">
+      {% for review in reviews_feed %}
+      <div class="review-card">
+        <div class="review-card-head">
+          <div class="review-card-author">{% if review.author.profile %}{{ review.author.profile.username_anonyme }}{% else %}{{ review.author.first_name|default:"Anonyme·e" }}{% endif %}</div>
+          {% if review.is_approved %}<span class="review-badge">✓ Publié sur l'accueil</span>{% endif %}
+        </div>
+        <div class="review-card-stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
+        <p class="review-card-text">{{ review.content }}</p>
+        <div class="review-card-meta">{{ review.created_at|timesince }} ago</div>
+      </div>
+      {% empty %}
+      <div style="text-align:center;padding:40px;color:var(--txt-s);">
+        <div style="font-size:2rem;margin-bottom:10px;">⭐</div>
+        <p style="font-size:.85rem;">Aucun avis pour l'instant.<br>Sois le premier à partager ton expérience !</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
   <!-- ══ BLOG & RESSOURCES ══ -->
   <div id="sec-ressources" class="section">
     <div class="sec-title">Blog & <em>Ressources</em></div>
@@ -973,21 +1012,6 @@ SANA — Mon Espace
             <div class="sr-left"><div class="sr-title">Contraste élevé</div><div class="sr-desc">Renforce les couleurs et les bordures pour une meilleure lisibilité</div></div>
             <div class="toggle" id="toggle-contrast" onclick="toggleA11ySetting('contrast',this)"></div>
           </div>
-        </div>
-
-        <div class="settings-card">
-          <div class="eyebrow">Ton avis</div>
-          <p style="font-size:.78rem;color:var(--txt-s);margin:2px 0 14px;">Partage ton expérience — elle pourra être affichée sur la page d'accueil après validation.</p>
-          <div class="review-stars" id="reviewStars">
-            <span class="review-star" data-value="1" onclick="setReviewRating(1)">★</span>
-            <span class="review-star" data-value="2" onclick="setReviewRating(2)">★</span>
-            <span class="review-star" data-value="3" onclick="setReviewRating(3)">★</span>
-            <span class="review-star" data-value="4" onclick="setReviewRating(4)">★</span>
-            <span class="review-star" data-value="5" onclick="setReviewRating(5)">★</span>
-          </div>
-          <textarea id="reviewContent" class="review-textarea" placeholder="Qu'est-ce que SANA t'a apporté ?" rows="3" maxlength="1000"></textarea>
-          <button class="btn-sm btn-primary-sm" style="margin-top:10px;" onclick="submitReview()">Envoyer mon avis</button>
-          <p class="review-msg" id="reviewMsg"></p>
         </div>
       </div>
     </div>
