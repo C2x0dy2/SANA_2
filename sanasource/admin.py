@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
 
 
 @admin.register(UserProfile)
@@ -128,6 +128,16 @@ class CommunityPostAdmin(admin.ModelAdmin):
     @admin.display(description='Likes')
     def like_count(self, obj):
         return obj.likes.count()
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display  = ['author', 'post', 'content_preview', 'created_at']
+    search_fields = ['author__username', 'content']
+
+    @admin.display(description='Commentaire')
+    def content_preview(self, obj):
+        return obj.content[:60]
 
 
 @admin.register(Review)

@@ -58,6 +58,20 @@ class UserProfile(models.Model):
     user_nickname      = models.CharField(max_length=50, blank=True)  # comment SANA appelle l'utilisateur
     has_seen_welcome   = models.BooleanField(default=False)  # "bonne arrivée" affiché une seule fois
 
+    # Préférences (interrupteurs de la section Mon Profil → Paramètres)
+    notif_rappels_humeur      = models.BooleanField(default=True)
+    notif_messages_communaute = models.BooleanField(default=True)
+    notif_nouveaux_articles   = models.BooleanField(default=False)
+    notif_rappels_rdv         = models.BooleanField(default=True)
+    priv_mode_anonyme         = models.BooleanField(default=True)
+    priv_partager_progres     = models.BooleanField(default=True)
+    priv_donnees_analytiques  = models.BooleanField(default=False)
+
+    SETTINGS_FIELDS = {
+        'notif_rappels_humeur', 'notif_messages_communaute', 'notif_nouveaux_articles',
+        'notif_rappels_rdv', 'priv_mode_anonyme', 'priv_partager_progres', 'priv_donnees_analytiques',
+    }
+
     def __str__(self):
         return f"{self.username_anonyme} ({self.user.email})"
 
@@ -379,6 +393,8 @@ class Message(models.Model):
 class Notification(models.Model):
     TYPE_CHOICES = [
         ('like',    'Like'),
+        ('comment', 'Commentaire'),
+        ('support', 'Soutien'),
         ('message', 'Message'),
         ('join',    'Rejoindre'),
         ('welcome', 'Bienvenue'),
@@ -431,6 +447,7 @@ class CommunityPost(models.Model):
     content    = models.TextField()
     tag        = models.CharField(max_length=20, choices=TAG_CHOICES, default='autre')
     likes      = models.ManyToManyField(User, related_name='liked_posts', blank=True)
+    supports   = models.ManyToManyField(User, related_name='supported_posts', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -447,6 +464,35 @@ class CommunityPost(models.Model):
         if annotated is not None:
             return annotated
         return self.likes.count()
+
+    @property
+    def support_count(self):
+        annotated = self.__dict__.get('support_count_annotated')
+        if annotated is not None:
+            return annotated
+        return self.supports.count()
+
+    @property
+    def comment_count(self):
+        annotated = self.__dict__.get('comment_count_annotated')
+        if annotated is not None:
+            return annotated
+        return self.comments.count()
+
+
+class Comment(models.Model):
+    post       = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='comments')
+    author     = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
+    content    = models.TextField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['created_at']
+        verbose_name        = 'Commentaire'
+        verbose_name_plural = 'Commentaires'
+
+    def __str__(self):
+        return f'{self.author.username} on post {self.post_id}: {self.content[:40]}'
 
 
 # ── Avis publics (page d'accueil) ──────────────────────────────────────────────

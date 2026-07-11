@@ -27,7 +27,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
 from .notifications import send_notification
 from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
@@ -796,8 +796,13 @@ def dashboard(request):
     # Real community posts
     posts = CommunityPost.objects.select_related(
         'author', 'author__profile'
-    ).annotate(like_count_annotated=Count('likes', distinct=True))[:15]
+    ).annotate(
+        like_count_annotated=Count('likes', distinct=True),
+        support_count_annotated=Count('supports', distinct=True),
+        comment_count_annotated=Count('comments', distinct=True),
+    )[:15]
     user_liked_ids = set(request.user.liked_posts.values_list('id', flat=True))
+    user_supported_ids = set(request.user.supported_posts.values_list('id', flat=True))
 
     # Mood entries this week (Mon→Sun)
     today      = date.today()
@@ -832,6 +837,7 @@ def dashboard(request):
         'user_group_ids':     user_group_ids,
         'posts':              posts,
         'user_liked_ids':     user_liked_ids,
+        'user_supported_ids': user_supported_ids,
         'mood_data':          mood_data,
         'mood_count_week':     mood_count_week,
         'groups_joined_count': groups_joined_count,
@@ -1686,13 +1692,16 @@ def community_post_api(request):
     prof = getattr(request.user, 'profile', None)
     anon = prof.username_anonyme if prof else 'Anonyme·e'
     return JsonResponse({
-        'id':         post.id,
-        'anon':       anon,
-        'initial':    anon[0].upper() if anon else 'A',
-        'content':    post.content,
-        'tag_label':  post.get_tag_display(),
-        'like_count': 0,
-        'is_liked':   False,
+        'id':            post.id,
+        'anon':          anon,
+        'initial':       anon[0].upper() if anon else 'A',
+        'content':       post.content,
+        'tag_label':     post.get_tag_display(),
+        'like_count':    0,
+        'is_liked':      False,
+        'support_count': 0,
+        'is_supported':  False,
+        'comment_count': 0,
     })
 
 
@@ -1722,6 +1731,86 @@ def toggle_like(request, post_id):
             except Exception:
                 pass
     return JsonResponse({'is_liked': is_liked, 'like_count': post.likes.count()})
+
+
+@csrf_exempt
+def toggle_support(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    post = get_object_or_404(CommunityPost, id=post_id)
+    if post.supports.filter(id=request.user.id).exists():
+        post.supports.remove(request.user)
+        is_supported = False
+    else:
+        post.supports.add(request.user)
+        is_supported = True
+        if post.author != request.user:
+            prof = getattr(request.user, 'profile', None)
+            supporter_name = prof.username_anonyme if prof else (request.user.first_name or 'Quelqu\'un')
+            try:
+                send_notification(
+                    post.author, 'support',
+                    'Quelqu\'un te soutient',
+                    f'{supporter_name} soutient ton témoignage.',
+                    '/dashboard/',
+                )
+            except Exception:
+                pass
+    return JsonResponse({'is_supported': is_supported, 'support_count': post.supports.count()})
+
+
+@csrf_exempt
+def post_comments_api(request, post_id):
+    post = get_object_or_404(CommunityPost, id=post_id)
+
+    if request.method == 'GET':
+        comments = post.comments.select_related('author', 'author__profile')
+        return JsonResponse({
+            'comments': [
+                {
+                    'id':      c.id,
+                    'anon':    c.author.profile.username_anonyme if getattr(c.author, 'profile', None) else 'Anonyme·e',
+                    'content': c.content,
+                    'created_at': c.created_at.isoformat(),
+                }
+                for c in comments
+            ],
+        })
+
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Non authentifié'}, status=401)
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON invalide'}, status=400)
+        content = (body.get('content') or '').strip()
+        if not content:
+            return JsonResponse({'error': 'Commentaire vide'}, status=400)
+        comment = Comment.objects.create(post=post, author=request.user, content=content[:500])
+        prof = getattr(request.user, 'profile', None)
+        anon = prof.username_anonyme if prof else 'Anonyme·e'
+        if post.author != request.user:
+            try:
+                send_notification(
+                    post.author, 'comment',
+                    'Nouveau commentaire',
+                    f'{anon} a commenté ton témoignage.',
+                    '/dashboard/',
+                )
+            except Exception:
+                pass
+        return JsonResponse({
+            'id':      comment.id,
+            'anon':    anon,
+            'content': comment.content,
+            'created_at': comment.created_at.isoformat(),
+            'comment_count': post.comments.count(),
+        }, status=201)
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
 
 
 # ============================================================
@@ -1804,6 +1893,101 @@ def newsletter_unsubscribe(request, token):
     email = subscriber.email
     subscriber.delete()
     return render(request, 'page/newsletter_unsubscribed.html', {'email': email})
+
+
+# ============================================================
+# PARAMÈTRES (interrupteurs notifications/confidentialité)
+# ============================================================
+
+@csrf_exempt
+def update_setting(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    profile = getattr(request.user, 'profile', None)
+    if profile is None:
+        return JsonResponse({'error': 'Profil introuvable'}, status=404)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    key = body.get('key', '')
+    if key not in UserProfile.SETTINGS_FIELDS:
+        return JsonResponse({'error': 'Paramètre inconnu'}, status=400)
+
+    value = bool(body.get('value'))
+    setattr(profile, key, value)
+    profile.save(update_fields=[key])
+    return JsonResponse({'key': key, 'value': value})
+
+
+# ============================================================
+# ÉDITION DU PROFIL
+# ============================================================
+
+@csrf_exempt
+def update_profile(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    profile = getattr(request.user, 'profile', None)
+    if profile is None:
+        return JsonResponse({'error': 'Profil introuvable'}, status=404)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    first_name    = (body.get('first_name') or '').strip()[:150]
+    last_name     = (body.get('last_name') or '').strip()[:150]
+    username_anon = (body.get('username_anonyme') or '').strip()[:50]
+    ville         = (body.get('ville') or '').strip()[:100]
+    genre         = (body.get('genre') or '').strip()
+    situation     = (body.get('situation') or '').strip()
+    theme_couleur = (body.get('theme_couleur') or '').strip()
+    objectif      = (body.get('objectif_principal') or '').strip()[:200]
+    age_raw       = body.get('age')
+
+    if not username_anon:
+        return JsonResponse({'error': 'Le nom anonyme est requis'}, status=400)
+    if UserProfile.objects.exclude(pk=profile.pk).filter(username_anonyme=username_anon).exists():
+        return JsonResponse({'error': 'Ce nom anonyme est déjà pris'}, status=400)
+    if genre and genre not in dict(UserProfile.GENRE_CHOICES):
+        return JsonResponse({'error': 'Genre invalide'}, status=400)
+    if situation and situation not in dict(UserProfile.SITUATION_CHOICES):
+        return JsonResponse({'error': 'Situation invalide'}, status=400)
+    if theme_couleur and theme_couleur not in dict(UserProfile.THEME_CHOICES):
+        return JsonResponse({'error': 'Thème invalide'}, status=400)
+
+    age = None
+    if age_raw not in (None, ''):
+        try:
+            age = max(0, min(120, int(age_raw)))
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Âge invalide'}, status=400)
+
+    request.user.first_name = first_name
+    request.user.last_name = last_name
+    request.user.save(update_fields=['first_name', 'last_name'])
+
+    profile.username_anonyme = username_anon
+    profile.ville = ville
+    profile.age = age
+    if genre:
+        profile.genre = genre
+    if situation:
+        profile.situation = situation
+    if theme_couleur:
+        profile.theme_couleur = theme_couleur
+    profile.objectif_principal = objectif
+    profile.save()
+
+    return JsonResponse({'message': 'Profil mis à jour !'})
 
 
 def groupe(request):
