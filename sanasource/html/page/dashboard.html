@@ -441,6 +441,7 @@ SANA — Mon Espace
             <div>
               <div class="post-anon">
             {{ anon }} <span class="post-tag">{{ post.get_tag_display }}</span>
+            {% if post.requests_support %}<span class="post-tag post-tag-support">💰 Demande de soutien</span>{% endif %}
             {% if post.author != user %}<button class="author-dm-btn" onclick="location.href='/messages/{{ post.author.id }}/'">💬 Message</button>{% endif %}
           </div>
               <div class="post-meta">{{ post.created_at|timesince }} ago</div>
@@ -456,9 +457,11 @@ SANA — Mon Espace
             <button class="post-btn" onclick="toggleComments({{ post.id }})">💬 <span id="comment-count-{{ post.id }}">{{ post.comment_count }}</span></button>
             <button class="post-btn {% if post.id in user_supported_ids %}liked{% endif %}"
                     id="support-btn-{{ post.id }}"
+                    data-requests-support="{{ post.requests_support|yesno:'1,0' }}"
                     onclick="dashToggleSupport({{ post.id }}, this)">
                     🤝 Soutenir <span id="support-count-{{ post.id }}">{{ post.support_count }}</span>
             </button>
+            <button class="post-btn post-btn-report" onclick="openReportPost({{ post.id }})" title="Signaler ce post">🚩</button>
           </div>
           <div class="post-comments" id="comments-{{ post.id }}" style="display:none;">
             <div class="post-comments-list" id="comments-list-{{ post.id }}"></div>
@@ -494,6 +497,15 @@ SANA — Mon Espace
               <option value="travail">Travail</option>
               <option value="guerison">Guérison</option>
             </select>
+          </div>
+          <div class="write-support-row">
+            <label class="write-support-check">
+              <input type="checkbox" id="dashWriteSupport" {% if not profile.payment_method %}disabled{% endif %}>
+              Je souhaite recevoir un soutien financier pour cette situation
+            </label>
+            {% if not profile.payment_method %}
+            <p class="write-support-hint">Ajoute un moyen de paiement dans <a href="#" onclick="showSection('profil',null);openEditProfile();return false;">Mon Profil</a> pour activer cette option.</p>
+            {% endif %}
           </div>
           <div class="write-footer">
             <span class="write-anon-tag">🔒 Totalement anonyme</span>
@@ -1288,11 +1300,56 @@ SANA — Mon Espace
     <label style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--txt-s);display:block;margin-bottom:4px;">Mon objectif</label>
     <input type="text" id="editObjectif" value="{% if profile %}{{ profile.objectif_principal }}{% endif %}" maxlength="200" style="width:100%;padding:10px 14px;border-radius:12px;border:1.5px solid rgba(194,110,138,.2);background:var(--blush);font-family:'Jost',sans-serif;font-size:.85rem;margin-bottom:16px;">
 
+    <div style="height:1px;background:rgba(194,110,138,.12);margin:4px 0 16px;"></div>
+    <p style="font-size:.72rem;color:var(--txt-s);line-height:1.6;margin-bottom:10px;">💳 Moyen de paiement personnel — utilisé uniquement si tu actives "Soutenir" sur un de tes posts communauté. SANA ne collecte jamais cet argent, ces infos sont juste affichées à qui veut te soutenir.</p>
+
+    <label style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--txt-s);display:block;margin-bottom:4px;">Moyen de paiement</label>
+    <select id="editPaymentMethod" style="width:100%;padding:10px 14px;border-radius:12px;border:1.5px solid rgba(194,110,138,.2);background:var(--blush);font-family:'Jost',sans-serif;font-size:.85rem;margin-bottom:12px;">
+      <option value="">—</option>
+      {% for value, label in profile.PAYMENT_METHOD_CHOICES %}
+      <option value="{{ value }}"{% if profile and profile.payment_method == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--txt-s);display:block;margin-bottom:4px;">Numéro / lien</label>
+    <input type="text" id="editPaymentInfo" value="{% if profile %}{{ profile.payment_info }}{% endif %}" maxlength="200" placeholder="Ex: 07 XX XX XX XX ou paypal.me/toi" style="width:100%;padding:10px 14px;border-radius:12px;border:1.5px solid rgba(194,110,138,.2);background:var(--blush);font-family:'Jost',sans-serif;font-size:.85rem;margin-bottom:16px;">
+
     <p id="editProfileMsg" style="font-size:.78rem;color:var(--txt-s);margin-bottom:12px;min-height:1em;"></p>
 
     <div style="display:flex;gap:10px;">
       <button onclick="closeEditProfile()" style="flex:1;padding:12px;border:1.5px solid rgba(194,110,138,.25);border-radius:100px;background:var(--white);font-family:'Jost',sans-serif;font-size:.82rem;color:var(--txt-s);cursor:pointer;">Annuler</button>
       <button onclick="submitEditProfile()" style="flex:1;padding:12px;background:var(--r500);border:none;border-radius:100px;font-family:'Jost',sans-serif;font-size:.82rem;color:white;font-weight:600;cursor:pointer;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUPPORT PAYMENT MODAL -->
+<div id="supportPaymentModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border-radius:28px;padding:clamp(24px,4vw,32px);max-width:420px;width:100%;animation:secIn .3s ease;">
+    <div style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:300;color:var(--p950);margin-bottom:14px;">Envoyer un <em>soutien</em></div>
+    <div id="supportPaymentBody"></div>
+    <button onclick="closeSupportPayment()" style="width:100%;margin-top:18px;padding:12px;border:1.5px solid rgba(194,110,138,.25);border-radius:100px;background:var(--white);font-family:'Jost',sans-serif;font-size:.82rem;color:var(--txt-s);cursor:pointer;">Fermer</button>
+  </div>
+</div>
+
+<!-- REPORT POST MODAL -->
+<div id="reportPostModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border-radius:28px;padding:clamp(24px,4vw,32px);max-width:420px;width:100%;animation:secIn .3s ease;">
+    <div style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:300;color:var(--p950);margin-bottom:14px;">Signaler ce <em>post</em></div>
+    <label style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--txt-s);display:block;margin-bottom:4px;">Raison</label>
+    <select id="reportPostReason" style="width:100%;padding:10px 14px;border-radius:12px;border:1.5px solid rgba(194,110,138,.2);background:var(--blush);font-family:'Jost',sans-serif;font-size:.85rem;margin-bottom:12px;">
+      <option value="scam">Arnaque / demande d'argent suspecte</option>
+      <option value="harassment">Harcèlement / propos violents</option>
+      <option value="spam">Spam</option>
+      <option value="inapproprie">Contenu inapproprié</option>
+      <option value="autre">Autre</option>
+    </select>
+    <label style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--txt-s);display:block;margin-bottom:4px;">Détails (optionnel)</label>
+    <textarea id="reportPostDetails" rows="3" maxlength="500" style="width:100%;padding:10px 14px;border-radius:12px;border:1.5px solid rgba(194,110,138,.2);background:var(--blush);font-family:'Jost',sans-serif;font-size:.85rem;resize:vertical;margin-bottom:8px;"></textarea>
+    <p id="reportPostMsg" style="font-size:.76rem;color:var(--txt-s);margin-bottom:12px;min-height:1em;"></p>
+    <div style="display:flex;gap:10px;">
+      <button onclick="closeReportPost()" style="flex:1;padding:12px;border:1.5px solid rgba(194,110,138,.25);border-radius:100px;background:var(--white);font-family:'Jost',sans-serif;font-size:.82rem;color:var(--txt-s);cursor:pointer;">Annuler</button>
+      <button onclick="submitReportPost()" style="flex:1;padding:12px;background:#c0392b;border:none;border-radius:100px;font-family:'Jost',sans-serif;font-size:.82rem;color:white;font-weight:600;cursor:pointer;">Signaler</button>
     </div>
   </div>
 </div>

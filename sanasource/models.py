@@ -72,6 +72,21 @@ class UserProfile(models.Model):
         'notif_rappels_rdv', 'priv_mode_anonyme', 'priv_partager_progres', 'priv_donnees_analytiques',
     }
 
+    # Moyen de paiement personnel — pour le soutien financier communautaire.
+    # SANA ne collecte ni ne reverse jamais d'argent : le bouton "Soutenir"
+    # affiche simplement ces coordonnées, le don se fait directement entre
+    # les deux utilisateurs via leur propre moyen de paiement.
+    PAYMENT_METHOD_CHOICES = [
+        ('orange_money', 'Orange Money'),
+        ('mtn_money',     'MTN Mobile Money'),
+        ('moov_money',    'Moov Money'),
+        ('wave',          'Wave'),
+        ('paypal',        'PayPal'),
+        ('autre',         'Autre'),
+    ]
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True)
+    payment_info   = models.CharField(max_length=200, blank=True)  # numéro, lien, identifiant
+
     def __str__(self):
         return f"{self.username_anonyme} ({self.user.email})"
 
@@ -450,6 +465,12 @@ class CommunityPost(models.Model):
     supports   = models.ManyToManyField(User, related_name='supported_posts', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Demande de soutien financier — volontaire, distincte du post lui-même
+    # (jamais activée par défaut) pour éviter qu'un simple message de
+    # détresse déclenche automatiquement une sollicitation d'argent.
+    requests_support = models.BooleanField(default=False)
+    is_reported       = models.BooleanField(default=False)  # masqué en attendant modération
+
     class Meta:
         ordering            = ['-created_at']
         verbose_name        = 'Post communautaire'
@@ -493,6 +514,32 @@ class Comment(models.Model):
 
     def __str__(self):
         return f'{self.author.username} on post {self.post_id}: {self.content[:40]}'
+
+
+class PostReport(models.Model):
+    REASON_CHOICES = [
+        ('scam',        'Arnaque / demande d\'argent suspecte'),
+        ('harassment',  'Harcèlement / propos violents'),
+        ('spam',        'Spam'),
+        ('inapproprie', 'Contenu inapproprié'),
+        ('autre',       'Autre'),
+    ]
+    post       = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='reports')
+    reporter   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='post_reports')
+    reason     = models.CharField(max_length=20, choices=REASON_CHOICES, default='autre')
+    details    = models.TextField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Signalement'
+        verbose_name_plural = 'Signalements'
+        constraints = [
+            models.UniqueConstraint(fields=['post', 'reporter'], name='unique_report_per_user_per_post'),
+        ]
+
+    def __str__(self):
+        return f'{self.reporter.username} → post {self.post_id} ({self.reason})'
 
 
 # ── Avis publics (page d'accueil) ──────────────────────────────────────────────

@@ -464,6 +464,8 @@ async function submitEditProfile(){
         situation: document.getElementById('editSituation').value,
         theme_couleur: document.getElementById('editTheme').value,
         objectif_principal: document.getElementById('editObjectif').value.trim(),
+        payment_method: document.getElementById('editPaymentMethod').value,
+        payment_info: document.getElementById('editPaymentInfo').value.trim(),
       }),
     });
     const data = await res.json().catch(()=>({}));
@@ -475,6 +477,79 @@ async function submitEditProfile(){
     }
   }catch(e){
     console.error('❌ Profile update failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
+
+// ── SUPPORT PAYMENT MODAL ──
+function closeSupportPayment(){
+  document.getElementById('supportPaymentModal').style.display='none';
+  document.body.style.overflow='';
+}
+document.getElementById('supportPaymentModal').addEventListener('click',function(e){
+  if(e.target===this) closeSupportPayment();
+});
+async function openSupportPayment(postId){
+  const body = document.getElementById('supportPaymentBody');
+  const modal = document.getElementById('supportPaymentModal');
+  body.innerHTML = '<p style="font-size:.82rem;color:var(--txt-s);">Chargement…</p>';
+  modal.style.display='flex';
+  document.body.style.overflow='hidden';
+  try{
+    const res = await fetch('/api/communaute/' + postId + '/paiement/', {credentials:'same-origin'});
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok){
+      body.innerHTML = '<p style="font-size:.82rem;color:var(--txt-s);">' + escHtml(data.error || 'Moyen de paiement indisponible.') + '</p>';
+      return;
+    }
+    body.innerHTML =
+      '<p style="font-size:.78rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;">SANA ne collecte jamais cet argent — ces coordonnées appartiennent directement à <strong>' + escHtml(data.anon) + '</strong>. Donne uniquement si tu es en confiance, et signale ce post si quelque chose te semble suspect.</p>' +
+      '<div style="background:var(--blush);border-radius:14px;padding:16px;text-align:center;">' +
+        '<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--txt-s);margin-bottom:4px;">' + escHtml(data.payment_method) + '</div>' +
+        '<div style="font-size:1.1rem;font-weight:600;color:var(--p950);">' + escHtml(data.payment_info) + '</div>' +
+      '</div>';
+  }catch(e){
+    console.error('❌ Payment info load failed', e);
+    body.innerHTML = '<p style="font-size:.82rem;color:var(--txt-s);">Une erreur est survenue, réessaie plus tard.</p>';
+  }
+}
+
+// ── REPORT POST MODAL ──
+let reportPostId = null;
+function closeReportPost(){
+  document.getElementById('reportPostModal').style.display='none';
+  document.body.style.overflow='';
+}
+document.getElementById('reportPostModal').addEventListener('click',function(e){
+  if(e.target===this) closeReportPost();
+});
+function openReportPost(postId){
+  reportPostId = postId;
+  document.getElementById('reportPostMsg').textContent = '';
+  document.getElementById('reportPostDetails').value = '';
+  document.getElementById('reportPostModal').style.display='flex';
+  document.body.style.overflow='hidden';
+}
+async function submitReportPost(){
+  const reason = document.getElementById('reportPostReason').value;
+  const details = document.getElementById('reportPostDetails').value.trim();
+  const msg = document.getElementById('reportPostMsg');
+  msg.textContent = 'Envoi…';
+  try{
+    const res = await fetch('/api/communaute/' + reportPostId + '/signaler/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({reason, details}),
+    });
+    const data = await res.json().catch(()=>({}));
+    msg.textContent = data.message || data.error || 'Une erreur est survenue.';
+    if(res.ok){
+      const card = document.getElementById('post-' + reportPostId);
+      if(card) setTimeout(() => card.remove(), 1200);
+      setTimeout(closeReportPost, 1200);
+    }
+  }catch(e){
+    console.error('❌ Report failed', e);
     msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
   }
 }
@@ -611,6 +686,9 @@ function dashToggleSupport(postId, btn) {
     btn.classList.toggle('liked', data.is_supported);
     const countEl = document.getElementById('support-count-' + postId);
     if (countEl) countEl.textContent = data.support_count;
+    if (data.is_supported && btn.dataset.requestsSupport === '1') {
+      openSupportPayment(postId);
+    }
   });
 }
 
@@ -682,17 +760,20 @@ function submitComment(postId) {
 function dashPublishPost() {
   const content = (document.getElementById('dashWriteContent') || {}).value || '';
   const tag = (document.getElementById('dashWriteTag') || {}).value || 'autre';
+  const supportCheck = document.getElementById('dashWriteSupport');
+  const requestsSupport = !!(supportCheck && supportCheck.checked);
   if (!content.trim()) { document.getElementById('dashWriteContent').focus(); return; }
   fetch('/api/communaute/', {
     method: 'POST',
     credentials: 'same-origin',
     headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
-    body: JSON.stringify({content: content.trim(), tag}),
+    body: JSON.stringify({content: content.trim(), tag, requests_support: requestsSupport}),
   })
   .then(r => r.json())
   .then(data => {
     if (data.error) { alert(data.error); return; }
     document.getElementById('dashWriteContent').value = '';
+    if (supportCheck) supportCheck.checked = false;
     const feed = document.getElementById('dashPostFeed');
     const card = document.createElement('div');
     card.className = 'post-card';
@@ -701,7 +782,9 @@ function dashPublishPost() {
       '<div class="post-header">' +
         '<div class="post-av post-av-1">' + (data.initial || 'A') + '</div>' +
         '<div>' +
-          '<div class="post-anon">' + escHtml(data.anon) + ' <span class="post-tag">' + escHtml(data.tag_label) + '</span></div>' +
+          '<div class="post-anon">' + escHtml(data.anon) + ' <span class="post-tag">' + escHtml(data.tag_label) + '</span>' +
+            (data.requests_support ? ' <span class="post-tag post-tag-support">💰 Demande de soutien</span>' : '') +
+          '</div>' +
           '<div class="post-meta">À l\'instant</div>' +
         '</div>' +
       '</div>' +
@@ -709,7 +792,8 @@ function dashPublishPost() {
       '<div class="post-actions">' +
         '<button class="post-btn" id="like-btn-' + data.id + '" onclick="dashToggleLike(' + data.id + ', this)">❤️ <span id="like-count-' + data.id + '">0</span></button>' +
         '<button class="post-btn" onclick="toggleComments(' + data.id + ')">💬 <span id="comment-count-' + data.id + '">0</span></button>' +
-        '<button class="post-btn" id="support-btn-' + data.id + '" onclick="dashToggleSupport(' + data.id + ', this)">🤝 Soutenir <span id="support-count-' + data.id + '">0</span></button>' +
+        '<button class="post-btn" id="support-btn-' + data.id + '" data-requests-support="' + (data.requests_support ? '1' : '0') + '" onclick="dashToggleSupport(' + data.id + ', this)">🤝 Soutenir <span id="support-count-' + data.id + '">0</span></button>' +
+        '<button class="post-btn post-btn-report" onclick="openReportPost(' + data.id + ')" title="Signaler ce post">🚩</button>' +
       '</div>' +
       '<div class="post-comments" id="comments-' + data.id + '" style="display:none;">' +
         '<div class="post-comments-list" id="comments-list-' + data.id + '"></div>' +

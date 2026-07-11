@@ -27,7 +27,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
 from .notifications import send_notification
 from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
@@ -794,7 +794,7 @@ def dashboard(request):
     user_group_ids = set(request.user.sana_groups.values_list('id', flat=True))
 
     # Real community posts
-    posts = CommunityPost.objects.select_related(
+    posts = CommunityPost.objects.filter(is_reported=False).select_related(
         'author', 'author__profile'
     ).annotate(
         like_count_annotated=Count('likes', distinct=True),
@@ -1689,22 +1689,31 @@ def community_post_api(request):
         return JsonResponse({'error': 'JSON invalide'}, status=400)
     content = body.get('content', '').strip()
     tag     = body.get('tag', 'autre')
+    requests_support = bool(body.get('requests_support'))
     if not content:
         return JsonResponse({'error': 'Contenu vide'}, status=400)
-    post = CommunityPost.objects.create(author=request.user, content=content, tag=tag)
+
     prof = getattr(request.user, 'profile', None)
+    if requests_support:
+        if not prof or not prof.payment_method or not prof.payment_info:
+            return JsonResponse({'error': 'Ajoute un moyen de paiement dans ton profil avant de demander un soutien financier.'}, status=400)
+        if CommunityPost.objects.filter(author=request.user, requests_support=True).exists():
+            return JsonResponse({'error': 'Tu as déjà une demande de soutien active. Termine-la avant d’en créer une nouvelle.'}, status=400)
+
+    post = CommunityPost.objects.create(author=request.user, content=content, tag=tag, requests_support=requests_support)
     anon = prof.username_anonyme if prof else 'Anonyme·e'
     return JsonResponse({
-        'id':            post.id,
-        'anon':          anon,
-        'initial':       anon[0].upper() if anon else 'A',
-        'content':       post.content,
-        'tag_label':     post.get_tag_display(),
-        'like_count':    0,
-        'is_liked':      False,
-        'support_count': 0,
-        'is_supported':  False,
-        'comment_count': 0,
+        'id':               post.id,
+        'anon':             anon,
+        'initial':          anon[0].upper() if anon else 'A',
+        'content':          post.content,
+        'tag_label':        post.get_tag_display(),
+        'like_count':       0,
+        'is_liked':         False,
+        'support_count':    0,
+        'is_supported':     False,
+        'comment_count':    0,
+        'requests_support': post.requests_support,
     })
 
 
@@ -1762,6 +1771,52 @@ def toggle_support(request, post_id):
             except Exception:
                 pass
     return JsonResponse({'is_supported': is_supported, 'support_count': post.supports.count()})
+
+
+def post_payment_info(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    post = get_object_or_404(CommunityPost, id=post_id)
+    if not post.requests_support:
+        return JsonResponse({'error': 'Ce post ne demande pas de soutien financier'}, status=400)
+    prof = getattr(post.author, 'profile', None)
+    if not prof or not prof.payment_method or not prof.payment_info:
+        return JsonResponse({'error': 'Moyen de paiement indisponible'}, status=404)
+    return JsonResponse({
+        'anon':            prof.username_anonyme,
+        'payment_method':  prof.get_payment_method_display(),
+        'payment_info':    prof.payment_info,
+    })
+
+
+@csrf_exempt
+def report_post(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    post = get_object_or_404(CommunityPost, id=post_id)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    reason = body.get('reason', 'autre')
+    if reason not in dict(PostReport.REASON_CHOICES):
+        reason = 'autre'
+    details = (body.get('details') or '').strip()[:500]
+
+    if PostReport.objects.filter(post=post, reporter=request.user).exists():
+        return JsonResponse({'message': 'Tu as déjà signalé ce post, merci — il est en cours de vérification.'})
+
+    PostReport.objects.create(post=post, reporter=request.user, reason=reason, details=details)
+    # Masqué immédiatement dès le premier signalement — la prudence prime,
+    # vu le risque d'arnaque financière ; un post légitime réapparaît une
+    # fois vérifié en modération (voir PostReportAdmin).
+    post.is_reported = True
+    post.save(update_fields=['is_reported'])
+    return JsonResponse({'message': 'Merci, ce post a été signalé et masqué en attendant vérification.'})
 
 
 @csrf_exempt
@@ -1955,6 +2010,8 @@ def update_profile(request):
     theme_couleur = (body.get('theme_couleur') or '').strip()
     objectif      = (body.get('objectif_principal') or '').strip()[:200]
     age_raw       = body.get('age')
+    payment_method = (body.get('payment_method') or '').strip()
+    payment_info   = (body.get('payment_info') or '').strip()[:200]
 
     if not username_anon:
         return JsonResponse({'error': 'Le nom anonyme est requis'}, status=400)
@@ -1966,6 +2023,8 @@ def update_profile(request):
         return JsonResponse({'error': 'Situation invalide'}, status=400)
     if theme_couleur and theme_couleur not in dict(UserProfile.THEME_CHOICES):
         return JsonResponse({'error': 'Thème invalide'}, status=400)
+    if payment_method and payment_method not in dict(UserProfile.PAYMENT_METHOD_CHOICES):
+        return JsonResponse({'error': 'Moyen de paiement invalide'}, status=400)
 
     age = None
     if age_raw not in (None, ''):
@@ -1988,6 +2047,8 @@ def update_profile(request):
     if theme_couleur:
         profile.theme_couleur = theme_couleur
     profile.objectif_principal = objectif
+    profile.payment_method = payment_method
+    profile.payment_info = payment_info
     profile.save()
 
     return JsonResponse({'message': 'Profil mis à jour !'})

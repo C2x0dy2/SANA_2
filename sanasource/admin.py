@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
 
 
 @admin.register(UserProfile)
@@ -117,9 +117,10 @@ class JournalPageAdmin(admin.ModelAdmin):
 
 @admin.register(CommunityPost)
 class CommunityPostAdmin(admin.ModelAdmin):
-    list_display  = ['author', 'tag', 'content_preview', 'like_count', 'created_at']
-    list_filter   = ['tag']
+    list_display  = ['author', 'tag', 'content_preview', 'requests_support', 'is_reported', 'like_count', 'created_at']
+    list_filter   = ['tag', 'requests_support', 'is_reported']
     search_fields = ['author__username', 'content']
+    actions       = ['clear_report', 'delete_reported']
 
     @admin.display(description='Post')
     def content_preview(self, obj):
@@ -128,6 +129,21 @@ class CommunityPostAdmin(admin.ModelAdmin):
     @admin.display(description='Likes')
     def like_count(self, obj):
         return obj.likes.count()
+
+    @admin.action(description='Lever le signalement (rendre visible)')
+    def clear_report(self, request, queryset):
+        queryset.update(is_reported=False)
+
+    @admin.action(description='Supprimer les posts signalés sélectionnés')
+    def delete_reported(self, request, queryset):
+        queryset.filter(is_reported=True).delete()
+
+
+@admin.register(PostReport)
+class PostReportAdmin(admin.ModelAdmin):
+    list_display  = ['post', 'reporter', 'reason', 'created_at']
+    list_filter   = ['reason']
+    search_fields = ['post__content', 'reporter__username', 'details']
 
 
 @admin.register(Comment)
