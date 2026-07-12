@@ -27,7 +27,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, GameRoomPlayer, GameRoomMessage
 from .notifications import send_notification
 from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
@@ -36,6 +36,7 @@ from .serializers import serialize_journal_page, serialize_attachment
 from .reflection_questions import REFLECTION_QUESTIONS
 from .sensibilisation_content import SCREENING_TOOLS, QUIZ_QUESTIONS, get_daily_challenge, score_band
 from .games_content import POSITIVE_THOUGHTS, NEGATIVE_THOUGHTS, get_garden_stage, THOUGHT_REFRAMES, EMOTION_CARDS
+from .multiplayer_content import EMOTION_WORDS
 from google import genai
 from google.genai import types as genai_types
 from google.genai import errors as genai_errors
@@ -2332,6 +2333,198 @@ def submit_game_score(request):
     GameSession.objects.create(user=request.user, game=game, score=score)
     best = GameSession.objects.filter(user=request.user, game=game).order_by('-score').first()
     return JsonResponse({'message': 'Score enregistré !', 'score': score, 'best_score': best.score if best else score})
+
+
+# ============================================================
+# JEUX MULTIJOUEURS — Devine l'émotion
+# ============================================================
+
+def _anon_name(user):
+    prof = getattr(user, 'profile', None)
+    return prof.username_anonyme if prof else 'Anonyme·e'
+
+
+def _generate_room_code():
+    alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  # no 0/O/1/I ambiguity
+    for _ in range(20):
+        code = ''.join(random.choices(alphabet, k=5))
+        if not GameRoom.objects.filter(code=code).exists():
+            return code
+    raise RuntimeError('Could not generate a unique room code')
+
+
+def _pick_next_giver(room):
+    """Next player who hasn't been giver yet, oldest-joined first. None if
+    everyone has already had a turn."""
+    return room.players.filter(has_been_giver=False).order_by('joined_at').first()
+
+
+def _start_round(room, giver_player):
+    giver_player.has_been_giver = True
+    giver_player.save(update_fields=['has_been_giver'])
+    room.round_number += 1
+    room.current_giver = giver_player.user
+    room.current_emotion = random.choice(EMOTION_WORDS)
+    room.save(update_fields=['round_number', 'current_giver', 'current_emotion'])
+    GameRoomMessage.objects.create(
+        room=room, author=giver_player.user, is_system=True,
+        content=f'🎭 {_anon_name(giver_player.user)} doit faire deviner une émotion — donnez des indices sans dire le mot !',
+    )
+
+
+@csrf_exempt
+def create_game_room(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = GameRoom.objects.create(code=_generate_room_code(), host=request.user)
+    GameRoomPlayer.objects.create(room=room, user=request.user)
+    return JsonResponse({'code': room.code}, status=201)
+
+
+@csrf_exempt
+def join_game_room(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    code = (body.get('code') or '').strip().upper()
+    room = GameRoom.objects.filter(code=code).first()
+    if not room:
+        return JsonResponse({'error': 'Salon introuvable — vérifie le code.'}, status=404)
+    if room.status != 'waiting':
+        return JsonResponse({'error': 'Cette partie a déjà commencé.'}, status=400)
+    player, created = GameRoomPlayer.objects.get_or_create(room=room, user=request.user)
+    if created:
+        GameRoomMessage.objects.create(
+            room=room, author=request.user, is_system=True,
+            content=f'👋 {_anon_name(request.user)} a rejoint le salon.',
+        )
+    return JsonResponse({'code': room.code}, status=201 if created else 200)
+
+
+@csrf_exempt
+def start_game_room(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(GameRoom, code=code.upper())
+    if room.host != request.user:
+        return JsonResponse({'error': "Seul l'hôte peut démarrer la partie"}, status=403)
+    if room.status != 'waiting':
+        return JsonResponse({'error': 'La partie a déjà commencé'}, status=400)
+    player_count = room.players.count()
+    if player_count < 2:
+        return JsonResponse({'error': 'Il faut au moins 2 joueurs pour commencer'}, status=400)
+
+    room.status = 'playing'
+    room.max_rounds = player_count
+    room.save(update_fields=['status', 'max_rounds'])
+    first_giver = _pick_next_giver(room)
+    _start_round(room, first_giver)
+    return JsonResponse({'message': 'Partie démarrée !'})
+
+
+def game_room_state(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    room = get_object_or_404(GameRoom, code=code.upper())
+    player = GameRoomPlayer.objects.filter(room=room, user=request.user).first()
+    if not player:
+        return JsonResponse({'error': 'Tu ne fais pas partie de ce salon'}, status=403)
+
+    since_id = request.GET.get('since', 0)
+    try:
+        since_id = int(since_id)
+    except (TypeError, ValueError):
+        since_id = 0
+    messages = room.messages.filter(id__gt=since_id).select_related('author', 'author__profile')
+
+    is_giver = room.current_giver_id == request.user.id
+    return JsonResponse({
+        'status': room.status,
+        'round_number': room.round_number,
+        'max_rounds': room.max_rounds,
+        'is_host': room.host_id == request.user.id,
+        'is_giver': is_giver,
+        'secret_emotion': room.current_emotion if is_giver else None,
+        'giver_name': _anon_name(room.current_giver) if room.current_giver_id else None,
+        'players': [
+            {'name': _anon_name(p.user), 'score': p.score, 'is_you': p.user_id == request.user.id}
+            for p in room.players.select_related('user', 'user__profile').order_by('-score', 'joined_at')
+        ],
+        'messages': [
+            {
+                'id': m.id,
+                'author': _anon_name(m.author),
+                'content': m.content,
+                'is_system': m.is_system,
+                'is_correct_guess': m.is_correct_guess,
+                'is_you': m.author_id == request.user.id,
+            }
+            for m in messages
+        ],
+    })
+
+
+@csrf_exempt
+def post_game_room_message(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(GameRoom, code=code.upper())
+    player = GameRoomPlayer.objects.filter(room=room, user=request.user).first()
+    if not player:
+        return JsonResponse({'error': 'Tu ne fais pas partie de ce salon'}, status=403)
+    if room.status != 'playing':
+        return JsonResponse({'error': 'La partie n\'est pas en cours'}, status=400)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    content = (body.get('content') or '').strip()[:200]
+    if not content:
+        return JsonResponse({'error': 'Message vide'}, status=400)
+
+    is_giver = room.current_giver_id == request.user.id
+    secret = (room.current_emotion or '').lower()
+
+    if is_giver:
+        if secret and secret in content.lower():
+            return JsonResponse({'error': 'Tu ne peux pas utiliser le mot lui-même dans ton indice !'}, status=400)
+        GameRoomMessage.objects.create(room=room, author=request.user, content=content)
+        return JsonResponse({'message': 'Indice envoyé'})
+
+    # Guess from a non-giver
+    is_correct = secret and content.strip().lower() == secret
+    GameRoomMessage.objects.create(room=room, author=request.user, content=content, is_correct_guess=is_correct)
+
+    if is_correct:
+        player.score += 1
+        player.save(update_fields=['score'])
+        GameRoomMessage.objects.create(
+            room=room, author=request.user, is_system=True,
+            content=f'✅ {_anon_name(request.user)} a trouvé : {room.current_emotion} !',
+        )
+        next_giver = _pick_next_giver(room)
+        if next_giver:
+            _start_round(room, next_giver)
+        else:
+            room.status = 'finished'
+            room.current_giver = None
+            room.current_emotion = ''
+            room.save(update_fields=['status', 'current_giver', 'current_emotion'])
+            GameRoomMessage.objects.create(room=room, author=request.user, is_system=True, content='🏁 Partie terminée !')
+
+    return JsonResponse({'message': 'Envoyé', 'is_correct': is_correct})
 
 
 def groupe(request):

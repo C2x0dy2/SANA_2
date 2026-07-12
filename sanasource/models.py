@@ -678,3 +678,67 @@ class GameSession(models.Model):
 
     def __str__(self):
         return f'{self.user.username} — {self.game} ({self.score})'
+
+
+# ── Jeux multijoueurs ─────────────────────────────────────────────────────────
+# Polling-based (2s interval), same pattern as SanaGroup/GroupMessage chat —
+# no WebSocket infra needed for this.
+
+class GameRoom(models.Model):
+    STATUS_CHOICES = [
+        ('waiting',  'En attente'),
+        ('playing',  'En cours'),
+        ('finished', 'Terminé'),
+    ]
+    code             = models.CharField(max_length=6, unique=True)
+    host             = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hosted_game_rooms')
+    status           = models.CharField(max_length=10, choices=STATUS_CHOICES, default='waiting')
+    round_number     = models.PositiveIntegerField(default=0)
+    max_rounds       = models.PositiveIntegerField(default=0)  # set to player count when the game starts
+    current_emotion  = models.CharField(max_length=50, blank=True)
+    current_giver    = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at       = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Salon de jeu'
+        verbose_name_plural = 'Salons de jeu'
+
+    def __str__(self):
+        return f'{self.code} ({self.status})'
+
+
+class GameRoomPlayer(models.Model):
+    room           = models.ForeignKey(GameRoom, on_delete=models.CASCADE, related_name='players')
+    user           = models.ForeignKey(User, on_delete=models.CASCADE, related_name='game_room_memberships')
+    score          = models.PositiveIntegerField(default=0)
+    has_been_giver = models.BooleanField(default=False)
+    joined_at      = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['joined_at']
+        verbose_name        = 'Joueur de salon'
+        verbose_name_plural = 'Joueurs de salon'
+        constraints = [
+            models.UniqueConstraint(fields=['room', 'user'], name='unique_player_per_room'),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} in {self.room.code}'
+
+
+class GameRoomMessage(models.Model):
+    room              = models.ForeignKey(GameRoom, on_delete=models.CASCADE, related_name='messages')
+    author            = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+    content           = models.CharField(max_length=200)
+    is_system         = models.BooleanField(default=False)
+    is_correct_guess  = models.BooleanField(default=False)
+    created_at        = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['created_at']
+        verbose_name        = 'Message de salon'
+        verbose_name_plural = 'Messages de salon'
+
+    def __str__(self):
+        return f'[{self.room.code}] {self.author.username}: {self.content[:40]}'

@@ -1143,6 +1143,157 @@ function finishMemoryGame(){
   memoryState = null;
 }
 
+// ── JEU MULTIJOUEUR: DEVINE L'ÉMOTION ──
+let roomState = {code: null, messages: [], lastMsgId: 0, pollTimer: null};
+
+async function createGameRoom(){
+  const msg = document.getElementById('roomJoinMsg');
+  try{
+    const res = await fetch('/api/jeux/salons/creer/', {method:'POST', headers:{'X-CSRFToken':getCsrf()}});
+    const data = await res.json();
+    if(!res.ok){ msg.textContent = data.error || 'Une erreur est survenue.'; return; }
+    openGameRoom(data.code);
+  }catch(e){
+    console.error('❌ Create room failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
+
+async function joinGameRoom(){
+  const input = document.getElementById('joinRoomCode');
+  const msg = document.getElementById('roomJoinMsg');
+  const code = input.value.trim().toUpperCase();
+  if(!code){ msg.textContent = 'Entre un code de salon.'; return; }
+  try{
+    const res = await fetch('/api/jeux/salons/rejoindre/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({code}),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.textContent = data.error || 'Une erreur est survenue.'; return; }
+    msg.textContent = '';
+    openGameRoom(data.code);
+  }catch(e){
+    console.error('❌ Join room failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
+
+function openGameRoom(code){
+  roomState = {code, messages: [], lastMsgId: 0, pollTimer: null};
+  document.getElementById('gameRoomModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  pollGameRoom();
+  roomState.pollTimer = setInterval(pollGameRoom, 2000);
+}
+
+function closeGameRoom(){
+  if(roomState.pollTimer) clearInterval(roomState.pollTimer);
+  roomState = {code: null, messages: [], lastMsgId: 0, pollTimer: null};
+  document.getElementById('gameRoomModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.getElementById('gameRoomModal').addEventListener('click', function(e){
+  if(e.target === this) closeGameRoom();
+});
+
+async function pollGameRoom(){
+  if(!roomState.code) return;
+  try{
+    const res = await fetch('/api/jeux/salons/' + roomState.code + '/etat/?since=' + roomState.lastMsgId, {credentials:'same-origin'});
+    if(!res.ok) return;
+    const data = await res.json();
+    if(data.messages && data.messages.length){
+      roomState.messages = roomState.messages.concat(data.messages);
+      roomState.lastMsgId = data.messages[data.messages.length - 1].id;
+    }
+    renderGameRoom(data);
+  }catch(e){
+    console.error('❌ Room poll failed', e);
+  }
+}
+
+function renderGameRoom(data){
+  const wasScrolledDown = true; // keep chat pinned to bottom on every render (short list, fine)
+  let html = '<div class="sq-title">🎭 Devine l\'émotion</div>';
+  html += '<div class="room-code-box"><div style="font-size:.68rem;color:var(--txt-s);text-transform:uppercase;letter-spacing:1px;">Code du salon</div><div class="room-code">' + escHtml(roomState.code) + '</div></div>';
+
+  html += '<div class="room-players">';
+  data.players.forEach(p => {
+    html += '<div class="room-player-chip' + (p.is_you ? ' is-you' : '') + '">' + escHtml(p.name) + (p.is_you ? ' (toi)' : '') + ' · ' + p.score + '</div>';
+  });
+  html += '</div>';
+
+  if(data.status === 'waiting'){
+    html += '<p style="font-size:.8rem;color:var(--txt-s);text-align:center;margin-bottom:12px;">En attente d\'autres joueur·euses… partage le code !</p>';
+    if(data.is_host){
+      html += '<button class="btn-sm btn-primary-sm" style="width:100%;margin-bottom:12px;" onclick="startGameRoomNow()">Démarrer la partie</button>';
+    }
+  } else if(data.status === 'playing'){
+    if(data.is_giver){
+      html += '<div class="room-secret-box"><div class="room-secret-label">C\'est ton tour — indice sans dire le mot !</div><div class="room-secret-word">' + escHtml(data.secret_emotion) + '</div></div>';
+    } else {
+      html += '<p style="font-size:.78rem;color:var(--txt-s);text-align:center;margin-bottom:10px;">🎭 ' + escHtml(data.giver_name) + ' donne des indices — devine l\'émotion !</p>';
+    }
+  } else if(data.status === 'finished'){
+    html += '<p style="font-size:.85rem;color:var(--r500);text-align:center;font-weight:600;margin-bottom:12px;">🏁 Partie terminée !</p>';
+  }
+
+  html += '<div class="room-chat" id="roomChat">';
+  roomState.messages.forEach(m => {
+    const cls = m.is_system ? 'system' : (m.is_correct_guess ? 'correct' : '') ;
+    html += '<div class="room-msg ' + cls + (m.is_you ? ' is-you' : '') + '">' +
+      (m.is_system ? escHtml(m.content) : '<span class="room-msg-author">' + escHtml(m.author) + ' :</span> ' + escHtml(m.content)) +
+    '</div>';
+  });
+  html += '</div>';
+
+  if(data.status === 'playing'){
+    html += '<div class="room-input-row">' +
+      '<input type="text" class="post-comment-input" id="roomMsgInput" placeholder="' + (data.is_giver ? 'Donne un indice…' : 'Propose ta réponse…') + '" style="flex:1;" onkeydown="if(event.key===\'Enter\'){event.preventDefault();sendRoomMessage()}">' +
+      '<button class="post-comment-send" onclick="sendRoomMessage()">Envoyer</button>' +
+    '</div>';
+  }
+  html += '<button class="btn-sm btn-outline-sm" style="width:100%;margin-top:10px;" onclick="closeGameRoom()">Quitter</button>';
+
+  document.getElementById('gameRoomBody').innerHTML = html;
+  const chatEl = document.getElementById('roomChat');
+  if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+async function startGameRoomNow(){
+  if(!roomState.code) return;
+  try{
+    const res = await fetch('/api/jeux/salons/' + roomState.code + '/demarrer/', {method:'POST', headers:{'X-CSRFToken':getCsrf()}});
+    if(res.ok) pollGameRoom();
+  }catch(e){
+    console.error('❌ Start room failed', e);
+  }
+}
+
+async function sendRoomMessage(){
+  const input = document.getElementById('roomMsgInput');
+  if(!input) return;
+  const content = input.value.trim();
+  if(!content || !roomState.code) return;
+  input.value = '';
+  try{
+    const res = await fetch('/api/jeux/salons/' + roomState.code + '/message/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({content}),
+    });
+    if(!res.ok){
+      const data = await res.json().catch(()=>({}));
+      if(data.error) alert(data.error);
+    }
+    pollGameRoom();
+  }catch(e){
+    console.error('❌ Send room message failed', e);
+  }
+}
+
 // ── MOOD DATA FROM DB ──
 // MOOD_DATA is declared inline in dashboard.html (server-rendered value) before this file loads.
 const MOOD_DAYS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
