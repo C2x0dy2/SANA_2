@@ -27,7 +27,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, GameRoomPlayer, GameRoomMessage, WerewolfRoom, WerewolfPlayer, WerewolfMessage, WerewolfVote
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, GameRoomPlayer, GameRoomMessage, WerewolfRoom, WerewolfPlayer, WerewolfMessage, WerewolfVote, ImpostorRoom, ImpostorPlayer, ImpostorMessage, ImpostorVote
 from .notifications import send_notification
 from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
@@ -2952,6 +2952,304 @@ def cast_werewolf_vote(request, code):
     votes_cast = WerewolfVote.objects.filter(room=room, round_number=room.round_number).count()
     if votes_cast >= alive_count:
         _resolve_werewolf_vote(room)
+
+    return JsonResponse({'message': 'Vote enregistré'})
+
+
+# ── Imposteur des émotions ──────────────────────────────────────────────────
+
+IMPOSTOR_MIN_PLAYERS = 3
+
+IMPOSTOR_COACH_SYSTEM_PROMPT = """Tu es un coach bienveillant qui observe une partie du jeu thérapeutique \
+"Imposteur des émotions" sur SANA, une plateforme de santé mentale. Un·e joueur·euse (l'Imposteur) ne \
+connaît pas l'émotion secrète et doit bluffer pour se fondre dans le groupe, pendant que les autres la \
+décrivent sans jamais la nommer, puis tout le monde vote pour démasquer l'Imposteur.
+
+Tu reçois la transcription du chat de la partie (uniquement des pseudonymes, jamais de vraies identités) \
+ainsi que le résultat final.
+
+Rédige un feedback court (2 à 4 phrases), en français, chaleureux et constructif, sur la façon dont le \
+groupe a observé, argumenté et pris sa décision ensemble. Reste factuel par rapport à ce que tu observes, \
+félicite ce qui a bien fonctionné, et suggère gentiment un axe d'amélioration si pertinent. N'invente rien \
+qui ne soit pas dans la transcription.
+
+Règles absolues :
+- Jamais de diagnostic médical ou psychologique, jamais de jugement sur la santé mentale des joueur·euses.
+- Utilise uniquement les pseudonymes fournis, jamais de nom réel.
+- Ne fais aucun commentaire négatif sur la personne qui jouait l'Imposteur — c'était son rôle, pas un trait de caractère.
+- Termine toujours sur une note encourageante."""
+
+
+def _generate_impostor_coach_feedback(room):
+    lines = [
+        f"{_anon_name(m.author)}: {m.content}"
+        for m in room.messages.select_related('author', 'author__profile').order_by('created_at')
+        if not m.is_system
+    ]
+    result_label = "Le groupe a démasqué l'Imposteur" if room.result == 'group_win' else "L'Imposteur a échappé au vote"
+    transcript = f"Résultat : {result_label}\n" + '\n'.join(lines)
+    feedback = _run_coach_feedback(transcript, IMPOSTOR_COACH_SYSTEM_PROMPT)
+    if feedback:
+        room.ai_feedback = feedback
+        room.save(update_fields=['ai_feedback'])
+
+
+def impostor_room_page(request, code):
+    if not request.user.is_authenticated:
+        return redirect('sanasource:login')
+    room = get_object_or_404(ImpostorRoom, code=code.upper())
+    if not ImpostorPlayer.objects.filter(room=room, user=request.user).exists():
+        return redirect('sanasource:dashboard')
+    return render(request, 'page/impostor_room.html', {'room_code': room.code})
+
+
+@csrf_exempt
+def create_impostor_room(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    code = _generate_room_code()
+    while ImpostorRoom.objects.filter(code=code).exists():
+        code = _generate_room_code()
+    room = ImpostorRoom.objects.create(code=code, host=request.user)
+    ImpostorPlayer.objects.create(room=room, user=request.user)
+    return JsonResponse({'code': room.code}, status=201)
+
+
+@csrf_exempt
+def join_impostor_room(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    code = (body.get('code') or '').strip().upper()
+    room = ImpostorRoom.objects.filter(code=code).first()
+    if not room:
+        return JsonResponse({'error': 'Salon introuvable — vérifie le code.'}, status=404)
+    if room.status != 'waiting':
+        return JsonResponse({'error': 'Cette partie a déjà commencé.'}, status=400)
+    player, created = ImpostorPlayer.objects.get_or_create(room=room, user=request.user)
+    if created:
+        ImpostorMessage.objects.create(
+            room=room, author=request.user, is_system=True,
+            content=f'👋 {_anon_name(request.user)} a rejoint le salon.',
+        )
+    return JsonResponse({'code': room.code}, status=201 if created else 200)
+
+
+@csrf_exempt
+def start_impostor_room(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(ImpostorRoom, code=code.upper())
+    if room.host != request.user:
+        return JsonResponse({'error': "Seul l'hôte peut démarrer la partie"}, status=403)
+    if room.status != 'waiting':
+        return JsonResponse({'error': 'La partie a déjà commencé'}, status=400)
+    players = list(room.players.all())
+    if len(players) < IMPOSTOR_MIN_PLAYERS:
+        return JsonResponse({'error': f'Il faut au moins {IMPOSTOR_MIN_PLAYERS} joueurs pour commencer'}, status=400)
+
+    impostor_player = random.choice(players)
+    room.impostor = impostor_player.user
+    room.secret_emotion = random.choice(EMOTION_WORDS)
+    room.status = 'discussion'
+    room.save(update_fields=['impostor', 'secret_emotion', 'status'])
+    ImpostorMessage.objects.create(
+        room=room, author=room.host, is_system=True,
+        content="🕵️ La partie commence ! Décrivez l'émotion secrète sans jamais la nommer — un·e imposteur·euse se cache parmi vous.",
+    )
+    return JsonResponse({'message': 'Partie démarrée !'})
+
+
+def impostor_room_state(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    room = get_object_or_404(ImpostorRoom, code=code.upper())
+    my_player = ImpostorPlayer.objects.filter(room=room, user=request.user).first()
+    if not my_player:
+        return JsonResponse({'error': 'Tu ne fais pas partie de ce salon'}, status=403)
+
+    since_id = request.GET.get('since', 0)
+    try:
+        since_id = int(since_id)
+    except (TypeError, ValueError):
+        since_id = 0
+    messages = room.messages.filter(id__gt=since_id).select_related('author', 'author__profile')
+
+    is_impostor = room.impostor_id == request.user.id
+    show_secret = room.status == 'finished' or (room.status in ('discussion', 'vote') and not is_impostor)
+
+    players_payload = []
+    for p in room.players.select_related('user', 'user__profile').order_by('joined_at'):
+        is_p_impostor = room.impostor_id == p.user_id
+        players_payload.append({
+            'id': p.id,
+            'name': _anon_name(p.user),
+            'is_you': p.user_id == request.user.id,
+            'is_impostor': is_p_impostor if room.status == 'finished' else None,
+        })
+
+    my_vote = None
+    votes_cast = 0
+    if room.status == 'vote':
+        vote = ImpostorVote.objects.filter(room=room, voter=request.user).first()
+        my_vote = room.players.filter(user_id=vote.target_id).values_list('id', flat=True).first() if vote else None
+        votes_cast = ImpostorVote.objects.filter(room=room).count()
+
+    return JsonResponse({
+        'status': room.status,
+        'is_host': room.host_id == request.user.id,
+        'is_impostor': is_impostor,
+        'secret_emotion': room.secret_emotion if show_secret else None,
+        'result': room.result or None,
+        'ai_feedback': room.ai_feedback if room.status == 'finished' else None,
+        'player_count': room.players.count(),
+        'votes_cast': votes_cast,
+        'my_vote': my_vote,
+        'players': players_payload,
+        'messages': [
+            {
+                'id': m.id,
+                'author': _anon_name(m.author),
+                'content': m.content,
+                'is_system': m.is_system,
+                'is_you': m.author_id == request.user.id,
+            }
+            for m in messages
+        ],
+    })
+
+
+@csrf_exempt
+def post_impostor_message(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(ImpostorRoom, code=code.upper())
+    player = ImpostorPlayer.objects.filter(room=room, user=request.user).first()
+    if not player:
+        return JsonResponse({'error': 'Tu ne fais pas partie de ce salon'}, status=403)
+    if room.status != 'discussion':
+        return JsonResponse({'error': "Ce n'est pas le moment de discuter"}, status=400)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    content = (body.get('content') or '').strip()[:200]
+    if not content:
+        return JsonResponse({'error': 'Message vide'}, status=400)
+
+    is_impostor = room.impostor_id == request.user.id
+    secret = (room.secret_emotion or '').lower()
+    if not is_impostor and secret and secret in content.lower():
+        return JsonResponse({'error': "Tu ne peux pas nommer l'émotion elle-même !"}, status=400)
+
+    ImpostorMessage.objects.create(room=room, author=request.user, content=content)
+    return JsonResponse({'message': 'Envoyé'})
+
+
+@csrf_exempt
+def start_impostor_vote(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(ImpostorRoom, code=code.upper())
+    if room.host != request.user:
+        return JsonResponse({'error': "Seul l'hôte peut lancer le vote"}, status=403)
+    if room.status != 'discussion':
+        return JsonResponse({'error': "Ce n'est pas le moment de voter"}, status=400)
+
+    room.status = 'vote'
+    room.save(update_fields=['status'])
+    ImpostorMessage.objects.create(
+        room=room, author=room.host, is_system=True,
+        content='🗳️ Le vote commence — désignez qui vous semble être l\'Imposteur.',
+    )
+    return JsonResponse({'message': 'Vote lancé'})
+
+
+def _resolve_impostor_vote(room):
+    votes = ImpostorVote.objects.filter(room=room)
+    tally = {}
+    for v in votes:
+        tally[v.target_id] = tally.get(v.target_id, 0) + 1
+    if not tally:
+        room.status = 'finished'
+        room.result = 'impostor_win'
+        room.save(update_fields=['status', 'result'])
+        _generate_impostor_coach_feedback(room)
+        return
+
+    max_votes = max(tally.values())
+    top = [uid for uid, c in tally.items() if c == max_votes]
+    accused_id = top[0] if len(top) == 1 else None
+
+    if accused_id and accused_id == room.impostor_id:
+        room.result = 'group_win'
+        ImpostorMessage.objects.create(
+            room=room, author=room.host, is_system=True,
+            content=f"🎭 {_anon_name(room.impostor)} était bien l'Imposteur — démasqué·e !",
+        )
+    else:
+        room.result = 'impostor_win'
+        if accused_id:
+            accused_user = User.objects.get(id=accused_id)
+            ImpostorMessage.objects.create(
+                room=room, author=room.host, is_system=True,
+                content=f"🎭 {_anon_name(accused_user)} a été accusé·e à tort — l'Imposteur, c'était {_anon_name(room.impostor)} !",
+            )
+        else:
+            ImpostorMessage.objects.create(
+                room=room, author=room.host, is_system=True,
+                content=f"⚖️ Égalité des votes — l'Imposteur, {_anon_name(room.impostor)}, s'en sort !",
+            )
+
+    room.status = 'finished'
+    room.save(update_fields=['status', 'result'])
+    _generate_impostor_coach_feedback(room)
+
+
+@csrf_exempt
+def cast_impostor_vote(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(ImpostorRoom, code=code.upper())
+    player = ImpostorPlayer.objects.filter(room=room, user=request.user).first()
+    if not player:
+        return JsonResponse({'error': 'Tu ne fais pas partie de ce salon'}, status=403)
+    if room.status != 'vote':
+        return JsonResponse({'error': "Ce n'est pas le moment de voter"}, status=400)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    target_player_id = body.get('target_player_id')
+    target_player = room.players.filter(id=target_player_id).exclude(user=request.user).first()
+    if not target_player:
+        return JsonResponse({'error': 'Cible invalide'}, status=400)
+
+    ImpostorVote.objects.update_or_create(
+        room=room, voter=request.user, defaults={'target': target_player.user},
+    )
+
+    player_count = room.players.count()
+    votes_cast = ImpostorVote.objects.filter(room=room).count()
+    if votes_cast >= player_count:
+        _resolve_impostor_vote(room)
 
     return JsonResponse({'message': 'Vote enregistré'})
 

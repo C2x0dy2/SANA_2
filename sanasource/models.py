@@ -839,3 +839,89 @@ class WerewolfVote(models.Model):
 
     def __str__(self):
         return f'[{self.room.code}] r{self.round_number} {self.voter.username} -> {self.target.username}'
+
+
+# ── Imposteur des émotions ──────────────────────────────────────────────────
+# Un·e joueur·euse (l'Imposteur) ne connaît pas l'émotion secrète et doit se
+# fondre dans la discussion en bluffant, pendant que les autres décrivent
+# l'émotion sans la nommer. Une seule manche : discussion puis vote.
+
+class ImpostorRoom(models.Model):
+    STATUS_CHOICES = [
+        ('waiting',    'En attente'),
+        ('discussion', 'Discussion'),
+        ('vote',       'Vote'),
+        ('finished',   'Terminé'),
+    ]
+    RESULT_CHOICES = [
+        ('', ''),
+        ('group_win',     'Le groupe a démasqué l\'Imposteur'),
+        ('impostor_win',  'L\'Imposteur a échappé au vote'),
+    ]
+    code             = models.CharField(max_length=6, unique=True)
+    host             = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hosted_impostor_rooms')
+    status           = models.CharField(max_length=12, choices=STATUS_CHOICES, default='waiting')
+    secret_emotion   = models.CharField(max_length=50, blank=True)
+    impostor         = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    result           = models.CharField(max_length=16, choices=RESULT_CHOICES, blank=True, default='')
+    ai_feedback      = models.TextField(blank=True, default='')
+    created_at       = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Salon Imposteur des émotions'
+        verbose_name_plural = 'Salons Imposteur des émotions'
+
+    def __str__(self):
+        return f'{self.code} ({self.status})'
+
+
+class ImpostorPlayer(models.Model):
+    room      = models.ForeignKey(ImpostorRoom, on_delete=models.CASCADE, related_name='players')
+    user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='impostor_room_memberships')
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['joined_at']
+        verbose_name        = 'Joueur Imposteur des émotions'
+        verbose_name_plural = 'Joueurs Imposteur des émotions'
+        constraints = [
+            models.UniqueConstraint(fields=['room', 'user'], name='unique_impostor_player_per_room'),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} in {self.room.code}'
+
+
+class ImpostorMessage(models.Model):
+    room       = models.ForeignKey(ImpostorRoom, on_delete=models.CASCADE, related_name='messages')
+    author     = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+    content    = models.CharField(max_length=200)
+    is_system  = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['created_at']
+        verbose_name        = 'Message Imposteur des émotions'
+        verbose_name_plural = 'Messages Imposteur des émotions'
+
+    def __str__(self):
+        return f'[{self.room.code}] {self.author.username}: {self.content[:40]}'
+
+
+class ImpostorVote(models.Model):
+    room       = models.ForeignKey(ImpostorRoom, on_delete=models.CASCADE, related_name='votes')
+    voter      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+    target     = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['created_at']
+        verbose_name        = 'Vote Imposteur des émotions'
+        verbose_name_plural = 'Votes Imposteur des émotions'
+        constraints = [
+            models.UniqueConstraint(fields=['room', 'voter'], name='unique_impostor_vote_per_room'),
+        ]
+
+    def __str__(self):
+        return f'[{self.room.code}] {self.voter.username} -> {self.target.username}'

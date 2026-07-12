@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, WerewolfRoom
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, WerewolfRoom, ImpostorRoom
 
 
 @admin.register(UserProfile)
@@ -241,6 +241,13 @@ class GameRoomAdmin(admin.ModelAdmin):
 @admin.register(WerewolfRoom)
 class WerewolfRoomAdmin(admin.ModelAdmin):
     list_display  = ['code', 'host', 'status', 'round_number', 'result', 'created_at']
+    list_filter   = ['status', 'result']
+    search_fields = ['code', 'host__username']
+
+
+@admin.register(ImpostorRoom)
+class ImpostorRoomAdmin(admin.ModelAdmin):
+    list_display  = ['code', 'host', 'status', 'secret_emotion', 'result', 'created_at']
     list_filter   = ['status', 'result']
     search_fields = ['code', 'host__username']
 

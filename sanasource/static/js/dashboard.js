@@ -2143,3 +2143,38 @@ async function joinWerewolfRoom(){
     msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
   }
 }
+
+// ── JEU MULTIJOUEUR: IMPOSTEUR DES ÉMOTIONS ──
+// Page dédiée aussi (thème mascarade/projecteur) — voir jeux/imposteur/<code>/.
+async function createImpostorRoom(){
+  const msg = document.getElementById('impostorJoinMsg');
+  try{
+    const res = await fetch('/api/jeux/imposteur/creer/', {method:'POST', headers:{'X-CSRFToken':getCsrf()}});
+    const data = await res.json();
+    if(!res.ok){ msg.textContent = data.error || 'Une erreur est survenue.'; return; }
+    location.href = '/jeux/imposteur/' + data.code + '/';
+  }catch(e){
+    console.error('❌ Create impostor room failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
+
+async function joinImpostorRoom(){
+  const input = document.getElementById('joinImpostorCode');
+  const msg = document.getElementById('impostorJoinMsg');
+  const code = input.value.trim().toUpperCase();
+  if(!code){ msg.textContent = 'Entre un code de partie.'; return; }
+  try{
+    const res = await fetch('/api/jeux/imposteur/rejoindre/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({code}),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.textContent = data.error || 'Une erreur est survenue.'; return; }
+    location.href = '/jeux/imposteur/' + data.code + '/';
+  }catch(e){
+    console.error('❌ Join impostor room failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
