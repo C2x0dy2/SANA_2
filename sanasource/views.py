@@ -27,7 +27,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession
 from .notifications import send_notification
 from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
@@ -35,6 +35,7 @@ from .password_validation import french_password_errors
 from .serializers import serialize_journal_page, serialize_attachment
 from .reflection_questions import REFLECTION_QUESTIONS
 from .sensibilisation_content import SCREENING_TOOLS, QUIZ_QUESTIONS, get_daily_challenge, score_band
+from .games_content import POSITIVE_THOUGHTS, NEGATIVE_THOUGHTS, get_garden_stage
 from google import genai
 from google.genai import types as genai_types
 from google.genai import errors as genai_errors
@@ -923,6 +924,17 @@ def dashboard(request):
     quiz_completed_count = QuizAttempt.objects.filter(user=request.user).count()
     myths_submitted_count = SubmittedMyth.objects.filter(author=request.user).count()
 
+    # Jeux thérapeutiques: garden grows from wellness actions already tracked
+    # elsewhere (moods logged, défis du jour, auto-évaluations) — no separate
+    # tracking needed. Game best-scores for the two mini-games.
+    mood_total_count = MoodEntry.objects.filter(user=request.user).count()
+    garden_actions = mood_total_count + daily_challenge_total + screening_count
+    garden_stage = get_garden_stage(garden_actions)
+    game_best_scores = {
+        row['game']: row['best']
+        for row in GameSession.objects.filter(user=request.user).values('game').annotate(best=Max('score'))
+    }
+
     return render(request, 'page/dashboard.html', {
         'user':               request.user,
         'profile':            profile,
@@ -952,6 +964,10 @@ def dashboard(request):
         'pending_challenge_count':    pending_challenge_count,
         'daily_challenge_total':      daily_challenge_total,
         'challenge_leaderboard':      challenge_leaderboard,
+        'garden_stage':               garden_stage,
+        'game_best_scores':           game_best_scores,
+        'positive_thoughts':          POSITIVE_THOUGHTS,
+        'negative_thoughts':          NEGATIVE_THOUGHTS,
     })
 
 
@@ -2286,6 +2302,34 @@ def submit_myth(request):
         return JsonResponse({'error': 'Décris un peu plus le mythe que tu as entendu 🌸'}, status=400)
     SubmittedMyth.objects.create(author=request.user, myth_text=myth_text[:500])
     return JsonResponse({'message': 'Merci ! Ton mythe sera publié avec une réponse après validation.'}, status=201)
+
+
+# ============================================================
+# JEUX THÉRAPEUTIQUES
+# ============================================================
+
+@csrf_exempt
+def submit_game_score(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    game = body.get('game')
+    if game not in dict(GameSession.GAME_CHOICES):
+        return JsonResponse({'error': 'Jeu inconnu'}, status=400)
+    try:
+        score = max(0, min(1000, int(body.get('score', 0))))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Score invalide'}, status=400)
+
+    GameSession.objects.create(user=request.user, game=game, score=score)
+    best = GameSession.objects.filter(user=request.user, game=game).order_by('-score').first()
+    return JsonResponse({'message': 'Score enregistré !', 'score': score, 'best_score': best.score if best else score})
 
 
 def groupe(request):

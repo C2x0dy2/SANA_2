@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession
 
 
 @admin.register(UserProfile)
@@ -222,5 +222,12 @@ class SubmittedMythAdmin(admin.ModelAdmin):
     @admin.action(description='Approuver les mythes sélectionnés')
     def approve_myths(self, request, queryset):
         queryset.update(is_approved=True)
+
+
+@admin.register(GameSession)
+class GameSessionAdmin(admin.ModelAdmin):
+    list_display  = ['user', 'game', 'score', 'played_at']
+    list_filter   = ['game']
+    search_fields = ['user__username']
 
 

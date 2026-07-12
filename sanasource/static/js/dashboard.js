@@ -797,6 +797,192 @@ async function submitMyth(){
   }
 }
 
+// ── JEUX: helper to save a score ──
+async function saveGameScore(game, score){
+  try{
+    await fetch('/api/jeux/score/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({game, score}),
+    });
+  }catch(e){
+    console.error('❌ Game score save failed', e);
+  }
+}
+
+// ── JEU: ATTRAPE LES PENSÉES POSITIVES ──
+let catchGameState = null;
+
+function closeCatchGame(){
+  if(catchGameState) clearCatchGame();
+  document.getElementById('catchGameModal').style.display='none';
+  document.body.style.overflow='';
+}
+document.getElementById('catchGameModal').addEventListener('click',function(e){
+  if(e.target===this) closeCatchGame();
+});
+
+function clearCatchGame(){
+  if(!catchGameState) return;
+  clearInterval(catchGameState.spawnInterval);
+  clearInterval(catchGameState.timerInterval);
+  catchGameState.thoughts.forEach(t => { if(t.el && t.el.parentNode) t.el.remove(); clearTimeout(t.timeout); });
+  catchGameState = null;
+}
+
+function openCatchGame(){
+  const positive = JSON.parse(document.getElementById('positiveThoughtsData').textContent);
+  const negative = JSON.parse(document.getElementById('negativeThoughtsData').textContent);
+  document.getElementById('catchGameBody').innerHTML =
+    '<div class="sq-title">🎈 Attrape les pensées positives</div>' +
+    '<p class="sq-intro">Clique sur les pensées <strong style="color:#2d5540;">positives (vertes)</strong>, laisse tomber les <strong style="color:#a13a3a;">négatives (roses)</strong> sans les toucher.</p>' +
+    '<div class="catch-hud"><span>Score : <span id="catchScore">0</span></span><span id="catchTimer">45s</span></div>' +
+    '<div class="catch-arena" id="catchArena"></div>' +
+    '<button class="btn-sm btn-outline-sm" style="width:100%;" onclick="closeCatchGame()">Quitter</button>';
+  document.getElementById('catchGameModal').style.display='flex';
+  document.body.style.overflow='hidden';
+
+  catchGameState = {score: 0, timeLeft: 45, thoughts: [], spawnInterval: null, timerInterval: null, positive, negative};
+
+  catchGameState.spawnInterval = setInterval(() => spawnThought(), 750);
+  catchGameState.timerInterval = setInterval(() => {
+    catchGameState.timeLeft--;
+    const timerEl = document.getElementById('catchTimer');
+    if(timerEl) timerEl.textContent = catchGameState.timeLeft + 's';
+    if(catchGameState.timeLeft <= 0) endCatchGame();
+  }, 1000);
+}
+
+function spawnThought(){
+  if(!catchGameState) return;
+  const arena = document.getElementById('catchArena');
+  if(!arena) return;
+  const isPositive = Math.random() < 0.55;
+  const pool = isPositive ? catchGameState.positive : catchGameState.negative;
+  const text = pool[Math.floor(Math.random() * pool.length)];
+  const el = document.createElement('div');
+  el.className = 'catch-thought ' + (isPositive ? 'positive' : 'negative');
+  el.textContent = text;
+  const arenaWidth = arena.clientWidth || 300;
+  el.style.left = Math.max(4, Math.random() * (arenaWidth - 140)) + 'px';
+  el.style.top = '-40px';
+  arena.appendChild(el);
+  requestAnimationFrame(() => {
+    el.style.transition = 'top 4.5s linear';
+    el.style.top = (arena.clientHeight + 20) + 'px';
+  });
+  const entry = {el, isPositive};
+  el.onclick = () => catchThought(entry);
+  entry.timeout = setTimeout(() => {
+    if(el.parentNode) el.remove();
+    const idx = catchGameState.thoughts.indexOf(entry);
+    if(idx >= 0) catchGameState.thoughts.splice(idx, 1);
+  }, 4700);
+  catchGameState.thoughts.push(entry);
+}
+
+function catchThought(entry){
+  if(!catchGameState || !entry.el.parentNode) return;
+  catchGameState.score += entry.isPositive ? 1 : -1;
+  if(catchGameState.score < 0) catchGameState.score = 0;
+  const scoreEl = document.getElementById('catchScore');
+  if(scoreEl) scoreEl.textContent = catchGameState.score;
+  entry.el.remove();
+  clearTimeout(entry.timeout);
+  const idx = catchGameState.thoughts.indexOf(entry);
+  if(idx >= 0) catchGameState.thoughts.splice(idx, 1);
+}
+
+function endCatchGame(){
+  if(!catchGameState) return;
+  const finalScore = catchGameState.score;
+  clearCatchGame();
+  document.getElementById('catchGameBody').innerHTML =
+    '<div class="sq-title">Terminé !</div>' +
+    '<div class="sq-result-band"><div class="sq-result-score">' + finalScore + '</div><div class="sq-result-label">points</div></div>' +
+    buildShareRow('J\'ai fait ' + finalScore + ' points au jeu Attrape les pensées positives sur SANA !') +
+    '<button class="btn-sm btn-outline-sm" style="width:100%;margin-top:8px;" onclick="closeCatchGame()">Fermer</button>';
+  saveGameScore('attrape_pensees', finalScore);
+}
+
+// ── JEU: RESPIRE AVEC MOI ──
+let breatheGameState = null;
+
+function closeBreatheGame(){
+  if(breatheGameState){
+    breatheGameState.timeouts.forEach(t => clearTimeout(t));
+    document.removeEventListener('visibilitychange', breatheGameState.visHandler);
+  }
+  breatheGameState = null;
+  document.getElementById('breatheGameModal').style.display='none';
+  document.body.style.overflow='';
+}
+document.getElementById('breatheGameModal').addEventListener('click',function(e){
+  if(e.target===this) closeBreatheGame();
+});
+
+const BREATHE_CYCLES = 6;
+const BREATHE_PHASES = [
+  {cls:'inhale', label:'Inspire…'},
+  {cls:'hold', label:'Retiens…'},
+  {cls:'exhale', label:'Expire…'},
+];
+
+function openBreatheGame(){
+  document.getElementById('breatheGameBody').innerHTML =
+    '<div class="sq-title">🧘 Respire avec moi</div>' +
+    '<p class="sq-intro" id="breatheCycleLabel">Cycle 1/' + BREATHE_CYCLES + '</p>' +
+    '<div class="breathe-circle-wrap"><div class="breathe-circle" id="breatheCircle">Prêt·e ?</div></div>' +
+    '<button class="btn-sm btn-outline-sm" style="width:100%;" onclick="closeBreatheGame()">Arrêter</button>';
+  document.getElementById('breatheGameModal').style.display='flex';
+  document.body.style.overflow='hidden';
+
+  breatheGameState = {left: false, timeouts: [], visHandler: null};
+  breatheGameState.visHandler = () => { if(document.hidden) breatheGameState.left = true; };
+  document.addEventListener('visibilitychange', breatheGameState.visHandler);
+
+  runBreatheCycle(0);
+}
+
+function runBreatheCycle(cycleIndex){
+  if(!breatheGameState || cycleIndex >= BREATHE_CYCLES){
+    if(breatheGameState) finishBreatheGame();
+    return;
+  }
+  const label = document.getElementById('breatheCycleLabel');
+  if(label) label.textContent = 'Cycle ' + (cycleIndex + 1) + '/' + BREATHE_CYCLES;
+  runBreathePhase(cycleIndex, 0);
+}
+
+function runBreathePhase(cycleIndex, phaseIndex){
+  if(!breatheGameState) return;
+  if(phaseIndex >= BREATHE_PHASES.length){
+    runBreatheCycle(cycleIndex + 1);
+    return;
+  }
+  const circle = document.getElementById('breatheCircle');
+  const phase = BREATHE_PHASES[phaseIndex];
+  if(circle){
+    circle.className = 'breathe-circle ' + phase.cls;
+    circle.textContent = phase.label;
+  }
+  const t = setTimeout(() => runBreathePhase(cycleIndex, phaseIndex + 1), 4000);
+  breatheGameState.timeouts.push(t);
+}
+
+function finishBreatheGame(){
+  const left = breatheGameState ? breatheGameState.left : true;
+  const score = left ? 70 : 100;
+  closeBreatheGame();
+  document.getElementById('breatheGameBody').innerHTML =
+    '<div class="sq-title">Bien joué 🌸</div>' +
+    '<div class="sq-result-band"><div class="sq-result-score">' + score + '</div><div class="sq-result-label">points</div></div>' +
+    '<p style="font-size:.78rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;">' + (left ? 'Tu as un peu quitté la page, mais tu es resté·e jusqu\'au bout — bravo !' : 'Tu as suivi les 6 cycles sans interruption, parfaite régularité.') + '</p>' +
+    buildShareRow('Je viens de faire une session de respiration guidée sur SANA 🧘') +
+    '<button class="btn-sm btn-outline-sm" style="width:100%;" onclick="document.getElementById(\'breatheGameModal\').style.display=\'none\';document.body.style.overflow=\'\';">Fermer</button>';
+  saveGameScore('respire_avec_moi', score);
+}
+
 // ── MOOD DATA FROM DB ──
 // MOOD_DATA is declared inline in dashboard.html (server-rendered value) before this file loads.
 const MOOD_DAYS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];

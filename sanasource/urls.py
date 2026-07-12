@@ -80,6 +80,7 @@ urlpatterns = [
     path('api/sensibilisation/quiz/', views.submit_quiz, name='submit_quiz'),
     path('api/sensibilisation/defi-du-jour/', views.submit_daily_challenge, name='submit_daily_challenge'),
     path('api/sensibilisation/mythes/', views.submit_myth, name='submit_myth'),
+    path('api/jeux/score/', views.submit_game_score, name='submit_game_score'),
     path('api/notifications/', views.notifications_api, name='notifications_api'),
     path('api/notifications/<int:notif_id>/read/', views.notification_read, name='notification_read'),
     path('api/push/subscribe/', views.push_subscribe, name='push_subscribe'),

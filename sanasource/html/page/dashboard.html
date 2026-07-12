@@ -633,6 +633,45 @@ SANA — Mon Espace
     </div>
   </div>
 
+  <!-- ══ JEUX THÉRAPEUTIQUES ══ -->
+  <div id="sec-jeux" class="section">
+    <div class="sec-title">Jeux <em>thérapeutiques</em></div>
+    <div class="sec-sub">Travailler ses émotions, se détendre et se reconnecter à soi — en jouant</div>
+
+    <!-- Jardin intérieur -->
+    <div class="card garden-card" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      <div class="garden-emoji">{{ garden_stage.emoji }}</div>
+      <div style="flex:1;">
+        <div class="eyebrow">Jardin intérieur</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--p950);margin:4px 0;">{{ garden_stage.label }}</div>
+        <p style="font-size:.78rem;color:var(--txt-s);line-height:1.6;">{{ garden_stage.message }}</p>
+        <p style="font-size:.68rem;color:var(--r500);margin-top:6px;">🌱 {{ garden_stage.count }} action{{ garden_stage.count|pluralize }} bien-être accomplie{{ garden_stage.count|pluralize }} (humeurs, défis, auto-évaluations)</p>
+      </div>
+    </div>
+
+    <div class="eyebrow" style="margin-bottom:12px;">Jeux individuels</div>
+    <div class="grid-2" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      <div class="card game-card">
+        <div style="font-size:1.8rem;margin-bottom:8px;">🎈</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:6px;">Attrape les pensées positives</div>
+        <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:10px;">Attrape les pensées positives qui tombent, laisse passer les négatives. 45 secondes chrono.</p>
+        <p style="font-size:.68rem;color:var(--r500);margin-bottom:10px;">{% if game_best_scores.attrape_pensees %}Meilleur score : {{ game_best_scores.attrape_pensees }}{% else %}Pas encore joué{% endif %}</p>
+        <button class="btn-sm btn-primary-sm" style="width:100%;" onclick="openCatchGame()">Jouer</button>
+      </div>
+      <div class="card game-card">
+        <div style="font-size:1.8rem;margin-bottom:8px;">🧘</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:6px;">Respire avec moi</div>
+        <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:10px;">Suis l'animation de respiration guidée pendant 6 cycles — inspire, retiens, expire.</p>
+        <p style="font-size:.68rem;color:var(--r500);margin-bottom:10px;">{% if game_best_scores.respire_avec_moi %}Meilleur score : {{ game_best_scores.respire_avec_moi }}{% else %}Pas encore joué{% endif %}</p>
+        <button class="btn-sm btn-primary-sm" style="width:100%;" onclick="openBreatheGame()">Jouer</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:clamp(18px,3vw,24px);text-align:center;">
+      <p style="font-size:.8rem;color:var(--txt-s);line-height:1.7;">D'autres jeux arrivent bientôt : chasse aux pensées (TCC), memory des émotions, coloriage relaxant, mission bien-être… et des jeux à plusieurs joueurs 👥</p>
+    </div>
+  </div>
+
   <!-- ══ BLOG & RESSOURCES ══ -->
   <div id="sec-ressources" class="section">
     <div class="sec-title">Blog & <em>Ressources</em></div>
@@ -1505,6 +1544,23 @@ SANA — Mon Espace
 <div id="dailyChallengeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--white);border-radius:28px;padding:clamp(24px,4vw,32px);max-width:420px;width:100%;animation:secIn .3s ease;">
     <div id="dailyChallengeBody"></div>
+  </div>
+</div>
+
+{{ positive_thoughts|json_script:"positiveThoughtsData" }}
+{{ negative_thoughts|json_script:"negativeThoughtsData" }}
+
+<!-- CATCH GAME MODAL -->
+<div id="catchGameModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border-radius:28px;padding:clamp(20px,3.5vw,28px);max-width:480px;width:100%;animation:secIn .3s ease;">
+    <div id="catchGameBody"></div>
+  </div>
+</div>
+
+<!-- BREATHE GAME MODAL -->
+<div id="breatheGameModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border-radius:28px;padding:clamp(20px,3.5vw,28px);max-width:420px;width:100%;animation:secIn .3s ease;">
+    <div id="breatheGameBody"></div>
   </div>
 </div>
 {% endblock %}

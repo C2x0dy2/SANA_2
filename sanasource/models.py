@@ -655,3 +655,24 @@ class SubmittedMyth(models.Model):
 
     def __str__(self):
         return f'{self.author.username}: {self.myth_text[:40]}'
+
+
+# ── Jeux thérapeutiques ───────────────────────────────────────────────────────
+
+class GameSession(models.Model):
+    GAME_CHOICES = [
+        ('attrape_pensees', 'Attrape les pensées positives'),
+        ('respire_avec_moi', 'Respire avec moi'),
+    ]
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='game_sessions')
+    game       = models.CharField(max_length=30, choices=GAME_CHOICES)
+    score      = models.PositiveSmallIntegerField()
+    played_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-played_at']
+        verbose_name        = 'Partie jouée'
+        verbose_name_plural = 'Parties jouées'
+
+    def __str__(self):
+        return f'{self.user.username} — {self.game} ({self.score})'

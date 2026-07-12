@@ -947,6 +947,35 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 .review-card-meta{font-size:.65rem;color:var(--txt-s);}
 
 /* ══════════════════════════════════
+   JEUX THÉRAPEUTIQUES
+══════════════════════════════════ */
+.garden-card{display:flex;align-items:center;gap:18px;padding:clamp(18px,3vw,26px);}
+.garden-emoji{font-size:3rem;flex-shrink:0;}
+.game-card{padding:clamp(18px,3vw,24px);}
+.catch-arena{
+  position:relative;width:100%;height:340px;background:var(--blush);border-radius:16px;
+  overflow:hidden;margin-bottom:12px;
+}
+.catch-thought{
+  position:absolute;padding:8px 14px;border-radius:100px;font-size:.76rem;font-weight:500;
+  cursor:pointer;white-space:nowrap;user-select:none;transition:transform .1s;
+}
+.catch-thought:active{transform:scale(0.9);}
+.catch-thought.positive{background:var(--sage-p);color:#2d5540;}
+.catch-thought.negative{background:#fde2e2;color:#a13a3a;}
+.catch-hud{display:flex;justify-content:space-between;font-size:.8rem;color:var(--p950);font-weight:600;margin-bottom:8px;}
+.breathe-circle-wrap{display:flex;align-items:center;justify-content:center;height:220px;margin-bottom:14px;}
+.breathe-circle{
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,var(--r300),var(--r500));
+  display:flex;align-items:center;justify-content:center;color:white;font-size:.85rem;font-weight:600;
+  transition:transform 4s ease-in-out;
+}
+.breathe-circle.inhale{transform:scale(1.6);}
+.breathe-circle.hold{transform:scale(1.6);}
+.breathe-circle.exhale{transform:scale(1);}
+
+/* ══════════════════════════════════
    MOBILE NAV (bottom bar)
 ══════════════════════════════════ */
 .mobile-nav{
