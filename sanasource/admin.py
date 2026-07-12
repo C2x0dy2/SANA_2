@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, UserChallengeProgress, SubmittedMyth
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth
 
 
 @admin.register(UserProfile)
@@ -197,11 +197,15 @@ class QuizAttemptAdmin(admin.ModelAdmin):
     search_fields = ['user__username']
 
 
-@admin.register(UserChallengeProgress)
-class UserChallengeProgressAdmin(admin.ModelAdmin):
-    list_display  = ['user', 'challenge_id', 'started_at', 'completed_at']
-    list_filter   = ['challenge_id']
-    search_fields = ['user__username']
+@admin.register(DailyChallengeCompletion)
+class DailyChallengeCompletionAdmin(admin.ModelAdmin):
+    list_display  = ['user', 'challenge_date', 'reflection_preview', 'completed_at']
+    list_filter   = ['challenge_date']
+    search_fields = ['user__username', 'reflection_text']
+
+    @admin.display(description='Avis')
+    def reflection_preview(self, obj):
+        return obj.reflection_text[:60]
 
 
 @admin.register(SubmittedMyth)

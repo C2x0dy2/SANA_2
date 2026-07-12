@@ -617,23 +617,28 @@ class QuizAttempt(models.Model):
         return f'{self.user.username} — {self.score}/{self.total}'
 
 
-class UserChallengeProgress(models.Model):
-    user           = models.ForeignKey(User, on_delete=models.CASCADE, related_name='challenge_progress')
-    challenge_id   = models.CharField(max_length=50)  # référence CHALLENGES (constante Python)
-    started_at     = models.DateTimeField(auto_now_add=True)
-    checkin_dates  = models.JSONField(default=list, blank=True)  # liste de dates ISO
-    completed_at   = models.DateTimeField(null=True, blank=True)
+class DailyChallengeCompletion(models.Model):
+    """One row per user per calendar day whose défi they've completed.
+    Days are never skipped/expired — see views._get_current_daily_challenge:
+    if a user falls behind, the oldest incomplete day stays as their
+    "current" challenge until they log it, so gaps accumulate rather than
+    vanish. challenge_date is the day the défi was FOR, not necessarily the
+    day it was actually completed (completed_at is that)."""
+    user            = models.ForeignKey(User, on_delete=models.CASCADE, related_name='daily_challenge_completions')
+    challenge_date  = models.DateField()
+    reflection_text = models.TextField(max_length=500, blank=True)
+    completed_at    = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering            = ['-started_at']
-        verbose_name        = 'Progression de défi'
-        verbose_name_plural = 'Progressions de défis'
+        ordering            = ['-challenge_date']
+        verbose_name        = 'Défi du jour complété'
+        verbose_name_plural = 'Défis du jour complétés'
         constraints = [
-            models.UniqueConstraint(fields=['user', 'challenge_id'], name='unique_challenge_per_user'),
+            models.UniqueConstraint(fields=['user', 'challenge_date'], name='unique_daily_challenge_per_user_per_date'),
         ]
 
     def __str__(self):
-        return f'{self.user.username} — {self.challenge_id} ({len(self.checkin_dates)}j)'
+        return f'{self.user.username} — {self.challenge_date}'
 
 
 class SubmittedMyth(models.Model):

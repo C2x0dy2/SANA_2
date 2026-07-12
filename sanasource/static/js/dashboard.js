@@ -732,36 +732,46 @@ function renderQuizResult(data){
   document.getElementById('quizBody').innerHTML = html;
 }
 
-// ── SENSIBILISATION: DÉFIS ──
-async function startChallenge(challengeId, btn){
-  btn.disabled = true;
-  try{
-    const res = await fetch('/api/sensibilisation/defis/demarrer/', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
-      body: JSON.stringify({challenge_id: challengeId}),
-    });
-    if(res.ok) window.location.reload();
-    else btn.disabled = false;
-  }catch(e){
-    console.error('❌ Start challenge failed', e);
-    btn.disabled = false;
-  }
+// ── DÉFI DU JOUR ──
+function closeDailyChallenge(){
+  document.getElementById('dailyChallengeModal').style.display='none';
+  document.body.style.overflow='';
 }
-
-async function checkinChallenge(challengeId, btn){
-  btn.disabled = true;
+document.getElementById('dailyChallengeModal').addEventListener('click',function(e){
+  if(e.target===this) closeDailyChallenge();
+});
+function openDailyChallenge(){
+  document.getElementById('dailyChallengeBody').innerHTML =
+    '<div class="sq-title">Comment tu t\'es senti·e ?</div>' +
+    '<p class="sq-intro">Dis-en un peu sur ce défi — c\'est ce qui compte le plus, pas juste la case cochée.</p>' +
+    '<textarea id="dailyChallengeReflection" class="review-textarea" rows="3" maxlength="500" placeholder="Ex: Ça m\'a fait du bien de marcher, je me sens plus léger·ère…"></textarea>' +
+    '<p id="dailyChallengeMsg" style="font-size:.76rem;color:var(--txt-s);margin:8px 0;min-height:1em;"></p>' +
+    '<button class="btn-sm btn-primary-sm" style="width:100%;" onclick="submitDailyChallenge()">Valider le défi</button>';
+  document.getElementById('dailyChallengeModal').style.display='flex';
+  document.body.style.overflow='hidden';
+}
+async function submitDailyChallenge(){
+  const textarea = document.getElementById('dailyChallengeReflection');
+  const msg = document.getElementById('dailyChallengeMsg');
+  const reflection = textarea.value.trim();
+  if(reflection.length < 5){ msg.textContent = 'Dis-en un peu plus sur comment tu t\'es senti·e 🌸'; return; }
+  msg.textContent = 'Envoi…';
   try{
-    const res = await fetch('/api/sensibilisation/defis/checkin/', {
+    const res = await fetch('/api/sensibilisation/defi-du-jour/', {
       method:'POST',
       headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
-      body: JSON.stringify({challenge_id: challengeId}),
+      body: JSON.stringify({reflection_text: reflection}),
     });
-    if(res.ok) window.location.reload();
-    else btn.disabled = false;
+    const data = await res.json().catch(()=>({}));
+    if(res.ok){
+      msg.textContent = data.message || 'Bravo !';
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      msg.textContent = data.error || 'Une erreur est survenue.';
+    }
   }catch(e){
-    console.error('❌ Checkin failed', e);
-    btn.disabled = false;
+    console.error('❌ Daily challenge submit failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
   }
 }
 

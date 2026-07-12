@@ -27,14 +27,14 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, UserChallengeProgress, SubmittedMyth
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth
 from .notifications import send_notification
 from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
 from .password_validation import french_password_errors
 from .serializers import serialize_journal_page, serialize_attachment
 from .reflection_questions import REFLECTION_QUESTIONS
-from .sensibilisation_content import SCREENING_TOOLS, QUIZ_QUESTIONS, CHALLENGES, CHALLENGES_BY_ID, score_band
+from .sensibilisation_content import SCREENING_TOOLS, QUIZ_QUESTIONS, get_daily_challenge, score_band
 from google import genai
 from google.genai import types as genai_types
 from google.genai import errors as genai_errors
@@ -85,6 +85,41 @@ def _looks_like_real_name(anon, first_name, last_name):
         if part_norm and len(part_norm) >= 3 and part_norm in anon_norm:
             return True
     return False
+
+
+# Défi du jour: never scan further back than this, so a very old account
+# doesn't surface a months-long backlog the day the feature ships.
+DAILY_CHALLENGE_START_DATE = date(2026, 7, 12)
+DAILY_CHALLENGE_MAX_BACKLOG = 60  # days
+
+
+def _get_current_daily_challenge(user, profile):
+    """Returns (challenge_date, pending_count): challenge_date is the oldest
+    day in the user's window that they haven't completed yet (None if
+    they're fully caught up through today), pending_count is how many days
+    are queued up including that one. A day's défi never expires — it just
+    stays "current" until logged, per the design brief."""
+    start = DAILY_CHALLENGE_START_DATE
+    if profile and profile.date_inscription:
+        start = max(start, profile.date_inscription.date())
+    start = max(start, date.today() - timedelta(days=DAILY_CHALLENGE_MAX_BACKLOG))
+
+    today = date.today()
+    completed = set(
+        DailyChallengeCompletion.objects.filter(
+            user=user, challenge_date__gte=start, challenge_date__lte=today,
+        ).values_list('challenge_date', flat=True)
+    )
+    current = None
+    pending = 0
+    d = start
+    while d <= today:
+        if d not in completed:
+            pending += 1
+            if current is None:
+                current = d
+        d += timedelta(days=1)
+    return current, pending
 
 
 @ratelimit(key='ip', rate='5/h', method='POST', block=False)
@@ -866,29 +901,27 @@ def dashboard(request):
 
     reviews_feed = Review.objects.select_related('author', 'author__profile')[:30]
 
-    # Sensibilisation: quiz questions without the answer key, challenges with
-    # this user's own progress folded in, and approved community myths.
+    # Sensibilisation: quiz questions without the answer key, and approved
+    # community myths.
     quiz_questions_public = [{'question': q['question'], 'choices': q['choices']} for q in QUIZ_QUESTIONS]
-    progress_by_challenge = {
-        p.challenge_id: p
-        for p in UserChallengeProgress.objects.filter(user=request.user, challenge_id__in=CHALLENGES_BY_ID.keys())
-    }
-    challenges_with_progress = []
-    for c in CHALLENGES:
-        progress = progress_by_challenge.get(c['id'])
-        challenges_with_progress.append({
-            **c,
-            'started': progress is not None,
-            'days_done': len(progress.checkin_dates) if progress else 0,
-            'completed': bool(progress and progress.completed_at),
-            'checked_in_today': bool(progress and timezone.localdate().isoformat() in progress.checkin_dates),
-        })
     myths_submitted = SubmittedMyth.objects.filter(is_approved=True).select_related('author', 'author__profile')[:20]
 
-    screening_count           = ScreeningResult.objects.filter(user=request.user).count()
-    quiz_completed_count      = QuizAttempt.objects.filter(user=request.user).count()
-    challenges_completed_count = sum(1 for c in challenges_with_progress if c['completed'])
-    myths_submitted_count     = SubmittedMyth.objects.filter(author=request.user).count()
+    # Défi du jour: the oldest not-yet-completed day in this user's window
+    # (never expires — see _get_current_daily_challenge), plus a leaderboard
+    # for the December completion contest.
+    current_challenge_date, pending_challenge_count = _get_current_daily_challenge(request.user, profile)
+    current_challenge = get_daily_challenge(current_challenge_date) if current_challenge_date else None
+    daily_challenge_total = DailyChallengeCompletion.objects.filter(user=request.user).count()
+    challenge_leaderboard = (
+        User.objects.filter(daily_challenge_completions__isnull=False)
+        .annotate(completions=Count('daily_challenge_completions'))
+        .select_related('profile')
+        .order_by('-completions')[:10]
+    )
+
+    screening_count      = ScreeningResult.objects.filter(user=request.user).count()
+    quiz_completed_count = QuizAttempt.objects.filter(user=request.user).count()
+    myths_submitted_count = SubmittedMyth.objects.filter(author=request.user).count()
 
     return render(request, 'page/dashboard.html', {
         'user':               request.user,
@@ -910,12 +943,15 @@ def dashboard(request):
         'watermark_uri':       _build_watermark_data_uri(request.user),
         'screening_tools':            SCREENING_TOOLS,
         'quiz_questions':             quiz_questions_public,
-        'challenges':                 challenges_with_progress,
         'myths_submitted':            myths_submitted,
         'screening_count':            screening_count,
         'quiz_completed_count':       quiz_completed_count,
-        'challenges_completed_count': challenges_completed_count,
         'myths_submitted_count':      myths_submitted_count,
+        'current_challenge':          current_challenge,
+        'current_challenge_date':     current_challenge_date,
+        'pending_challenge_count':    pending_challenge_count,
+        'daily_challenge_total':      daily_challenge_total,
+        'challenge_leaderboard':      challenge_leaderboard,
     })
 
 
@@ -2205,7 +2241,7 @@ def submit_quiz(request):
 
 
 @csrf_exempt
-def start_challenge(request):
+def submit_daily_challenge(request):
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Non authentifié'}, status=401)
     if request.method != 'POST':
@@ -2214,42 +2250,25 @@ def start_challenge(request):
         body = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'error': 'JSON invalide'}, status=400)
-    challenge_id = body.get('challenge_id')
-    if challenge_id not in CHALLENGES_BY_ID:
-        return JsonResponse({'error': 'Défi inconnu'}, status=400)
 
-    progress, _ = UserChallengeProgress.objects.get_or_create(user=request.user, challenge_id=challenge_id)
-    return JsonResponse({'challenge_id': challenge_id, 'days_done': len(progress.checkin_dates)})
+    profile = getattr(request.user, 'profile', None)
+    challenge_date, _pending_count = _get_current_daily_challenge(request.user, profile)
+    if challenge_date is None:
+        return JsonResponse({'error': 'Tu es déjà à jour — reviens demain pour le prochain défi !'}, status=400)
 
+    reflection = (body.get('reflection_text') or '').strip()[:500]
+    if len(reflection) < 5:
+        return JsonResponse({'error': 'Dis-en un peu plus sur comment tu t\'es senti·e 🌸'}, status=400)
 
-@csrf_exempt
-def checkin_challenge(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'Non authentifié'}, status=401)
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
-    try:
-        body = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'JSON invalide'}, status=400)
-    challenge_id = body.get('challenge_id')
-    challenge_def = CHALLENGES_BY_ID.get(challenge_id)
-    if not challenge_def:
-        return JsonResponse({'error': 'Défi inconnu'}, status=400)
-
-    progress = get_object_or_404(UserChallengeProgress, user=request.user, challenge_id=challenge_id)
-    today = timezone.localdate().isoformat()
-    if today not in progress.checkin_dates:
-        progress.checkin_dates.append(today)
-        if len(progress.checkin_dates) >= challenge_def['duration_days'] and not progress.completed_at:
-            progress.completed_at = timezone.now()
-        progress.save()
-
+    DailyChallengeCompletion.objects.create(
+        user=request.user, challenge_date=challenge_date, reflection_text=reflection,
+    )
+    next_date, next_pending_count = _get_current_daily_challenge(request.user, profile)
     return JsonResponse({
-        'days_done': len(progress.checkin_dates),
-        'duration_days': challenge_def['duration_days'],
-        'completed': progress.completed_at is not None,
-    })
+        'message': 'Bravo, défi validé ! 🌸',
+        'remaining_pending': next_pending_count,
+        'has_next': next_date is not None,
+    }, status=201)
 
 
 @csrf_exempt

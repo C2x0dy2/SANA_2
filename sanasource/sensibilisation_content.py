@@ -128,42 +128,31 @@ QUIZ_QUESTIONS = [
     },
 ]
 
-CHALLENGES = [
-    {
-        'id': 'gratitude-3j',
-        'icon': '🙏',
-        'title': '3 jours de gratitude',
-        'description': "Chaque jour, note une chose — même petite — pour laquelle tu es reconnaissant·e.",
-        'duration_days': 3,
-    },
-    {
-        'id': 'sommeil-7j',
-        'icon': '😴',
-        'title': 'Une semaine de sommeil régulier',
-        'description': "Couche-toi à heure fixe pendant 7 jours et observe l'effet sur ton humeur.",
-        'duration_days': 7,
-    },
-    {
-        'id': 'ecrans-5j',
-        'icon': '📵',
-        'title': '5 jours sans écran avant de dormir',
-        'description': "Pas de téléphone dans la dernière heure avant le coucher, pendant 5 jours.",
-        'duration_days': 5,
-    },
-    {
-        'id': 'respiration-5j',
-        'icon': '🌬️',
-        'title': '5 jours de respiration consciente',
-        'description': "5 minutes de respiration lente et profonde chaque jour, matin ou soir.",
-        'duration_days': 5,
-    },
-    {
-        'id': 'marche-7j',
-        'icon': '🚶',
-        'title': 'Une semaine de marche quotidienne',
-        'description': "15 minutes de marche par jour, dehors si possible, pendant 7 jours.",
-        'duration_days': 7,
-    },
+DAILY_CHALLENGES = [
+    {'icon': '🙏', 'text': "Note 3 choses pour lesquelles tu es reconnaissant·e aujourd'hui."},
+    {'icon': '🚶', 'text': "Marche pendant 15 minutes, dehors si possible."},
+    {'icon': '💌', 'text': "Écris un message sincère à quelqu'un que tu apprécies."},
+    {'icon': '🌬️', 'text': "Respire profondément et lentement pendant 5 minutes."},
+    {'icon': '💧', 'text': "Bois au moins 1,5L d'eau aujourd'hui."},
+    {'icon': '😴', 'text': "Couche-toi avant 23h ce soir."},
+    {'icon': '📵', 'text': "Passe 1 heure sans réseaux sociaux."},
+    {'icon': '😊', 'text': "Fais une activité qui te fait sourire, même 10 minutes."},
+    {'icon': '🧹', 'text': "Range un petit coin de ton espace de vie."},
+    {'icon': '📞', 'text': "Appelle ou écris à un proche que tu n'as pas contacté depuis longtemps."},
+    {'icon': '📝', 'text': "Note une émotion difficile que tu as ressentie récemment, sans la juger."},
+    {'icon': '🍲', 'text': "Prépare-toi un repas équilibré, en y prêtant attention."},
+    {'icon': '🤫', 'text': "Accorde-toi 10 minutes de silence complet, sans écran."},
+    {'icon': '🤸', 'text': "Fais quelques étirements ou un peu de mouvement physique."},
+    {'icon': '💬', 'text': "Complimente sincèrement quelqu'un aujourd'hui."},
+    {'icon': '✅', 'text': "Note ce que tu as accompli cette semaine, même petit."},
+    {'icon': '🛁', 'text': "Prends une douche ou un bain sans te presser, en pleine conscience."},
+    {'icon': '🌞', 'text': "Note un souvenir heureux et pourquoi il compte pour toi."},
+    {'icon': '🌳', 'text': "Passe du temps dehors, au soleil ou à l'air libre, 10 minutes."},
+    {'icon': '🚫', 'text': "Dis non à quelque chose qui te pèse aujourd'hui, sans culpabiliser."},
 ]
 
-CHALLENGES_BY_ID = {c['id']: c for c in CHALLENGES}
+
+def get_daily_challenge(for_date):
+    """Deterministic pick so every user sees the SAME challenge on a given
+    calendar day — matters for the fairness of the completion contest."""
+    return DAILY_CHALLENGES[for_date.toordinal() % len(DAILY_CHALLENGES)]

@@ -235,6 +235,26 @@ SANA — Mon Espace
       <button class="btn-sm btn-outline-sm" style="margin-left:auto;white-space:nowrap;" onclick="showSection('badges',null)">Tous →</button>
     </div>
 
+    <!-- Défi du jour -->
+    {% if current_challenge %}
+    <div class="card daily-challenge-card">
+      <div class="dc-icon">{{ current_challenge.icon }}</div>
+      <div class="dc-body">
+        <div class="dc-label">Défi du jour{% if pending_challenge_count > 1 %} · {{ pending_challenge_count }} en attente{% endif %}</div>
+        <div class="dc-text">{{ current_challenge.text }}</div>
+      </div>
+      <button class="btn-sm btn-primary-sm" style="white-space:nowrap;" onclick="openDailyChallenge()">C'est fait !</button>
+    </div>
+    {% else %}
+    <div class="card daily-challenge-card daily-challenge-done">
+      <div class="dc-icon">✅</div>
+      <div class="dc-body">
+        <div class="dc-label">Défi du jour</div>
+        <div class="dc-text">Tu es à jour ! {{ daily_challenge_total }} défi{{ daily_challenge_total|pluralize }} accompli{{ daily_challenge_total|pluralize }} au total. Reviens demain 🌸</div>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- 6 quick cards -->
     <div class="quick-grid">
       <div class="quick-card qc-1" onclick="showSection('chat',null)">
@@ -855,12 +875,12 @@ SANA — Mon Espace
             <div class="badge-full-desc">Quiz sensibilisation complété</div>
           </div>
           {% endif %}
-          {# Discipline — a terminé un défi #}
-          {% if challenges_completed_count > 0 %}
+          {# Discipline — a complété au moins un défi du jour #}
+          {% if daily_challenge_total > 0 %}
           <div class="badge-full-item">
             <div class="badge-full-icon bfi-unlocked">🔥</div>
             <div class="badge-full-name">Discipline</div>
-            <div class="badge-full-desc">Un défi bien-être terminé</div>
+            <div class="badge-full-desc">{{ daily_challenge_total }} défi{{ daily_challenge_total|pluralize }} du jour accompli{{ daily_challenge_total|pluralize }}</div>
           </div>
           {% endif %}
           {# Ambassadeur·rice — a soumis un mythe #}
@@ -933,11 +953,11 @@ SANA — Mon Espace
             <div class="badge-full-desc">Complète le quiz sensibilisation</div>
           </div>
           {% endif %}
-          {% if challenges_completed_count == 0 %}
+          {% if daily_challenge_total == 0 %}
           <div class="badge-full-item">
             <div class="badge-full-icon bfi-locked">🔥</div>
             <div class="badge-full-name">Discipline</div>
-            <div class="badge-full-desc">Termine un défi bien-être</div>
+            <div class="badge-full-desc">Accomplis un défi du jour</div>
           </div>
           {% endif %}
           {% if myths_submitted_count == 0 %}
@@ -1168,6 +1188,24 @@ SANA — Mon Espace
         </div>
       </div>
     </div>
+
+    <!-- Auto-évaluation -->
+    <div class="eyebrow" style="margin:clamp(20px,3vw,28px) 0 12px;">Auto-évaluation guidée</div>
+    <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;max-width:600px;">Des outils utilisés partout dans le monde pour repérer des symptômes d'anxiété ou de dépression. <strong>Ce n'est pas un diagnostic</strong> — seulement un point de départ pour savoir si consulter pourrait t'aider.</p>
+    <div class="grid-2" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      <div class="card" style="padding:clamp(18px,3vw,26px);">
+        <div style="font-size:1.6rem;margin-bottom:8px;">📋</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:6px;">{{ screening_tools.phq9.title }}</div>
+        <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;">9 questions · 2 minutes</p>
+        <button class="btn-sm btn-primary-sm" onclick="openScreening('phq9')">Faire le test</button>
+      </div>
+      <div class="card" style="padding:clamp(18px,3vw,26px);">
+        <div style="font-size:1.6rem;margin-bottom:8px;">🌊</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:6px;">{{ screening_tools.gad7.title }}</div>
+        <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;">7 questions · 2 minutes</p>
+        <button class="btn-sm btn-primary-sm" onclick="openScreening('gad7')">Faire le test</button>
+      </div>
+    </div>
   </div>
 
   <!-- ══ SENSIBILISATION ══ -->
@@ -1254,26 +1292,8 @@ SANA — Mon Espace
       </div>
     </div>
 
-    <!-- Auto-évaluation -->
-    <div class="eyebrow" style="margin:clamp(20px,3vw,28px) 0 12px;">Auto-évaluation guidée</div>
-    <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;max-width:600px;">Des outils utilisés partout dans le monde pour repérer des symptômes d'anxiété ou de dépression. <strong>Ce n'est pas un diagnostic</strong> — seulement un point de départ pour savoir si consulter pourrait t'aider.</p>
-    <div class="grid-2" style="margin-bottom:clamp(16px,2.5vw,24px);">
-      <div class="card" style="padding:clamp(18px,3vw,26px);">
-        <div style="font-size:1.6rem;margin-bottom:8px;">📋</div>
-        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:6px;">{{ screening_tools.phq9.title }}</div>
-        <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;">9 questions · 2 minutes</p>
-        <button class="btn-sm btn-primary-sm" onclick="openScreening('phq9')">Faire le test</button>
-      </div>
-      <div class="card" style="padding:clamp(18px,3vw,26px);">
-        <div style="font-size:1.6rem;margin-bottom:8px;">🌊</div>
-        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:6px;">{{ screening_tools.gad7.title }}</div>
-        <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;">7 questions · 2 minutes</p>
-        <button class="btn-sm btn-primary-sm" onclick="openScreening('gad7')">Faire le test</button>
-      </div>
-    </div>
-
     <!-- Quiz -->
-    <div class="eyebrow" style="margin-bottom:12px;">Teste tes connaissances</div>
+    <div class="eyebrow" style="margin:clamp(20px,3vw,28px) 0 12px;">Teste tes connaissances</div>
     <div class="card" style="padding:clamp(20px,3vw,28px);margin-bottom:clamp(16px,2.5vw,24px);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
       <div>
         <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:4px;">{{ quiz_questions|length }} questions pour déconstruire les idées reçues</div>
@@ -1282,28 +1302,22 @@ SANA — Mon Espace
       <button class="btn-sm btn-primary-sm" onclick="openQuiz()">Commencer le quiz</button>
     </div>
 
-    <!-- Défis bien-être -->
-    <div class="eyebrow" style="margin-bottom:12px;">Défis bien-être</div>
-    <div class="grid-3" style="margin-bottom:clamp(16px,2.5vw,24px);">
-      {% for c in challenges %}
-      <div class="card challenge-card" style="padding:clamp(16px,2.5vw,22px);">
-        <div style="font-size:1.6rem;margin-bottom:6px;">{{ c.icon }}</div>
-        <div style="font-size:.88rem;font-weight:600;color:var(--p950);margin-bottom:4px;">{{ c.title }}</div>
-        <p style="font-size:.72rem;color:var(--txt-s);line-height:1.6;margin-bottom:10px;">{{ c.description }}</p>
-        {% if c.completed %}
-          <div class="challenge-progress-bar"><div class="challenge-progress-fill" style="width:100%;"></div></div>
-          <div class="challenge-status challenge-done">✓ Défi terminé</div>
-        {% elif c.started %}
-          <div class="challenge-progress-bar"><div class="challenge-progress-fill" style="width:{% widthratio c.days_done c.duration_days 100 %}%;"></div></div>
-          <div class="challenge-status">{{ c.days_done }}/{{ c.duration_days }} jours</div>
-          <button class="btn-sm {% if c.checked_in_today %}btn-outline-sm{% else %}btn-primary-sm{% endif %}" style="margin-top:8px;width:100%;" {% if c.checked_in_today %}disabled{% endif %} onclick="checkinChallenge('{{ c.id }}', this)">
-            {% if c.checked_in_today %}✓ Fait aujourd'hui{% else %}Check-in du jour{% endif %}
-          </button>
-        {% else %}
-          <button class="btn-sm btn-primary-sm" style="width:100%;" onclick="startChallenge('{{ c.id }}', this)">Commencer</button>
-        {% endif %}
+    <!-- Concours Défi du jour -->
+    <div class="eyebrow" style="margin-bottom:12px;">Défi du jour — classement</div>
+    <div class="card" style="padding:clamp(18px,3vw,26px);margin-bottom:clamp(16px,2.5vw,24px);">
+      <p style="font-size:.78rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;">Un défi bien-être t'attend chaque jour sur ton tableau de bord. Le <strong>25 décembre</strong>, la personne avec le plus de défis accomplis reçoit un prix — reste régulier·ère !</p>
+      {% if challenge_leaderboard %}
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        {% for u in challenge_leaderboard %}
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--blush);border-radius:12px;">
+          <span style="font-size:.8rem;color:var(--p950);font-weight:500;">{{ forloop.counter }}. {% if u.profile %}{{ u.profile.username_anonyme }}{% else %}Anonyme·e{% endif %}{% if u == user %} (toi){% endif %}</span>
+          <span style="font-size:.76rem;color:var(--r500);font-weight:600;">{{ u.completions }} défi{{ u.completions|pluralize }}</span>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
+      {% else %}
+      <p style="font-size:.8rem;color:var(--txt-s);text-align:center;padding:10px;">Personne n'a encore complété de défi — sois le premier·ère !</p>
+      {% endif %}
     </div>
 
     <!-- Mythes de la communauté -->
@@ -1508,6 +1522,13 @@ SANA — Mon Espace
 <div id="quizModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--white);border-radius:28px;padding:clamp(24px,4vw,32px);max-width:480px;width:100%;max-height:90vh;overflow-y:auto;animation:secIn .3s ease;">
     <div id="quizBody"></div>
+  </div>
+</div>
+
+<!-- DAILY CHALLENGE MODAL -->
+<div id="dailyChallengeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border-radius:28px;padding:clamp(24px,4vw,32px);max-width:420px;width:100%;animation:secIn .3s ease;">
+    <div id="dailyChallengeBody"></div>
   </div>
 </div>
 {% endblock %}

@@ -386,6 +386,18 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 .wc-date{font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:300;font-style:italic;color:rgba(194,110,138,.18);line-height:1;}
 .wc-day{font-size:.65rem;text-transform:uppercase;letter-spacing:3px;color:var(--txt-s);}
 
+.daily-challenge-card{
+  display:flex;align-items:center;gap:clamp(12px,2vw,18px);
+  padding:clamp(16px,2.5vw,22px);margin-bottom:clamp(16px,2.5vw,24px);
+  background:linear-gradient(135deg,var(--r50),var(--white));
+}
+.daily-challenge-card.daily-challenge-done{background:var(--white);}
+.dc-icon{font-size:2rem;flex-shrink:0;}
+.dc-body{flex:1;min-width:0;}
+.dc-label{font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--r500);font-weight:600;margin-bottom:4px;}
+.dc-text{font-size:.85rem;color:var(--p950);line-height:1.5;}
+@media(max-width:560px){.daily-challenge-card{flex-wrap:wrap;}}
+
 /* Mood selector */
 .mood-bar{
   background:var(--white);border-radius:var(--rad);
