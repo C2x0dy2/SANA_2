@@ -514,8 +514,9 @@ async function openSupportPayment(postId){
   }
 }
 
-// ── REPORT POST MODAL ──
+// ── REPORT POST MODAL (partagée entre Communauté et Blog) ──
 let reportPostId = null;
+let reportTargetType = 'communaute'; // 'communaute' | 'blog'
 function closeReportPost(){
   document.getElementById('reportPostModal').style.display='none';
   document.body.style.overflow='';
@@ -524,6 +525,15 @@ document.getElementById('reportPostModal').addEventListener('click',function(e){
   if(e.target===this) closeReportPost();
 });
 function openReportPost(postId){
+  reportTargetType = 'communaute';
+  reportPostId = postId;
+  document.getElementById('reportPostMsg').textContent = '';
+  document.getElementById('reportPostDetails').value = '';
+  document.getElementById('reportPostModal').style.display='flex';
+  document.body.style.overflow='hidden';
+}
+function openReportBlogPost(postId){
+  reportTargetType = 'blog';
   reportPostId = postId;
   document.getElementById('reportPostMsg').textContent = '';
   document.getElementById('reportPostDetails').value = '';
@@ -535,8 +545,11 @@ async function submitReportPost(){
   const details = document.getElementById('reportPostDetails').value.trim();
   const msg = document.getElementById('reportPostMsg');
   msg.textContent = 'Envoi…';
+  const endpoint = reportTargetType === 'blog'
+    ? '/api/blog/' + reportPostId + '/signaler/'
+    : '/api/communaute/' + reportPostId + '/signaler/';
   try{
-    const res = await fetch('/api/communaute/' + reportPostId + '/signaler/', {
+    const res = await fetch(endpoint, {
       method:'POST',
       headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
       body: JSON.stringify({reason, details}),
@@ -544,7 +557,8 @@ async function submitReportPost(){
     const data = await res.json().catch(()=>({}));
     msg.textContent = data.message || data.error || 'Une erreur est survenue.';
     if(res.ok){
-      const card = document.getElementById('post-' + reportPostId);
+      const cardId = reportTargetType === 'blog' ? 'blog-post-' + reportPostId : 'post-' + reportPostId;
+      const card = document.getElementById(cardId);
       if(card) setTimeout(() => card.remove(), 1200);
       setTimeout(closeReportPost, 1200);
     }
@@ -1545,6 +1559,176 @@ function dashPublishPost() {
         '<div class="post-comment-input-row">' +
           '<input type="text" class="post-comment-input" id="comment-input-' + data.id + '" placeholder="Écrire un commentaire de soutien…" maxlength="500" onkeydown="if(event.key===\'Enter\'){event.preventDefault();submitComment(' + data.id + ')}">' +
           '<button class="post-comment-send" onclick="submitComment(' + data.id + ')">Envoyer</button>' +
+        '</div>' +
+      '</div>';
+    feed.prepend(card);
+  });
+}
+
+// ── BLOG AJAX (DASHBOARD) ──
+function switchBlogSubtab(which){
+  document.getElementById('blogSubtabAll').classList.toggle('active', which === 'all');
+  document.getElementById('blogSubtabSaved').classList.toggle('active', which === 'saved');
+  document.getElementById('blogFeedAll').style.display = which === 'all' ? 'flex' : 'none';
+  document.getElementById('blogFeedSaved').style.display = which === 'saved' ? 'flex' : 'none';
+}
+
+function blogToggleLike(postId, btn){
+  fetch('/api/blog/' + postId + '/like/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'X-CSRFToken': getCsrf()},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) return;
+    btn.classList.toggle('liked', data.is_liked);
+    const countEl = document.getElementById('blog-like-count-' + postId);
+    if (countEl) countEl.textContent = data.like_count;
+  });
+}
+
+function blogToggleSave(postId, btn){
+  fetch('/api/blog/' + postId + '/enregistrer/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'X-CSRFToken': getCsrf()},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) return;
+    btn.classList.toggle('liked', data.is_saved);
+    btn.innerHTML = data.is_saved ? '🔖 Enregistré' : '🔖 Enregistrer';
+  });
+}
+
+const loadedBlogComments = {};
+function toggleBlogComments(postId){
+  const panel = document.getElementById('blog-comments-' + postId);
+  if (!panel) return;
+  const showing = panel.style.display !== 'none';
+  if (showing) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  if (!loadedBlogComments[postId]) loadBlogComments(postId);
+}
+
+function loadBlogComments(postId){
+  const list = document.getElementById('blog-comments-list-' + postId);
+  if (!list) return;
+  fetch('/api/blog/' + postId + '/commentaires/', {credentials: 'same-origin'})
+    .then(r => r.json())
+    .then(data => {
+      loadedBlogComments[postId] = true;
+      renderBlogComments(postId, data.comments || []);
+    })
+    .catch(() => { list.innerHTML = '<div class="post-comments-empty">Impossible de charger les commentaires.</div>'; });
+}
+
+function renderBlogComments(postId, comments){
+  const list = document.getElementById('blog-comments-list-' + postId);
+  if (!list) return;
+  if (!comments.length) {
+    list.innerHTML = '<div class="post-comments-empty">Aucun commentaire pour l’instant. Sois le premier à réagir 🌸</div>';
+    return;
+  }
+  list.innerHTML = comments.map(c =>
+    '<div class="post-comment">' +
+      '<div class="post-comment-author">' + escHtml(c.anon) + '</div>' +
+      '<div class="post-comment-text">' + escHtml(c.content) + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function submitBlogComment(postId){
+  const input = document.getElementById('blog-comment-input-' + postId);
+  const content = (input.value || '').trim();
+  if (!content) return;
+  fetch('/api/blog/' + postId + '/commentaires/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'Content-Type':'application/json','X-CSRFToken': getCsrf()},
+    body: JSON.stringify({content}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) return;
+    input.value = '';
+    const list = document.getElementById('blog-comments-list-' + postId);
+    if (list) {
+      const empty = list.querySelector('.post-comments-empty');
+      if (empty) empty.remove();
+      const el = document.createElement('div');
+      el.className = 'post-comment';
+      el.innerHTML = '<div class="post-comment-author">' + escHtml(data.anon) + '</div><div class="post-comment-text">' + escHtml(data.content) + '</div>';
+      list.appendChild(el);
+    }
+    const countEl = document.getElementById('blog-comment-count-' + postId);
+    if (countEl) countEl.textContent = data.comment_count;
+  });
+}
+
+function deleteBlogPost(postId){
+  if (!confirm('Supprimer définitivement cet article ?')) return;
+  fetch('/api/blog/' + postId + '/supprimer/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'X-CSRFToken': getCsrf()},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    const card = document.getElementById('blog-post-' + postId);
+    if (card) card.remove();
+  });
+}
+
+function publishBlogPost(){
+  const titleEl = document.getElementById('blogWriteTitle');
+  const contentEl = document.getElementById('blogWriteContent');
+  const categoryEl = document.getElementById('blogWriteCategory');
+  const title = (titleEl.value || '').trim();
+  const content = (contentEl.value || '').trim();
+  const category = categoryEl.value || 'astuce';
+  if (!title) { titleEl.focus(); return; }
+  if (!content) { contentEl.focus(); return; }
+  fetch('/api/blog/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+    body: JSON.stringify({title, content, category}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    titleEl.value = '';
+    contentEl.value = '';
+    const feed = document.getElementById('blogFeedAll');
+    const empty = feed.querySelector('p');
+    if (empty && empty.closest('div').textContent.includes('Aucun article')) empty.closest('div').remove();
+    const card = document.createElement('div');
+    card.className = 'post-card';
+    card.id = 'blog-post-' + data.id;
+    card.innerHTML =
+      '<div class="post-header">' +
+        '<div class="post-av post-av-1">' + (data.initial || 'A') + '</div>' +
+        '<div>' +
+          '<div class="post-anon">' + escHtml(data.anon) + ' <span class="post-tag">' + escHtml(data.category_label) + '</span></div>' +
+          '<div class="post-meta">À l\'instant</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="blogpost-title">' + escHtml(data.title) + '</div>' +
+      '<div class="post-text">' + escHtml(data.content) + '</div>' +
+      '<div class="post-actions">' +
+        '<button class="post-btn" id="blog-like-btn-' + data.id + '" onclick="blogToggleLike(' + data.id + ', this)">❤️ <span id="blog-like-count-' + data.id + '">0</span></button>' +
+        '<button class="post-btn" onclick="toggleBlogComments(' + data.id + ')">💬 <span id="blog-comment-count-' + data.id + '">0</span></button>' +
+        '<button class="post-btn" id="blog-save-btn-' + data.id + '" onclick="blogToggleSave(' + data.id + ', this)">🔖 Enregistrer</button>' +
+        '<button class="post-btn post-btn-report" onclick="deleteBlogPost(' + data.id + ')" title="Supprimer cet article">🗑️</button>' +
+      '</div>' +
+      '<div class="post-comments" id="blog-comments-' + data.id + '" style="display:none;">' +
+        '<div class="post-comments-list" id="blog-comments-list-' + data.id + '"></div>' +
+        '<div class="post-comment-input-row">' +
+          '<input type="text" class="post-comment-input" id="blog-comment-input-' + data.id + '" placeholder="Écrire un commentaire…" maxlength="500" onkeydown="if(event.key===\'Enter\'){event.preventDefault();submitBlogComment(' + data.id + ')}">' +
+          '<button class="post-comment-send" onclick="submitBlogComment(' + data.id + ')">Envoyer</button>' +
         '</div>' +
       '</div>';
     feed.prepend(card);

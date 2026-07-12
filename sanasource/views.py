@@ -27,7 +27,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, GameRoomPlayer, GameRoomMessage, WerewolfRoom, WerewolfPlayer, WerewolfMessage, WerewolfVote, ImpostorRoom, ImpostorPlayer, ImpostorMessage, ImpostorVote
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, GameRoomPlayer, GameRoomMessage, WerewolfRoom, WerewolfPlayer, WerewolfMessage, WerewolfVote, ImpostorRoom, ImpostorPlayer, ImpostorMessage, ImpostorVote, BlogPost, BlogComment, BlogPostReport, BlogWeeklyWinner, BlogYearlyWinner
 from .notifications import send_notification
 from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
@@ -855,6 +855,66 @@ def conversation_detail_api(request, conversation_id):
     return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
 
 
+def _ensure_blog_weekly_winner():
+    """Lazily crowns the most recently COMPLETED week's top-liked blog post,
+    the first time anyone visits the dashboard after that week ends — no
+    scheduler/cron needed, same idea as the daily-challenge computation."""
+    today = date.today()
+    current_week_start = today - timedelta(days=today.weekday())
+    last_week_start = current_week_start - timedelta(days=7)
+    last_week_end = current_week_start - timedelta(days=1)
+    if BlogWeeklyWinner.objects.filter(week_start=last_week_start).exists():
+        return
+    top_post = (
+        BlogPost.objects.filter(
+            is_reported=False,
+            created_at__date__gte=last_week_start,
+            created_at__date__lte=last_week_end,
+        )
+        .annotate(likes_n=Count('likes', distinct=True))
+        .order_by('-likes_n', 'created_at')
+        .first()
+    )
+    if not top_post or top_post.likes_n <= 0:
+        return
+    BlogWeeklyWinner.objects.create(
+        week_start=last_week_start, post=top_post, author=top_post.author, likes_snapshot=top_post.likes_n,
+    )
+    try:
+        send_notification(
+            top_post.author, 'blog_winner', 'Blog de la semaine !',
+            f'Ton article « {top_post.title} » a été élu Blog de la semaine 🏆',
+            '/dashboard/',
+        )
+    except Exception:
+        pass
+
+
+def _ensure_blog_yearly_winner():
+    last_year = date.today().year - 1
+    if BlogYearlyWinner.objects.filter(year=last_year).exists():
+        return
+    top_post = (
+        BlogPost.objects.filter(is_reported=False, created_at__year=last_year)
+        .annotate(likes_n=Count('likes', distinct=True))
+        .order_by('-likes_n', 'created_at')
+        .first()
+    )
+    if not top_post or top_post.likes_n <= 0:
+        return
+    BlogYearlyWinner.objects.create(
+        year=last_year, post=top_post, author=top_post.author, likes_snapshot=top_post.likes_n,
+    )
+    try:
+        send_notification(
+            top_post.author, 'blog_winner', "Blog de l'année !",
+            f'Ton article « {top_post.title} » a été élu Blog de l\'année 🏆',
+            '/dashboard/',
+        )
+    except Exception:
+        pass
+
+
 def dashboard(request):
     if not request.user.is_authenticated:
         return redirect('sanasource:login')
@@ -936,6 +996,29 @@ def dashboard(request):
         for row in GameSession.objects.filter(user=request.user).values('game').annotate(best=Max('score'))
     }
 
+    # Blog — élection automatique de la semaine/année écoulée (pas de cron:
+    # calculée à la première visite du dashboard après la fin de la période).
+    _ensure_blog_weekly_winner()
+    _ensure_blog_yearly_winner()
+    blog_posts = BlogPost.objects.filter(is_reported=False).select_related(
+        'author', 'author__profile'
+    ).annotate(
+        like_count_annotated=Count('likes', distinct=True),
+        comment_count_annotated=Count('comments', distinct=True),
+    )[:20]
+    saved_blog_posts = BlogPost.objects.filter(saves=request.user, is_reported=False).select_related(
+        'author', 'author__profile'
+    ).annotate(
+        like_count_annotated=Count('likes', distinct=True),
+        comment_count_annotated=Count('comments', distinct=True),
+    )[:20]
+    user_liked_blog_ids = set(request.user.liked_blog_posts.values_list('id', flat=True))
+    user_saved_blog_ids = set(request.user.saved_blog_posts.values_list('id', flat=True))
+    blog_weekly_winner = BlogWeeklyWinner.objects.select_related('post', 'author', 'author__profile').first()
+    blog_yearly_winner = BlogYearlyWinner.objects.select_related('post', 'author', 'author__profile').first()
+    blog_weekly_wins_count = BlogWeeklyWinner.objects.filter(author=request.user).count()
+    blog_yearly_wins_count = BlogYearlyWinner.objects.filter(author=request.user).count()
+
     return render(request, 'page/dashboard.html', {
         'user':               request.user,
         'profile':            profile,
@@ -951,6 +1034,14 @@ def dashboard(request):
         'days_on_sana':        days_on_sana,
         'tag_counts':          tag_counts,
         'reviews_feed':        reviews_feed,
+        'blog_posts':              blog_posts,
+        'saved_blog_posts':        saved_blog_posts,
+        'user_liked_blog_ids':     user_liked_blog_ids,
+        'user_saved_blog_ids':     user_saved_blog_ids,
+        'blog_weekly_winner':      blog_weekly_winner,
+        'blog_yearly_winner':      blog_yearly_winner,
+        'blog_weekly_wins_count':  blog_weekly_wins_count,
+        'blog_yearly_wins_count':  blog_yearly_wins_count,
         'vapid_public_key':    settings.VAPID_PUBLIC_KEY,
         'show_welcome_toast':  request.session.pop('show_welcome', False),
         'watermark_uri':       _build_watermark_data_uri(request.user),
@@ -1992,6 +2083,182 @@ def post_comments_api(request, post_id):
         }, status=201)
 
     return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+# ============================================================
+# BLOG (astuces anti-anxiété, histoires vécues — écrit par les utilisateur·rices)
+# ============================================================
+
+@csrf_exempt
+def blog_post_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    title = (body.get('title') or '').strip()[:150]
+    content = (body.get('content') or '').strip()
+    category = body.get('category', 'astuce')
+    if category not in dict(BlogPost.CATEGORY_CHOICES):
+        category = 'astuce'
+    if not title or not content:
+        return JsonResponse({'error': 'Titre et contenu obligatoires'}, status=400)
+
+    post = BlogPost.objects.create(author=request.user, title=title, content=content, category=category)
+    prof = getattr(request.user, 'profile', None)
+    anon = prof.username_anonyme if prof else 'Anonyme·e'
+    return JsonResponse({
+        'id':              post.id,
+        'title':           post.title,
+        'content':         post.content,
+        'category':        post.category,
+        'category_label':  post.get_category_display(),
+        'anon':            anon,
+        'initial':         anon[0].upper() if anon else 'A',
+        'like_count':      0,
+        'is_liked':        False,
+        'is_saved':        False,
+        'comment_count':   0,
+        'is_mine':         True,
+        'created_at':      post.created_at.isoformat(),
+    }, status=201)
+
+
+@csrf_exempt
+def toggle_blog_like(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    post = get_object_or_404(BlogPost, id=post_id)
+    if post.likes.filter(id=request.user.id).exists():
+        post.likes.remove(request.user)
+        is_liked = False
+    else:
+        post.likes.add(request.user)
+        is_liked = True
+        if post.author != request.user:
+            prof = getattr(request.user, 'profile', None)
+            liker_name = prof.username_anonyme if prof else 'Anonyme·e'
+            try:
+                send_notification(
+                    post.author, 'like', 'Quelqu\'un aime ton article',
+                    f'{liker_name} a aimé « {post.title} ».', '/dashboard/',
+                )
+            except Exception:
+                pass
+    return JsonResponse({'is_liked': is_liked, 'like_count': post.likes.count()})
+
+
+@csrf_exempt
+def toggle_blog_save(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    post = get_object_or_404(BlogPost, id=post_id)
+    if post.saves.filter(id=request.user.id).exists():
+        post.saves.remove(request.user)
+        is_saved = False
+    else:
+        post.saves.add(request.user)
+        is_saved = True
+    return JsonResponse({'is_saved': is_saved})
+
+
+@csrf_exempt
+def blog_comments_api(request, post_id):
+    post = get_object_or_404(BlogPost, id=post_id)
+
+    if request.method == 'GET':
+        comments = post.comments.select_related('author', 'author__profile')
+        return JsonResponse({
+            'comments': [
+                {
+                    'id':      c.id,
+                    'anon':    c.author.profile.username_anonyme if getattr(c.author, 'profile', None) else 'Anonyme·e',
+                    'content': c.content,
+                    'created_at': c.created_at.isoformat(),
+                }
+                for c in comments
+            ],
+        })
+
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Non authentifié'}, status=401)
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON invalide'}, status=400)
+        content = (body.get('content') or '').strip()
+        if not content:
+            return JsonResponse({'error': 'Commentaire vide'}, status=400)
+        comment = BlogComment.objects.create(post=post, author=request.user, content=content[:500])
+        prof = getattr(request.user, 'profile', None)
+        anon = prof.username_anonyme if prof else 'Anonyme·e'
+        if post.author != request.user:
+            try:
+                send_notification(
+                    post.author, 'comment', 'Nouveau commentaire',
+                    f'{anon} a commenté ton article « {post.title} ».', '/dashboard/',
+                )
+            except Exception:
+                pass
+        return JsonResponse({
+            'id':      comment.id,
+            'anon':    anon,
+            'content': comment.content,
+            'created_at': comment.created_at.isoformat(),
+            'comment_count': post.comments.count(),
+        }, status=201)
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def report_blog_post(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    post = get_object_or_404(BlogPost, id=post_id)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    reason = body.get('reason', 'autre')
+    if reason not in dict(BlogPostReport.REASON_CHOICES):
+        reason = 'autre'
+    details = (body.get('details') or '').strip()[:500]
+
+    if BlogPostReport.objects.filter(post=post, reporter=request.user).exists():
+        return JsonResponse({'message': 'Tu as déjà signalé cet article, merci — il est en cours de vérification.'})
+
+    BlogPostReport.objects.create(post=post, reporter=request.user, reason=reason, details=details)
+    # Masqué immédiatement dès le premier signalement, pour protéger vite
+    # contre le harcèlement — réapparaît une fois vérifié en modération.
+    post.is_reported = True
+    post.save(update_fields=['is_reported'])
+    return JsonResponse({'message': 'Merci, cet article a été signalé et masqué en attendant vérification.'})
+
+
+@csrf_exempt
+def delete_blog_post(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    post = get_object_or_404(BlogPost, id=post_id)
+    if post.author != request.user:
+        return JsonResponse({'error': 'Tu ne peux supprimer que tes propres articles'}, status=403)
+    post.delete()
+    return JsonResponse({'message': 'Article supprimé'})
 
 
 # ============================================================

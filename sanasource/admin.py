@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, WerewolfRoom, ImpostorRoom
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, WerewolfRoom, ImpostorRoom, BlogPost, BlogComment, BlogPostReport, BlogWeeklyWinner, BlogYearlyWinner
 
 
 @admin.register(UserProfile)
@@ -250,5 +250,54 @@ class ImpostorRoomAdmin(admin.ModelAdmin):
     list_display  = ['code', 'host', 'status', 'secret_emotion', 'result', 'created_at']
     list_filter   = ['status', 'result']
     search_fields = ['code', 'host__username']
+
+
+@admin.register(BlogPost)
+class BlogPostAdmin(admin.ModelAdmin):
+    list_display  = ['title', 'author', 'category', 'is_reported', 'like_count', 'created_at']
+    list_filter   = ['category', 'is_reported']
+    search_fields = ['title', 'content', 'author__username']
+    actions       = ['clear_report', 'delete_reported']
+
+    @admin.display(description='Likes')
+    def like_count(self, obj):
+        return obj.likes.count()
+
+    @admin.action(description='Lever le signalement (rendre visible)')
+    def clear_report(self, request, queryset):
+        queryset.update(is_reported=False)
+
+    @admin.action(description='Supprimer les articles signalés sélectionnés')
+    def delete_reported(self, request, queryset):
+        queryset.filter(is_reported=True).delete()
+
+
+@admin.register(BlogComment)
+class BlogCommentAdmin(admin.ModelAdmin):
+    list_display  = ['author', 'post', 'content_preview', 'created_at']
+    search_fields = ['author__username', 'content']
+
+    @admin.display(description='Commentaire')
+    def content_preview(self, obj):
+        return obj.content[:60]
+
+
+@admin.register(BlogPostReport)
+class BlogPostReportAdmin(admin.ModelAdmin):
+    list_display  = ['post', 'reporter', 'reason', 'created_at']
+    list_filter   = ['reason']
+    search_fields = ['post__title', 'reporter__username', 'details']
+
+
+@admin.register(BlogWeeklyWinner)
+class BlogWeeklyWinnerAdmin(admin.ModelAdmin):
+    list_display  = ['week_start', 'post', 'author', 'likes_snapshot']
+    search_fields = ['post__title', 'author__username']
+
+
+@admin.register(BlogYearlyWinner)
+class BlogYearlyWinnerAdmin(admin.ModelAdmin):
+    list_display  = ['year', 'post', 'author', 'likes_snapshot']
+    search_fields = ['post__title', 'author__username']
 
 

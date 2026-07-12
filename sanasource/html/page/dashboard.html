@@ -736,60 +736,83 @@ SANA — Mon Espace
 
     <!-- Blog -->
     <div id="tab-blog" class="rtab-content active">
-      <div style="text-align:center;padding:clamp(40px,6vw,60px) 20px;">
-        <div style="font-size:3rem;margin-bottom:14px;opacity:.3;">📖</div>
-        <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:300;font-style:italic;color:var(--p950);margin-bottom:8px;">Blog bientôt disponible</div>
-        <p style="font-size:.82rem;color:var(--txt-s);line-height:1.75;max-width:380px;margin:0 auto;">Des articles sur la santé mentale adaptés au contexte ivoirien sont en cours de rédaction. Reviens bientôt !</p>
+      {% if blog_weekly_winner or blog_yearly_winner %}
+      <div class="blog-winners-row">
+        {% if blog_weekly_winner %}
+        <div class="blog-winner-banner">
+          <div class="blog-winner-label">🏆 Blog de la semaine</div>
+          <div class="blog-winner-title">{{ blog_weekly_winner.post.title }}</div>
+          <div class="blog-winner-author">par {{ blog_weekly_winner.author.profile.username_anonyme|default:"Anonyme·e" }} · {{ blog_weekly_winner.likes_snapshot }} ❤️</div>
+        </div>
+        {% endif %}
+        {% if blog_yearly_winner %}
+        <div class="blog-winner-banner blog-winner-yearly">
+          <div class="blog-winner-label">👑 Blog de l'année {{ blog_yearly_winner.year }}</div>
+          <div class="blog-winner-title">{{ blog_yearly_winner.post.title }}</div>
+          <div class="blog-winner-author">par {{ blog_yearly_winner.author.profile.username_anonyme|default:"Anonyme·e" }} · {{ blog_yearly_winner.likes_snapshot }} ❤️</div>
+        </div>
+        {% endif %}
       </div>
-      <!-- PLACEHOLDER — à supprimer quand le blog aura un modèle Django -->
-      <div class="blog-grid" style="display:none;">
-        <div class="blog-card">
-          <div class="blog-img bc-img-2">🌿</div>
-          <div class="blog-body">
-            <div class="blog-cat">Bien-être</div>
-            <div class="blog-title">5 pratiques de pleine conscience adaptées à nos vies</div>
-            <div class="blog-excerpt">Des techniques simples qui s'intègrent dans le quotidien ivoirien, même avec un emploi du temps chargé...</div>
-            <div class="blog-footer"><span class="blog-time">10 Mars 2026 · 4 min</span><span class="blog-read">Lire →</span></div>
+      {% endif %}
+
+      <div class="comm-layout">
+        <div>
+          <div class="resources-tabs" style="margin-bottom:14px;">
+            <div class="rtab active" id="blogSubtabAll" onclick="switchBlogSubtab('all')">📚 Tous les articles</div>
+            <div class="rtab" id="blogSubtabSaved" onclick="switchBlogSubtab('saved')">🔖 Mes favoris</div>
+          </div>
+
+          <div class="post-feed" id="blogFeedAll">
+            {% for post in blog_posts %}
+              {% include "includes/blog_post_card.html" %}
+            {% empty %}
+            <div style="text-align:center;padding:40px;color:var(--txt-s);">
+              <div style="font-size:2rem;margin-bottom:10px;">📖</div>
+              <p style="font-size:.85rem;">Aucun article pour l'instant.<br>Sois le premier à partager une astuce ou une histoire !</p>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="post-feed" id="blogFeedSaved" style="display:none;">
+            {% for post in saved_blog_posts %}
+              {% include "includes/blog_post_card.html" %}
+            {% empty %}
+            <div style="text-align:center;padding:40px;color:var(--txt-s);">
+              <div style="font-size:2rem;margin-bottom:10px;">🔖</div>
+              <p style="font-size:.85rem;">Aucun article enregistré pour l'instant.</p>
+            </div>
+            {% endfor %}
           </div>
         </div>
-        <div class="blog-card">
-          <div class="blog-img bc-img-3">💼</div>
-          <div class="blog-body">
-            <div class="blog-cat">Travail</div>
-            <div class="blog-title">Burn-out : reconnaître les signaux avant qu'il soit trop tard</div>
-            <div class="blog-excerpt">Les signes d'alarme que l'on ignore trop souvent, et comment réagir à temps pour se protéger...</div>
-            <div class="blog-footer"><span class="blog-time">5 Mars 2026 · 7 min</span><span class="blog-read">Lire →</span></div>
+
+        <div class="comm-sidebar">
+          <div class="write-card">
+            <div class="eyebrow">Écrire un article</div>
+            <p class="privacy-hint">🔒 Ne partage pas ton nom, ton numéro ou ton adresse ici — reste anonyme, pour ta sécurité.</p>
+            <input type="text" class="write-input" id="blogWriteTitle" maxlength="150" placeholder="Titre de ton article…" style="margin-bottom:8px;">
+            <select id="blogWriteCategory" style="width:100%;padding:7px 10px;border:1.5px solid rgba(194,110,138,.18);border-radius:10px;font-family:'Jost',sans-serif;font-size:.78rem;background:var(--blush);color:var(--txt-m);outline:none;cursor:pointer;margin-bottom:8px;">
+              <option value="astuce">💡 Astuce anti-anxiété</option>
+              <option value="histoire">📖 Histoire vécue</option>
+              <option value="autre">✍️ Autre réflexion</option>
+            </select>
+            <textarea class="write-input" id="blogWriteContent" rows="6" placeholder="Partage ton astuce, ton histoire, ta réflexion…"></textarea>
+            <div class="write-footer">
+              <span class="write-anon-tag">🔒 Totalement anonyme</span>
+              <button class="btn-post" onclick="publishBlogPost()">Publier</button>
+            </div>
           </div>
-        </div>
-        <div class="blog-card">
-          <div class="blog-img bc-img-4">💬</div>
-          <div class="blog-body">
-            <div class="blog-cat">Relations</div>
-            <div class="blog-title">Poser des limites sans culpabilité</div>
-            <div class="blog-excerpt">Dans une culture où l'on donne souvent tout aux autres, apprendre à dire non est un acte de courage...</div>
-            <div class="blog-footer"><span class="blog-time">28 Fév 2026 · 5 min</span><span class="blog-read">Lire →</span></div>
+
+          {% if blog_weekly_wins_count > 0 or blog_yearly_wins_count > 0 %}
+          <div class="card" style="padding:clamp(16px,2.5vw,22px);">
+            <div class="eyebrow">Tes distinctions</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;font-size:.78rem;color:var(--txt-m);">
+              {% if blog_weekly_wins_count > 0 %}<div>🏆 Blog de la semaine × {{ blog_weekly_wins_count }}</div>{% endif %}
+              {% if blog_yearly_wins_count > 0 %}<div>👑 Blog de l'année × {{ blog_yearly_wins_count }}</div>{% endif %}
+            </div>
           </div>
-        </div>
-        <div class="blog-card">
-          <div class="blog-img bc-img-5">🎓</div>
-          <div class="blog-body">
-            <div class="blog-cat">Étudiants</div>
-            <div class="blog-title">Gérer la pression des examens : guide pratique</div>
-            <div class="blog-excerpt">Techniques éprouvées pour étudier efficacement sans sacrifier sa santé mentale en période d'examens...</div>
-            <div class="blog-footer"><span class="blog-time">20 Fév 2026 · 8 min</span><span class="blog-read">Lire →</span></div>
-          </div>
-        </div>
-        <div class="blog-card">
-          <div class="blog-img bc-img-6">🌙</div>
-          <div class="blog-body">
-            <div class="blog-cat">Sommeil</div>
-            <div class="blog-title">Dormir mieux : ce que la science dit vraiment</div>
-            <div class="blog-excerpt">Le sommeil est la base de la santé mentale. Voici ce qui fonctionne réellement pour améliorer sa qualité...</div>
-            <div class="blog-footer"><span class="blog-time">12 Fév 2026 · 5 min</span><span class="blog-read">Lire →</span></div>
-          </div>
+          {% endif %}
         </div>
       </div>
-      <!-- /PLACEHOLDER -->
     </div>
 
     <!-- Conférences -->
@@ -957,6 +980,30 @@ SANA — Mon Espace
             <div class="badge-full-desc">A partagé un mythe entendu</div>
           </div>
           {% endif %}
+          {# Plume d'or — élu·e Blog de la semaine au moins une fois #}
+          {% if blog_weekly_wins_count > 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">🖋️</div>
+            <div class="badge-full-name">Plume d'or</div>
+            <div class="badge-full-desc">Élu·e Blog de la semaine{% if blog_weekly_wins_count > 1 %} ({{ blog_weekly_wins_count }} fois){% endif %}</div>
+          </div>
+          {% endif %}
+          {# Plume en vogue — élu·e Blog de la semaine 5 fois ou plus #}
+          {% if blog_weekly_wins_count >= 5 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">✍️</div>
+            <div class="badge-full-name">Plume en vogue</div>
+            <div class="badge-full-desc">{{ blog_weekly_wins_count }} fois Blog de la semaine</div>
+          </div>
+          {% endif %}
+          {# Voix de l'année — élu·e Blog de l'année #}
+          {% if blog_yearly_wins_count > 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">👑</div>
+            <div class="badge-full-name">Voix de l'année</div>
+            <div class="badge-full-desc">Élu·e Blog de l'année{% if blog_yearly_wins_count > 1 %} ({{ blog_yearly_wins_count }} fois){% endif %}</div>
+          </div>
+          {% endif %}
         </div>
       </div>
 
@@ -1031,6 +1078,27 @@ SANA — Mon Espace
             <div class="badge-full-icon bfi-locked">📣</div>
             <div class="badge-full-name">Ambassadeur·rice</div>
             <div class="badge-full-desc">Partage un mythe entendu</div>
+          </div>
+          {% endif %}
+          {% if blog_weekly_wins_count == 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">🖋️</div>
+            <div class="badge-full-name">Plume d'or</div>
+            <div class="badge-full-desc">Sois élu·e Blog de la semaine</div>
+          </div>
+          {% endif %}
+          {% if blog_weekly_wins_count < 5 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">✍️</div>
+            <div class="badge-full-name">Plume en vogue</div>
+            <div class="badge-full-desc">{{ blog_weekly_wins_count }}/5 fois Blog de la semaine</div>
+          </div>
+          {% endif %}
+          {% if blog_yearly_wins_count == 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">👑</div>
+            <div class="badge-full-name">Voix de l'année</div>
+            <div class="badge-full-desc">Sois élu·e Blog de l'année</div>
           </div>
           {% endif %}
         </div>

@@ -413,6 +413,7 @@ class Notification(models.Model):
         ('message', 'Message'),
         ('join',    'Rejoindre'),
         ('welcome', 'Bienvenue'),
+        ('blog_winner', 'Blog élu'),
     ]
     user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     type       = models.CharField(max_length=20, choices=TYPE_CHOICES)
@@ -925,3 +926,119 @@ class ImpostorVote(models.Model):
 
     def __str__(self):
         return f'[{self.room.code}] {self.voter.username} -> {self.target.username}'
+
+
+# ── Blog (contenu long-format écrit par les utilisateur·rices) ─────────────────
+# Astuces anti-anxiété, histoires vécues, réflexions. Publication immédiate
+# (comme la Communauté) mais masqué dès le premier signalement, en attente de
+# modération — voir BlogPostReportAdmin.
+
+class BlogPost(models.Model):
+    CATEGORY_CHOICES = [
+        ('astuce',   'Astuce anti-anxiété'),
+        ('histoire', 'Histoire vécue'),
+        ('autre',    'Autre réflexion'),
+    ]
+    author      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='blog_posts')
+    title       = models.CharField(max_length=150)
+    content     = models.TextField()
+    category    = models.CharField(max_length=12, choices=CATEGORY_CHOICES, default='astuce')
+    likes       = models.ManyToManyField(User, related_name='liked_blog_posts', blank=True)
+    saves       = models.ManyToManyField(User, related_name='saved_blog_posts', blank=True)
+    is_reported = models.BooleanField(default=False)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Article de blog'
+        verbose_name_plural = 'Articles de blog'
+
+    def __str__(self):
+        return f'{self.title} ({self.author.username})'
+
+    @property
+    def like_count(self):
+        annotated = self.__dict__.get('like_count_annotated')
+        if annotated is not None:
+            return annotated
+        return self.likes.count()
+
+    @property
+    def comment_count(self):
+        annotated = self.__dict__.get('comment_count_annotated')
+        if annotated is not None:
+            return annotated
+        return self.comments.count()
+
+
+class BlogComment(models.Model):
+    post       = models.ForeignKey(BlogPost, on_delete=models.CASCADE, related_name='comments')
+    author     = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+    content    = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['created_at']
+        verbose_name        = 'Commentaire de blog'
+        verbose_name_plural = 'Commentaires de blog'
+
+    def __str__(self):
+        return f'{self.author.username} on post {self.post_id}: {self.content[:40]}'
+
+
+class BlogPostReport(models.Model):
+    REASON_CHOICES = [
+        ('harassment',  'Harcèlement / propos violents'),
+        ('spam',        'Spam'),
+        ('inapproprie', 'Contenu inapproprié'),
+        ('autre',       'Autre'),
+    ]
+    post       = models.ForeignKey(BlogPost, on_delete=models.CASCADE, related_name='reports')
+    reporter   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='blog_post_reports')
+    reason     = models.CharField(max_length=20, choices=REASON_CHOICES, default='autre')
+    details    = models.TextField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Signalement de blog'
+        verbose_name_plural = 'Signalements de blog'
+        constraints = [
+            models.UniqueConstraint(fields=['post', 'reporter'], name='unique_blog_report_per_user_per_post'),
+        ]
+
+    def __str__(self):
+        return f'{self.reporter.username} → blog {self.post_id} ({self.reason})'
+
+
+class BlogWeeklyWinner(models.Model):
+    week_start     = models.DateField(unique=True)  # lundi de la semaine élue
+    post           = models.ForeignKey(BlogPost, on_delete=models.CASCADE, related_name='weekly_wins')
+    author         = models.ForeignKey(User, on_delete=models.CASCADE, related_name='blog_weekly_wins')
+    likes_snapshot = models.PositiveIntegerField(default=0)
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-week_start']
+        verbose_name        = 'Blog de la semaine'
+        verbose_name_plural = 'Blogs de la semaine'
+
+    def __str__(self):
+        return f'Semaine du {self.week_start} — {self.post.title}'
+
+
+class BlogYearlyWinner(models.Model):
+    year           = models.PositiveIntegerField(unique=True)
+    post           = models.ForeignKey(BlogPost, on_delete=models.CASCADE, related_name='yearly_wins')
+    author         = models.ForeignKey(User, on_delete=models.CASCADE, related_name='blog_yearly_wins')
+    likes_snapshot = models.PositiveIntegerField(default=0)
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-year']
+        verbose_name        = "Blog de l'année"
+        verbose_name_plural = "Blogs de l'année"
+
+    def __str__(self):
+        return f'{self.year} — {self.post.title}'

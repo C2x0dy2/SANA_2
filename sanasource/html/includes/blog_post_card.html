@@ -1,0 +1,46 @@
+{% comment %}
+Reusable blog post card. Param: post (a BlogPost, ideally annotated with
+like_count_annotated/comment_count_annotated). Reads user/user_liked_blog_ids/
+user_saved_blog_ids from the parent context.
+{% endcomment %}
+{% with anon=post.author.profile.username_anonyme|default:"Anonyme·e" %}
+<div class="post-card" id="blog-post-{{ post.id }}">
+  <div class="post-header">
+    <div class="post-av post-av-{{ forloop.counter|divisibleby:3|yesno:"3," }}{{ forloop.counter|divisibleby:2|yesno:"2,1" }}">{{ anon|first|upper }}</div>
+    <div>
+      <div class="post-anon">
+        {{ anon }} <span class="post-tag">{{ post.get_category_display }}</span>
+      </div>
+      <div class="post-meta">{{ post.created_at|timesince }} ago</div>
+    </div>
+  </div>
+  <div class="blogpost-title">{{ post.title }}</div>
+  <div class="post-text">{{ post.content|linebreaksbr }}</div>
+  <div class="post-actions">
+    <button class="post-btn {% if post.id in user_liked_blog_ids %}liked{% endif %}"
+            id="blog-like-btn-{{ post.id }}"
+            onclick="blogToggleLike({{ post.id }}, this)">
+            ❤️ <span id="blog-like-count-{{ post.id }}">{{ post.like_count }}</span>
+    </button>
+    <button class="post-btn" onclick="toggleBlogComments({{ post.id }})">💬 <span id="blog-comment-count-{{ post.id }}">{{ post.comment_count }}</span></button>
+    <button class="post-btn {% if post.id in user_saved_blog_ids %}liked{% endif %}"
+            id="blog-save-btn-{{ post.id }}"
+            onclick="blogToggleSave({{ post.id }}, this)">
+            🔖 {% if post.id in user_saved_blog_ids %}Enregistré{% else %}Enregistrer{% endif %}
+    </button>
+    {% if post.author == user %}
+    <button class="post-btn post-btn-report" onclick="deleteBlogPost({{ post.id }})" title="Supprimer cet article">🗑️</button>
+    {% else %}
+    <button class="post-btn post-btn-report" onclick="openReportBlogPost({{ post.id }})" title="Signaler cet article">🚩</button>
+    {% endif %}
+  </div>
+  <div class="post-comments" id="blog-comments-{{ post.id }}" style="display:none;">
+    <div class="post-comments-list" id="blog-comments-list-{{ post.id }}"></div>
+    <div class="post-comment-input-row">
+      <input type="text" class="post-comment-input" id="blog-comment-input-{{ post.id }}" placeholder="Écrire un commentaire…" maxlength="500"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();submitBlogComment({{ post.id }})}">
+      <button class="post-comment-send" onclick="submitBlogComment({{ post.id }})">Envoyer</button>
+    </div>
+  </div>
+</div>
+{% endwith %}
