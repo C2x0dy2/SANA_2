@@ -697,6 +697,7 @@ class GameRoom(models.Model):
     max_rounds       = models.PositiveIntegerField(default=0)  # set to player count when the game starts
     current_emotion  = models.CharField(max_length=50, blank=True)
     current_giver    = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    ai_feedback      = models.TextField(blank=True, default='')  # coach IA, généré une fois la partie terminée
     created_at       = models.DateTimeField(auto_now_add=True)
 
     class Meta:

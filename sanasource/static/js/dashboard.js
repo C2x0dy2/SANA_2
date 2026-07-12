@@ -1238,6 +1238,11 @@ function renderGameRoom(data){
     }
   } else if(data.status === 'finished'){
     html += '<p style="font-size:.85rem;color:var(--r500);text-align:center;font-weight:600;margin-bottom:12px;">🏁 Partie terminée !</p>';
+    if(data.ai_feedback){
+      html += '<div class="room-coach-box"><div class="room-coach-label">🌸 Coach IA</div><div class="room-coach-text">' + escHtml(data.ai_feedback) + '</div></div>';
+    } else {
+      html += '<div class="room-coach-box"><div class="room-coach-label">🌸 Coach IA</div><div class="room-coach-text room-coach-loading">Analyse de la partie…</div></div>';
+    }
   }
 
   html += '<div class="room-chat" id="roomChat">';

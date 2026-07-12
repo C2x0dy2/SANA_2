@@ -2372,6 +2372,58 @@ def _start_round(room, giver_player):
     )
 
 
+COACH_SYSTEM_PROMPT = """Tu es un coach bienveillant qui observe une partie du jeu thérapeutique \
+"Devine l'émotion" sur SANA, une plateforme de santé mentale. Des joueur·euses anonymes se relaient \
+pour faire deviner une émotion à l'aide d'indices écrits, sans jamais dire le mot.
+
+Tu reçois la transcription du chat de la partie (uniquement des pseudonymes, jamais de vraies identités).
+
+Rédige un feedback court (2 à 4 phrases), en français, chaleureux et constructif, sur la façon dont le \
+groupe a collaboré : qualité de l'écoute, clarté des indices, entraide, esprit d'équipe. Reste factuel par \
+rapport à ce que tu observes dans la transcription, félicite ce qui a bien fonctionné, et suggère \
+gentiment un axe d'amélioration si pertinent. N'invente rien qui ne soit pas dans la transcription.
+
+Règles absolues :
+- Jamais de diagnostic médical ou psychologique, jamais de jugement sur la santé mentale des joueur·euses.
+- Utilise uniquement les pseudonymes fournis, jamais de nom réel.
+- Termine toujours sur une note encourageante."""
+
+
+def _generate_coach_feedback(room):
+    """Best-effort AI feedback on the finished game's collaboration, generated
+    from the room's chat transcript. Never raises — a Gemini hiccup shouldn't
+    block the game from finishing."""
+    try:
+        api_key = _get_valid_gemini_key()
+        if not api_key:
+            return
+        lines = [
+            f"{_anon_name(m.author)}: {m.content}" + (' (bonne réponse)' if m.is_correct_guess else '')
+            for m in room.messages.select_related('author', 'author__profile').order_by('created_at')
+            if not m.is_system
+        ]
+        if not lines:
+            return
+        transcript = '\n'.join(lines)
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=f"Transcription de la partie :\n{transcript}",
+            config=genai_types.GenerateContentConfig(
+                system_instruction=COACH_SYSTEM_PROMPT,
+                max_output_tokens=300,
+                temperature=0.8,
+                thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+        feedback = (getattr(response, 'text', None) or '').strip()
+        if feedback:
+            room.ai_feedback = feedback
+            room.save(update_fields=['ai_feedback'])
+    except Exception:
+        logger.exception('Coach IA: échec de la génération du feedback pour le salon %s', room.code)
+
+
 @csrf_exempt
 def create_game_room(request):
     if not request.user.is_authenticated:
@@ -2455,6 +2507,7 @@ def game_room_state(request, code):
         'is_giver': is_giver,
         'secret_emotion': room.current_emotion if is_giver else None,
         'giver_name': _anon_name(room.current_giver) if room.current_giver_id else None,
+        'ai_feedback': room.ai_feedback if room.status == 'finished' else None,
         'players': [
             {'name': _anon_name(p.user), 'score': p.score, 'is_you': p.user_id == request.user.id}
             for p in room.players.select_related('user', 'user__profile').order_by('-score', 'joined_at')
@@ -2523,6 +2576,7 @@ def post_game_room_message(request, code):
             room.current_emotion = ''
             room.save(update_fields=['status', 'current_giver', 'current_emotion'])
             GameRoomMessage.objects.create(room=room, author=request.user, is_system=True, content='🏁 Partie terminée !')
+            _generate_coach_feedback(room)
 
     return JsonResponse({'message': 'Envoyé', 'is_correct': is_correct})
 

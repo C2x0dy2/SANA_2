@@ -1025,6 +1025,10 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 .room-msg .room-msg-author{font-weight:600;color:var(--p950);}
 .room-msg.is-you .room-msg-author{color:var(--r500);}
 .room-input-row{display:flex;gap:8px;}
+.room-coach-box{background:linear-gradient(135deg,var(--r50),var(--white));border:1.5px solid var(--r500);border-radius:16px;padding:14px 16px;margin-bottom:12px;}
+.room-coach-label{font-size:.68rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--r500);font-weight:600;margin-bottom:6px;}
+.room-coach-text{font-size:.82rem;color:var(--p950);line-height:1.6;}
+.room-coach-text.room-coach-loading{color:var(--txt-s);font-style:italic;}
 
 /* ══════════════════════════════════
    MOBILE NAV (bottom bar)
