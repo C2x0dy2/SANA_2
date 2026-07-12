@@ -665,10 +665,24 @@ SANA — Mon Espace
         <p style="font-size:.68rem;color:var(--r500);margin-bottom:10px;">{% if game_best_scores.respire_avec_moi %}Meilleur score : {{ game_best_scores.respire_avec_moi }}{% else %}Pas encore joué{% endif %}</p>
         <button class="btn-sm btn-primary-sm" style="width:100%;" onclick="openBreatheGame()">Jouer</button>
       </div>
+      <div class="card game-card">
+        <div style="font-size:1.8rem;margin-bottom:8px;">🌧️</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:6px;">Chasse aux pensées</div>
+        <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:10px;">Transforme des pensées négatives en pensées plus réalistes — inspiré de la TCC.</p>
+        <p style="font-size:.68rem;color:var(--r500);margin-bottom:10px;">{% if game_best_scores.chasse_pensees %}Meilleur score : {{ game_best_scores.chasse_pensees }}{% else %}Pas encore joué{% endif %}</p>
+        <button class="btn-sm btn-primary-sm" style="width:100%;" onclick="openReframeGame()">Jouer</button>
+      </div>
+      <div class="card game-card">
+        <div style="font-size:1.8rem;margin-bottom:8px;">😊</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:6px;">Memory des émotions</div>
+        <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:10px;">Retrouve les paires d'émotions et découvre leur signification.</p>
+        <p style="font-size:.68rem;color:var(--r500);margin-bottom:10px;">{% if game_best_scores.memory_emotions %}Meilleur score : {{ game_best_scores.memory_emotions }}{% else %}Pas encore joué{% endif %}</p>
+        <button class="btn-sm btn-primary-sm" style="width:100%;" onclick="openMemoryGame()">Jouer</button>
+      </div>
     </div>
 
     <div class="card" style="padding:clamp(18px,3vw,24px);text-align:center;">
-      <p style="font-size:.8rem;color:var(--txt-s);line-height:1.7;">D'autres jeux arrivent bientôt : chasse aux pensées (TCC), memory des émotions, coloriage relaxant, mission bien-être… et des jeux à plusieurs joueurs 👥</p>
+      <p style="font-size:.8rem;color:var(--txt-s);line-height:1.7;">D'autres jeux arrivent bientôt : coloriage relaxant, mission bien-être… et des jeux à plusieurs joueurs 👥</p>
     </div>
   </div>
 
@@ -1561,6 +1575,23 @@ SANA — Mon Espace
 <div id="breatheGameModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--white);border-radius:28px;padding:clamp(20px,3.5vw,28px);max-width:420px;width:100%;animation:secIn .3s ease;">
     <div id="breatheGameBody"></div>
+  </div>
+</div>
+
+{{ thought_reframes|json_script:"thoughtReframesData" }}
+{{ emotion_cards|json_script:"emotionCardsData" }}
+
+<!-- REFRAME GAME MODAL -->
+<div id="reframeGameModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border-radius:28px;padding:clamp(20px,3.5vw,28px);max-width:480px;width:100%;max-height:90vh;overflow-y:auto;animation:secIn .3s ease;">
+    <div id="reframeGameBody"></div>
+  </div>
+</div>
+
+<!-- MEMORY GAME MODAL -->
+<div id="memoryGameModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border-radius:28px;padding:clamp(20px,3.5vw,28px);max-width:520px;width:100%;max-height:90vh;overflow-y:auto;animation:secIn .3s ease;">
+    <div id="memoryGameBody"></div>
   </div>
 </div>
 {% endblock %}

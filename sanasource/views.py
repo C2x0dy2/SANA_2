@@ -35,7 +35,7 @@ from .password_validation import french_password_errors
 from .serializers import serialize_journal_page, serialize_attachment
 from .reflection_questions import REFLECTION_QUESTIONS
 from .sensibilisation_content import SCREENING_TOOLS, QUIZ_QUESTIONS, get_daily_challenge, score_band
-from .games_content import POSITIVE_THOUGHTS, NEGATIVE_THOUGHTS, get_garden_stage
+from .games_content import POSITIVE_THOUGHTS, NEGATIVE_THOUGHTS, get_garden_stage, THOUGHT_REFRAMES, EMOTION_CARDS
 from google import genai
 from google.genai import types as genai_types
 from google.genai import errors as genai_errors
@@ -968,6 +968,8 @@ def dashboard(request):
         'game_best_scores':           game_best_scores,
         'positive_thoughts':          POSITIVE_THOUGHTS,
         'negative_thoughts':          NEGATIVE_THOUGHTS,
+        'thought_reframes':           THOUGHT_REFRAMES,
+        'emotion_cards':              EMOTION_CARDS,
     })
 
 

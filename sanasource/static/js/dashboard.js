@@ -983,6 +983,166 @@ function finishBreatheGame(){
   saveGameScore('respire_avec_moi', score);
 }
 
+// ── JEU: CHASSE AUX PENSÉES (TCC) ──
+let reframeState = null;
+
+function closeReframeGame(){
+  reframeState = null;
+  document.getElementById('reframeGameModal').style.display='none';
+  document.body.style.overflow='';
+}
+document.getElementById('reframeGameModal').addEventListener('click',function(e){
+  if(e.target===this) closeReframeGame();
+});
+
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i=a.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function openReframeGame(){
+  const items = JSON.parse(document.getElementById('thoughtReframesData').textContent);
+  reframeState = {items: shuffleArray(items), index: 0, score: 0};
+  document.getElementById('reframeGameModal').style.display='flex';
+  document.body.style.overflow='hidden';
+  renderReframeRound();
+}
+
+function renderReframeRound(){
+  const s = reframeState;
+  if(!s) return;
+  if(s.index >= s.items.length){ finishReframeGame(); return; }
+  const item = s.items[s.index];
+  const options = shuffleArray([{text:item.correct, correct:true}, {text:item.wrong, correct:false}]);
+  let html = '<div class="sq-title">🌧️ Chasse aux pensées</div>';
+  html += '<p class="reframe-progress">Pensée ' + (s.index+1) + '/' + s.items.length + '</p>';
+  html += '<div class="reframe-thought-box">« ' + escHtml(item.thought) + ' »</div>';
+  html += '<p style="font-size:.76rem;color:var(--txt-s);margin-bottom:10px;">Quelle est la pensée la plus réaliste ?</p>';
+  html += '<div class="reframe-options" id="reframeOptions">';
+  options.forEach((opt, i) => {
+    html += '<div class="reframe-option" data-correct="' + opt.correct + '" onclick="pickReframe(this)">' + escHtml(opt.text) + '</div>';
+  });
+  html += '</div>';
+  document.getElementById('reframeGameBody').innerHTML = html;
+}
+
+function pickReframe(el){
+  const s = reframeState;
+  if(!s) return;
+  const options = document.querySelectorAll('#reframeOptions .reframe-option');
+  options.forEach(o => o.classList.add('disabled'));
+  const isCorrect = el.dataset.correct === 'true';
+  el.classList.add(isCorrect ? 'correct' : 'wrong');
+  if(!isCorrect){
+    options.forEach(o => { if(o.dataset.correct === 'true') o.classList.add('correct'); });
+  } else {
+    s.score++;
+  }
+  setTimeout(() => { s.index++; renderReframeRound(); }, 1400);
+}
+
+function finishReframeGame(){
+  const s = reframeState;
+  const score = s ? s.score : 0;
+  const total = s ? s.items.length : 8;
+  document.getElementById('reframeGameBody').innerHTML =
+    '<div class="sq-title">Terminé !</div>' +
+    '<div class="sq-result-band"><div class="sq-result-score">' + score + '/' + total + '</div><div class="sq-result-label">pensées reformulées</div></div>' +
+    buildShareRow('J\'ai reformulé ' + score + '/' + total + ' pensées au jeu Chasse aux pensées sur SANA !') +
+    '<button class="btn-sm btn-outline-sm" style="width:100%;margin-top:8px;" onclick="closeReframeGame()">Fermer</button>';
+  saveGameScore('chasse_pensees', score);
+  reframeState = null;
+}
+
+// ── JEU: MEMORY DES ÉMOTIONS ──
+let memoryState = null;
+
+function closeMemoryGame(){
+  memoryState = null;
+  document.getElementById('memoryGameModal').style.display='none';
+  document.body.style.overflow='';
+}
+document.getElementById('memoryGameModal').addEventListener('click',function(e){
+  if(e.target===this) closeMemoryGame();
+});
+
+function openMemoryGame(){
+  const emotions = JSON.parse(document.getElementById('emotionCardsData').textContent);
+  const pairs = [];
+  emotions.forEach((e, i) => { pairs.push({...e, pairId:i}); pairs.push({...e, pairId:i}); });
+  const cards = shuffleArray(pairs).map((c, i) => ({...c, id:i, flipped:false, matched:false}));
+  memoryState = {cards, moves: 0, matchedCount: 0, busy: false, totalPairs: emotions.length};
+  document.getElementById('memoryGameModal').style.display='flex';
+  document.body.style.overflow='hidden';
+  renderMemoryGame();
+}
+
+function renderMemoryGame(defText){
+  const s = memoryState;
+  if(!s) return;
+  let html = '<div class="sq-title">😊 Memory des émotions</div>';
+  html += '<div class="memory-hud"><span>Paires : ' + s.matchedCount + '/' + s.totalPairs + '</span><span>Coups : ' + s.moves + '</span></div>';
+  html += '<div class="memory-definition">' + (defText ? escHtml(defText) : 'Trouve les paires d\'émotions identiques.') + '</div>';
+  html += '<div class="memory-grid">';
+  s.cards.forEach(c => {
+    const cls = c.matched ? 'matched' : (c.flipped ? 'flipped' : '');
+    html += '<div class="memory-card ' + cls + '" onclick="flipMemoryCard(' + c.id + ')">' + ((c.flipped || c.matched) ? c.emoji : '🌸') + '</div>';
+  });
+  html += '</div>';
+  html += '<button class="btn-sm btn-outline-sm" style="width:100%;" onclick="closeMemoryGame()">Quitter</button>';
+  document.getElementById('memoryGameBody').innerHTML = html;
+}
+
+function flipMemoryCard(id){
+  const s = memoryState;
+  if(!s || s.busy) return;
+  const card = s.cards.find(c => c.id === id);
+  if(!card || card.flipped || card.matched) return;
+
+  card.flipped = true;
+  const flippedCards = s.cards.filter(c => c.flipped && !c.matched);
+
+  if(flippedCards.length < 2){
+    renderMemoryGame();
+    return;
+  }
+
+  s.moves++;
+  const [a, b] = flippedCards;
+  if(a.pairId === b.pairId){
+    a.matched = true; b.matched = true;
+    s.matchedCount++;
+    renderMemoryGame(a.name + ' : ' + a.definition);
+    if(s.matchedCount >= s.totalPairs) setTimeout(finishMemoryGame, 900);
+  } else {
+    s.busy = true;
+    renderMemoryGame();
+    setTimeout(() => {
+      a.flipped = false; b.flipped = false;
+      s.busy = false;
+      renderMemoryGame();
+    }, 900);
+  }
+}
+
+function finishMemoryGame(){
+  const s = memoryState;
+  if(!s) return;
+  const perfect = s.totalPairs * 2;
+  const score = Math.max(0, 100 - (s.moves - s.totalPairs) * 5);
+  document.getElementById('memoryGameBody').innerHTML =
+    '<div class="sq-title">Bravo, terminé !</div>' +
+    '<div class="sq-result-band"><div class="sq-result-score">' + score + '</div><div class="sq-result-label">points · ' + s.moves + ' coups</div></div>' +
+    buildShareRow('J\'ai fait ' + score + ' points au Memory des émotions sur SANA !') +
+    '<button class="btn-sm btn-outline-sm" style="width:100%;margin-top:8px;" onclick="closeMemoryGame()">Fermer</button>';
+  saveGameScore('memory_emotions', score);
+  memoryState = null;
+}
+
 // ── MOOD DATA FROM DB ──
 // MOOD_DATA is declared inline in dashboard.html (server-rendered value) before this file loads.
 const MOOD_DAYS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];

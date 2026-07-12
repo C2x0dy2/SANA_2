@@ -663,6 +663,8 @@ class GameSession(models.Model):
     GAME_CHOICES = [
         ('attrape_pensees', 'Attrape les pensées positives'),
         ('respire_avec_moi', 'Respire avec moi'),
+        ('chasse_pensees', 'Chasse aux pensées'),
+        ('memory_emotions', 'Memory des émotions'),
     ]
     user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='game_sessions')
     game       = models.CharField(max_length=30, choices=GAME_CHOICES)
