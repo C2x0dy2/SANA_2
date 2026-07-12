@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, UserChallengeProgress, SubmittedMyth
 
 
 @admin.register(UserProfile)
@@ -182,5 +182,41 @@ class NewsletterSubscriberAdmin(admin.ModelAdmin):
     list_display  = ['email', 'is_confirmed', 'subscribed_at']
     list_filter   = ['is_confirmed']
     search_fields = ['email']
+
+
+@admin.register(ScreeningResult)
+class ScreeningResultAdmin(admin.ModelAdmin):
+    list_display  = ['user', 'tool', 'score', 'band', 'flagged', 'created_at']
+    list_filter   = ['tool', 'band', 'flagged']
+    search_fields = ['user__username']
+
+
+@admin.register(QuizAttempt)
+class QuizAttemptAdmin(admin.ModelAdmin):
+    list_display  = ['user', 'score', 'total', 'created_at']
+    search_fields = ['user__username']
+
+
+@admin.register(UserChallengeProgress)
+class UserChallengeProgressAdmin(admin.ModelAdmin):
+    list_display  = ['user', 'challenge_id', 'started_at', 'completed_at']
+    list_filter   = ['challenge_id']
+    search_fields = ['user__username']
+
+
+@admin.register(SubmittedMyth)
+class SubmittedMythAdmin(admin.ModelAdmin):
+    list_display  = ['author', 'myth_preview', 'is_approved', 'created_at']
+    list_filter   = ['is_approved']
+    search_fields = ['author__username', 'myth_text']
+    actions       = ['approve_myths']
+
+    @admin.display(description='Mythe')
+    def myth_preview(self, obj):
+        return obj.myth_text[:60]
+
+    @admin.action(description='Approuver les mythes sélectionnés')
+    def approve_myths(self, request, queryset):
+        queryset.update(is_approved=True)
 
 

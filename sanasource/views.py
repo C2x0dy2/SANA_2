@@ -27,13 +27,14 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, UserChallengeProgress, SubmittedMyth
 from .notifications import send_notification
 from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
 from .password_validation import french_password_errors
 from .serializers import serialize_journal_page, serialize_attachment
 from .reflection_questions import REFLECTION_QUESTIONS
+from .sensibilisation_content import SCREENING_TOOLS, QUIZ_QUESTIONS, CHALLENGES, CHALLENGES_BY_ID, score_band
 from google import genai
 from google.genai import types as genai_types
 from google.genai import errors as genai_errors
@@ -865,6 +866,30 @@ def dashboard(request):
 
     reviews_feed = Review.objects.select_related('author', 'author__profile')[:30]
 
+    # Sensibilisation: quiz questions without the answer key, challenges with
+    # this user's own progress folded in, and approved community myths.
+    quiz_questions_public = [{'question': q['question'], 'choices': q['choices']} for q in QUIZ_QUESTIONS]
+    progress_by_challenge = {
+        p.challenge_id: p
+        for p in UserChallengeProgress.objects.filter(user=request.user, challenge_id__in=CHALLENGES_BY_ID.keys())
+    }
+    challenges_with_progress = []
+    for c in CHALLENGES:
+        progress = progress_by_challenge.get(c['id'])
+        challenges_with_progress.append({
+            **c,
+            'started': progress is not None,
+            'days_done': len(progress.checkin_dates) if progress else 0,
+            'completed': bool(progress and progress.completed_at),
+            'checked_in_today': bool(progress and timezone.localdate().isoformat() in progress.checkin_dates),
+        })
+    myths_submitted = SubmittedMyth.objects.filter(is_approved=True).select_related('author', 'author__profile')[:20]
+
+    screening_count           = ScreeningResult.objects.filter(user=request.user).count()
+    quiz_completed_count      = QuizAttempt.objects.filter(user=request.user).count()
+    challenges_completed_count = sum(1 for c in challenges_with_progress if c['completed'])
+    myths_submitted_count     = SubmittedMyth.objects.filter(author=request.user).count()
+
     return render(request, 'page/dashboard.html', {
         'user':               request.user,
         'profile':            profile,
@@ -883,6 +908,14 @@ def dashboard(request):
         'vapid_public_key':    settings.VAPID_PUBLIC_KEY,
         'show_welcome_toast':  request.session.pop('show_welcome', False),
         'watermark_uri':       _build_watermark_data_uri(request.user),
+        'screening_tools':            SCREENING_TOOLS,
+        'quiz_questions':             quiz_questions_public,
+        'challenges':                 challenges_with_progress,
+        'myths_submitted':            myths_submitted,
+        'screening_count':            screening_count,
+        'quiz_completed_count':       quiz_completed_count,
+        'challenges_completed_count': challenges_completed_count,
+        'myths_submitted_count':      myths_submitted_count,
     })
 
 
@@ -2089,6 +2122,151 @@ def update_profile(request):
     profile.save()
 
     return JsonResponse({'message': 'Profil mis à jour !'})
+
+
+# ============================================================
+# SENSIBILISATION (auto-évaluations, quiz, défis, mythes)
+# ============================================================
+
+@csrf_exempt
+def submit_screening(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    tool = body.get('tool')
+    tool_def = SCREENING_TOOLS.get(tool)
+    if not tool_def:
+        return JsonResponse({'error': 'Outil inconnu'}, status=400)
+
+    answers = body.get('answers')
+    if not isinstance(answers, list) or len(answers) != len(tool_def['questions']):
+        return JsonResponse({'error': 'Réponses invalides'}, status=400)
+    try:
+        answers = [max(0, min(3, int(a))) for a in answers]
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Réponses invalides'}, status=400)
+
+    score = sum(answers)
+    band = score_band(tool, score)
+    risk_index = tool_def['risk_question_index']
+    flagged = risk_index is not None and answers[risk_index] > 0
+
+    ScreeningResult.objects.create(user=request.user, tool=tool, score=score, band=band, flagged=flagged)
+
+    return JsonResponse({
+        'score': score,
+        'max_score': tool_def['max_score'],
+        'band': band,
+        'flagged': flagged,
+    })
+
+
+@csrf_exempt
+def submit_quiz(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    answers = body.get('answers')
+    if not isinstance(answers, list) or len(answers) != len(QUIZ_QUESTIONS):
+        return JsonResponse({'error': 'Réponses invalides'}, status=400)
+
+    results = []
+    score = 0
+    for question, given in zip(QUIZ_QUESTIONS, answers):
+        try:
+            given = int(given)
+        except (TypeError, ValueError):
+            given = -1
+        is_correct = given == question['correct']
+        if is_correct:
+            score += 1
+        results.append({
+            'is_correct': is_correct,
+            'correct': question['correct'],
+            'explanation': question['explanation'],
+        })
+
+    QuizAttempt.objects.create(user=request.user, score=score, total=len(QUIZ_QUESTIONS))
+    return JsonResponse({'score': score, 'total': len(QUIZ_QUESTIONS), 'results': results})
+
+
+@csrf_exempt
+def start_challenge(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    challenge_id = body.get('challenge_id')
+    if challenge_id not in CHALLENGES_BY_ID:
+        return JsonResponse({'error': 'Défi inconnu'}, status=400)
+
+    progress, _ = UserChallengeProgress.objects.get_or_create(user=request.user, challenge_id=challenge_id)
+    return JsonResponse({'challenge_id': challenge_id, 'days_done': len(progress.checkin_dates)})
+
+
+@csrf_exempt
+def checkin_challenge(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    challenge_id = body.get('challenge_id')
+    challenge_def = CHALLENGES_BY_ID.get(challenge_id)
+    if not challenge_def:
+        return JsonResponse({'error': 'Défi inconnu'}, status=400)
+
+    progress = get_object_or_404(UserChallengeProgress, user=request.user, challenge_id=challenge_id)
+    today = timezone.localdate().isoformat()
+    if today not in progress.checkin_dates:
+        progress.checkin_dates.append(today)
+        if len(progress.checkin_dates) >= challenge_def['duration_days'] and not progress.completed_at:
+            progress.completed_at = timezone.now()
+        progress.save()
+
+    return JsonResponse({
+        'days_done': len(progress.checkin_dates),
+        'duration_days': challenge_def['duration_days'],
+        'completed': progress.completed_at is not None,
+    })
+
+
+@csrf_exempt
+def submit_myth(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    myth_text = (body.get('myth_text') or '').strip()
+    if len(myth_text) < 10:
+        return JsonResponse({'error': 'Décris un peu plus le mythe que tu as entendu 🌸'}, status=400)
+    SubmittedMyth.objects.create(author=request.user, myth_text=myth_text[:500])
+    return JsonResponse({'message': 'Merci ! Ton mythe sera publié avec une réponse après validation.'}, status=201)
 
 
 def groupe(request):

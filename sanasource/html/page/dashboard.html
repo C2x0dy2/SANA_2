@@ -839,6 +839,38 @@ SANA — Mon Espace
             <div class="badge-full-desc">A rejoint un groupe de soutien</div>
           </div>
           {% endif %}
+          {# Lucidité — a fait au moins une auto-évaluation #}
+          {% if screening_count > 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">📋</div>
+            <div class="badge-full-name">Lucidité</div>
+            <div class="badge-full-desc">Première auto-évaluation faite</div>
+          </div>
+          {% endif %}
+          {# Éclairé·e — a complété le quiz #}
+          {% if quiz_completed_count > 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">🧠</div>
+            <div class="badge-full-name">Éclairé·e</div>
+            <div class="badge-full-desc">Quiz sensibilisation complété</div>
+          </div>
+          {% endif %}
+          {# Discipline — a terminé un défi #}
+          {% if challenges_completed_count > 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">🔥</div>
+            <div class="badge-full-name">Discipline</div>
+            <div class="badge-full-desc">Un défi bien-être terminé</div>
+          </div>
+          {% endif %}
+          {# Ambassadeur·rice — a soumis un mythe #}
+          {% if myths_submitted_count > 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-unlocked">📣</div>
+            <div class="badge-full-name">Ambassadeur·rice</div>
+            <div class="badge-full-desc">A partagé un mythe entendu</div>
+          </div>
+          {% endif %}
         </div>
       </div>
 
@@ -885,6 +917,34 @@ SANA — Mon Espace
             <div class="badge-full-icon bfi-locked">👥</div>
             <div class="badge-full-name">Ensemble</div>
             <div class="badge-full-desc">Rejoins un groupe de soutien</div>
+          </div>
+          {% endif %}
+          {% if screening_count == 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">📋</div>
+            <div class="badge-full-name">Lucidité</div>
+            <div class="badge-full-desc">Fais une auto-évaluation</div>
+          </div>
+          {% endif %}
+          {% if quiz_completed_count == 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">🧠</div>
+            <div class="badge-full-name">Éclairé·e</div>
+            <div class="badge-full-desc">Complète le quiz sensibilisation</div>
+          </div>
+          {% endif %}
+          {% if challenges_completed_count == 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">🔥</div>
+            <div class="badge-full-name">Discipline</div>
+            <div class="badge-full-desc">Termine un défi bien-être</div>
+          </div>
+          {% endif %}
+          {% if myths_submitted_count == 0 %}
+          <div class="badge-full-item">
+            <div class="badge-full-icon bfi-locked">📣</div>
+            <div class="badge-full-name">Ambassadeur·rice</div>
+            <div class="badge-full-desc">Partage un mythe entendu</div>
           </div>
           {% endif %}
         </div>
@@ -1193,6 +1253,85 @@ SANA — Mon Espace
         </div>
       </div>
     </div>
+
+    <!-- Auto-évaluation -->
+    <div class="eyebrow" style="margin:clamp(20px,3vw,28px) 0 12px;">Auto-évaluation guidée</div>
+    <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;max-width:600px;">Des outils utilisés partout dans le monde pour repérer des symptômes d'anxiété ou de dépression. <strong>Ce n'est pas un diagnostic</strong> — seulement un point de départ pour savoir si consulter pourrait t'aider.</p>
+    <div class="grid-2" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      <div class="card" style="padding:clamp(18px,3vw,26px);">
+        <div style="font-size:1.6rem;margin-bottom:8px;">📋</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:6px;">{{ screening_tools.phq9.title }}</div>
+        <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;">9 questions · 2 minutes</p>
+        <button class="btn-sm btn-primary-sm" onclick="openScreening('phq9')">Faire le test</button>
+      </div>
+      <div class="card" style="padding:clamp(18px,3vw,26px);">
+        <div style="font-size:1.6rem;margin-bottom:8px;">🌊</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:6px;">{{ screening_tools.gad7.title }}</div>
+        <p style="font-size:.76rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;">7 questions · 2 minutes</p>
+        <button class="btn-sm btn-primary-sm" onclick="openScreening('gad7')">Faire le test</button>
+      </div>
+    </div>
+
+    <!-- Quiz -->
+    <div class="eyebrow" style="margin-bottom:12px;">Teste tes connaissances</div>
+    <div class="card" style="padding:clamp(20px,3vw,28px);margin-bottom:clamp(16px,2.5vw,24px);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+      <div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--p950);margin-bottom:4px;">{{ quiz_questions|length }} questions pour déconstruire les idées reçues</div>
+        <p style="font-size:.76rem;color:var(--txt-s);">{% if quiz_completed_count %}Déjà complété {{ quiz_completed_count }} fois{% else %}Pas encore tenté{% endif %}</p>
+      </div>
+      <button class="btn-sm btn-primary-sm" onclick="openQuiz()">Commencer le quiz</button>
+    </div>
+
+    <!-- Défis bien-être -->
+    <div class="eyebrow" style="margin-bottom:12px;">Défis bien-être</div>
+    <div class="grid-3" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      {% for c in challenges %}
+      <div class="card challenge-card" style="padding:clamp(16px,2.5vw,22px);">
+        <div style="font-size:1.6rem;margin-bottom:6px;">{{ c.icon }}</div>
+        <div style="font-size:.88rem;font-weight:600;color:var(--p950);margin-bottom:4px;">{{ c.title }}</div>
+        <p style="font-size:.72rem;color:var(--txt-s);line-height:1.6;margin-bottom:10px;">{{ c.description }}</p>
+        {% if c.completed %}
+          <div class="challenge-progress-bar"><div class="challenge-progress-fill" style="width:100%;"></div></div>
+          <div class="challenge-status challenge-done">✓ Défi terminé</div>
+        {% elif c.started %}
+          <div class="challenge-progress-bar"><div class="challenge-progress-fill" style="width:{% widthratio c.days_done c.duration_days 100 %}%;"></div></div>
+          <div class="challenge-status">{{ c.days_done }}/{{ c.duration_days }} jours</div>
+          <button class="btn-sm {% if c.checked_in_today %}btn-outline-sm{% else %}btn-primary-sm{% endif %}" style="margin-top:8px;width:100%;" {% if c.checked_in_today %}disabled{% endif %} onclick="checkinChallenge('{{ c.id }}', this)">
+            {% if c.checked_in_today %}✓ Fait aujourd'hui{% else %}Check-in du jour{% endif %}
+          </button>
+        {% else %}
+          <button class="btn-sm btn-primary-sm" style="width:100%;" onclick="startChallenge('{{ c.id }}', this)">Commencer</button>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Mythes de la communauté -->
+    <div class="eyebrow" style="margin-bottom:12px;">Mythes entendus par la communauté</div>
+    <div class="card" style="padding:clamp(18px,3vw,24px);margin-bottom:14px;">
+      <p style="font-size:.78rem;color:var(--txt-s);margin-bottom:10px;">Tu as déjà entendu une idée reçue sur la santé mentale ? Partage-la, on y répondra.</p>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="mythInput" class="post-comment-input" placeholder="Ex: « Les hommes ne pleurent pas »" maxlength="500" style="flex:1;">
+        <button class="post-comment-send" onclick="submitMyth()">Envoyer</button>
+      </div>
+      <p class="review-msg" id="mythMsg"></p>
+    </div>
+    <div class="grid-2" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      {% for myth in myths_submitted %}
+      <div class="card" style="padding:clamp(16px,2.5vw,22px);border-left:3px solid #e54a4a;">
+        <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:3px;color:#e54a4a;margin-bottom:8px;font-weight:600;">❌ Mythe entendu</div>
+        <div style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--p950);margin-bottom:8px;">« {{ myth.myth_text }} »</div>
+        {% if myth.response_text %}
+        <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:3px;color:var(--sage);margin:10px 0 6px;font-weight:600;">✓ Réalité</div>
+        <div style="font-size:.76rem;color:var(--txt-s);line-height:1.6;">{{ myth.response_text }}</div>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--txt-s);">
+        <p style="font-size:.85rem;">Aucun mythe partagé pour l'instant — sois le premier·ère !</p>
+      </div>
+      {% endfor %}
+    </div>
   </div>
 
 </main>
@@ -1352,6 +1491,23 @@ SANA — Mon Espace
       <button onclick="closeReportPost()" style="flex:1;padding:12px;border:1.5px solid rgba(194,110,138,.25);border-radius:100px;background:var(--white);font-family:'Jost',sans-serif;font-size:.82rem;color:var(--txt-s);cursor:pointer;">Annuler</button>
       <button onclick="submitReportPost()" style="flex:1;padding:12px;background:#c0392b;border:none;border-radius:100px;font-family:'Jost',sans-serif;font-size:.82rem;color:white;font-weight:600;cursor:pointer;">Signaler</button>
     </div>
+  </div>
+</div>
+
+{{ screening_tools|json_script:"screeningToolsData" }}
+{{ quiz_questions|json_script:"quizQuestionsData" }}
+
+<!-- SCREENING MODAL -->
+<div id="screeningModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border-radius:28px;padding:clamp(24px,4vw,32px);max-width:480px;width:100%;max-height:90vh;overflow-y:auto;animation:secIn .3s ease;">
+    <div id="screeningBody"></div>
+  </div>
+</div>
+
+<!-- QUIZ MODAL -->
+<div id="quizModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border-radius:28px;padding:clamp(24px,4vw,32px);max-width:480px;width:100%;max-height:90vh;overflow-y:auto;animation:secIn .3s ease;">
+    <div id="quizBody"></div>
   </div>
 </div>
 {% endblock %}

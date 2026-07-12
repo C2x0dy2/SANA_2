@@ -554,6 +554,239 @@ async function submitReportPost(){
   }
 }
 
+// ── SENSIBILISATION: SHARE ──
+function shareSensib(text){
+  if(navigator.share){
+    navigator.share({title:'SANA', text, url:window.location.origin}).catch(()=>{});
+  } else {
+    const url = 'https://wa.me/?text=' + encodeURIComponent(text + ' ' + window.location.origin);
+    window.open(url, '_blank');
+  }
+}
+function buildShareRow(text){
+  return '<div class="share-row">' +
+    '<button class="share-btn" onclick="shareSensib(' + JSON.stringify(text).replace(/"/g,'&quot;') + ')">📤 Partager</button>' +
+  '</div>';
+}
+
+// ── SENSIBILISATION: AUTO-ÉVALUATION (PHQ-9 / GAD-7) ──
+const SQ_ANSWER_CHOICES = [
+  [0,'Pas du tout'], [1,'Plusieurs jours'], [2,'Plus de la moitié des jours'], [3,'Presque tous les jours'],
+];
+let screeningData = null;
+let screeningAnswers = [];
+let screeningTool = null;
+
+function closeScreening(){
+  document.getElementById('screeningModal').style.display='none';
+  document.body.style.overflow='';
+}
+document.getElementById('screeningModal').addEventListener('click',function(e){
+  if(e.target===this) closeScreening();
+});
+
+function openScreening(tool){
+  if(!screeningData){
+    screeningData = JSON.parse(document.getElementById('screeningToolsData').textContent);
+  }
+  screeningTool = tool;
+  const def = screeningData[tool];
+  screeningAnswers = new Array(def.questions.length).fill(null);
+  renderScreeningForm(def);
+  document.getElementById('screeningModal').style.display='flex';
+  document.body.style.overflow='hidden';
+}
+
+function renderScreeningForm(def){
+  let html = '<div class="sq-title">' + escHtml(def.title) + '</div>';
+  html += '<p class="sq-intro">' + escHtml(def.intro) + '</p>';
+  def.questions.forEach((q, qi) => {
+    html += '<div class="sq-block"><div class="sq-question">' + (qi+1) + '. ' + escHtml(q) + '</div><div class="sq-options">';
+    SQ_ANSWER_CHOICES.forEach(([val, label]) => {
+      html += '<div class="sq-option" data-q="' + qi + '" data-v="' + val + '" onclick="selectScreeningAnswer(' + qi + ',' + val + ',this)">' + escHtml(label) + '</div>';
+    });
+    html += '</div></div>';
+  });
+  html += '<p id="screeningMsg" style="font-size:.76rem;color:var(--txt-s);margin-bottom:10px;min-height:1em;"></p>';
+  html += '<button class="btn-sm btn-primary-sm" style="width:100%;" onclick="submitScreening()">Voir mon résultat</button>';
+  document.getElementById('screeningBody').innerHTML = html;
+}
+
+function selectScreeningAnswer(qi, val, el){
+  screeningAnswers[qi] = val;
+  document.querySelectorAll('.sq-option[data-q="' + qi + '"]').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function submitScreening(){
+  const msg = document.getElementById('screeningMsg');
+  if(screeningAnswers.some(a => a === null)){
+    msg.textContent = 'Réponds à toutes les questions pour voir ton résultat.';
+    return;
+  }
+  msg.textContent = 'Calcul…';
+  try{
+    const res = await fetch('/api/sensibilisation/screening/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({tool: screeningTool, answers: screeningAnswers}),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.textContent = data.error || 'Une erreur est survenue.'; return; }
+    renderScreeningResult(data);
+  }catch(e){
+    console.error('❌ Screening submit failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
+
+function renderScreeningResult(data){
+  let html = '<div class="sq-title">Ton résultat</div>';
+  html += '<div class="sq-result-band"><div class="sq-result-score">' + data.score + '/' + data.max_score + '</div><div class="sq-result-label">' + escHtml(data.band) + '</div></div>';
+  if(data.flagged){
+    html += '<div class="sq-crisis-box">' +
+      '<div style="font-size:.85rem;font-weight:600;color:#c0392b;margin-bottom:6px;">Une de tes réponses nous inquiète</div>' +
+      '<p style="font-size:.78rem;color:#8a4a4a;line-height:1.6;margin-bottom:10px;">Si tu as des pensées de te faire du mal, tu n\'es pas seul·e — parle-en tout de suite.</p>' +
+      '<a href="tel:185" style="display:inline-block;padding:10px 20px;background:#c0392b;color:white;border-radius:100px;text-decoration:none;font-size:.8rem;font-weight:600;">📞 Appeler le 185</a>' +
+    '</div>';
+  }
+  html += '<p style="font-size:.74rem;color:var(--txt-s);line-height:1.6;margin-bottom:14px;">Ceci n\'est pas un diagnostic médical — seulement un outil d\'auto-évaluation. Si ce résultat te préoccupe, en parler à un professionnel est la meilleure prochaine étape.</p>';
+  html += buildShareRow('J\'ai fait le test de sensibilisation santé mentale sur SANA — et toi ?');
+  html += '<button class="btn-sm btn-outline-sm" style="width:100%;margin-top:8px;" onclick="closeScreening()">Fermer</button>';
+  document.getElementById('screeningBody').innerHTML = html;
+}
+
+// ── SENSIBILISATION: QUIZ ──
+let quizData = null;
+let quizAnswers = [];
+
+function closeQuiz(){
+  document.getElementById('quizModal').style.display='none';
+  document.body.style.overflow='';
+}
+document.getElementById('quizModal').addEventListener('click',function(e){
+  if(e.target===this) closeQuiz();
+});
+
+function openQuiz(){
+  if(!quizData){
+    quizData = JSON.parse(document.getElementById('quizQuestionsData').textContent);
+  }
+  quizAnswers = new Array(quizData.length).fill(null);
+  renderQuizForm();
+  document.getElementById('quizModal').style.display='flex';
+  document.body.style.overflow='hidden';
+}
+
+function renderQuizForm(){
+  let html = '<div class="sq-title">Teste tes connaissances</div>';
+  quizData.forEach((q, qi) => {
+    html += '<div class="sq-block"><div class="sq-question">' + (qi+1) + '. ' + escHtml(q.question) + '</div><div class="sq-options">';
+    q.choices.forEach((choice, ci) => {
+      html += '<div class="sq-option" data-q="' + qi + '" data-v="' + ci + '" onclick="selectQuizAnswer(' + qi + ',' + ci + ',this)">' + escHtml(choice) + '</div>';
+    });
+    html += '</div></div>';
+  });
+  html += '<p id="quizMsg" style="font-size:.76rem;color:var(--txt-s);margin-bottom:10px;min-height:1em;"></p>';
+  html += '<button class="btn-sm btn-primary-sm" style="width:100%;" onclick="submitQuizAnswers()">Voir mes résultats</button>';
+  document.getElementById('quizBody').innerHTML = html;
+}
+
+function selectQuizAnswer(qi, ci, el){
+  quizAnswers[qi] = ci;
+  document.querySelectorAll('.sq-option[data-q="' + qi + '"]').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function submitQuizAnswers(){
+  const msg = document.getElementById('quizMsg');
+  if(quizAnswers.some(a => a === null)){
+    msg.textContent = 'Réponds à toutes les questions pour voir ton score.';
+    return;
+  }
+  msg.textContent = 'Calcul…';
+  try{
+    const res = await fetch('/api/sensibilisation/quiz/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({answers: quizAnswers}),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.textContent = data.error || 'Une erreur est survenue.'; return; }
+    renderQuizResult(data);
+  }catch(e){
+    console.error('❌ Quiz submit failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
+
+function renderQuizResult(data){
+  let html = '<div class="sq-title">Résultat : ' + data.score + '/' + data.total + '</div>';
+  data.results.forEach((r, qi) => {
+    const cls = r.is_correct ? 'sq-right' : 'sq-wrong';
+    const prefix = r.is_correct ? '✓ ' : '✗ ';
+    html += '<div class="sq-explanation ' + cls + '">' + prefix + (qi+1) + '. ' + escHtml(r.explanation) + '</div>';
+  });
+  html += buildShareRow('J\'ai fait ' + data.score + '/' + data.total + ' au quiz santé mentale de SANA — et toi ?');
+  html += '<button class="btn-sm btn-outline-sm" style="width:100%;margin-top:8px;" onclick="closeQuiz()">Fermer</button>';
+  document.getElementById('quizBody').innerHTML = html;
+}
+
+// ── SENSIBILISATION: DÉFIS ──
+async function startChallenge(challengeId, btn){
+  btn.disabled = true;
+  try{
+    const res = await fetch('/api/sensibilisation/defis/demarrer/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({challenge_id: challengeId}),
+    });
+    if(res.ok) window.location.reload();
+    else btn.disabled = false;
+  }catch(e){
+    console.error('❌ Start challenge failed', e);
+    btn.disabled = false;
+  }
+}
+
+async function checkinChallenge(challengeId, btn){
+  btn.disabled = true;
+  try{
+    const res = await fetch('/api/sensibilisation/defis/checkin/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({challenge_id: challengeId}),
+    });
+    if(res.ok) window.location.reload();
+    else btn.disabled = false;
+  }catch(e){
+    console.error('❌ Checkin failed', e);
+    btn.disabled = false;
+  }
+}
+
+// ── SENSIBILISATION: MYTHES ──
+async function submitMyth(){
+  const input = document.getElementById('mythInput');
+  const msg = document.getElementById('mythMsg');
+  const text = input.value.trim();
+  if(text.length < 10){ msg.textContent = 'Décris un peu plus le mythe que tu as entendu 🌸'; return; }
+  msg.textContent = 'Envoi…';
+  try{
+    const res = await fetch('/api/sensibilisation/mythes/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({myth_text: text}),
+    });
+    const data = await res.json().catch(()=>({}));
+    msg.textContent = data.message || data.error || 'Une erreur est survenue.';
+    if(res.ok) input.value = '';
+  }catch(e){
+    console.error('❌ Myth submit failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
+
 // ── MOOD DATA FROM DB ──
 // MOOD_DATA is declared inline in dashboard.html (server-rendered value) before this file loads.
 const MOOD_DAYS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];

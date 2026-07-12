@@ -577,3 +577,76 @@ class NewsletterSubscriber(models.Model):
 
     def __str__(self):
         return self.email
+
+
+# ── Sensibilisation (auto-évaluations, quiz, défis, mythes) ─────────────────
+
+class ScreeningResult(models.Model):
+    TOOL_CHOICES = [
+        ('phq9', 'PHQ-9 (dépression)'),
+        ('gad7', 'GAD-7 (anxiété)'),
+    ]
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='screening_results')
+    tool       = models.CharField(max_length=10, choices=TOOL_CHOICES)
+    score      = models.PositiveSmallIntegerField()
+    band       = models.CharField(max_length=50)  # ex: "Modéré"
+    flagged    = models.BooleanField(default=False)  # item de risque suicidaire positif
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Résultat auto-évaluation'
+        verbose_name_plural = 'Résultats auto-évaluation'
+
+    def __str__(self):
+        return f'{self.user.username} — {self.tool} ({self.score})'
+
+
+class QuizAttempt(models.Model):
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_attempts')
+    score      = models.PositiveSmallIntegerField()
+    total      = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Tentative de quiz'
+        verbose_name_plural = 'Tentatives de quiz'
+
+    def __str__(self):
+        return f'{self.user.username} — {self.score}/{self.total}'
+
+
+class UserChallengeProgress(models.Model):
+    user           = models.ForeignKey(User, on_delete=models.CASCADE, related_name='challenge_progress')
+    challenge_id   = models.CharField(max_length=50)  # référence CHALLENGES (constante Python)
+    started_at     = models.DateTimeField(auto_now_add=True)
+    checkin_dates  = models.JSONField(default=list, blank=True)  # liste de dates ISO
+    completed_at   = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering            = ['-started_at']
+        verbose_name        = 'Progression de défi'
+        verbose_name_plural = 'Progressions de défis'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'challenge_id'], name='unique_challenge_per_user'),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} — {self.challenge_id} ({len(self.checkin_dates)}j)'
+
+
+class SubmittedMyth(models.Model):
+    author        = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submitted_myths')
+    myth_text     = models.TextField(max_length=500)
+    response_text = models.TextField(max_length=1000, blank=True)
+    is_approved   = models.BooleanField(default=False)
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Mythe soumis'
+        verbose_name_plural = 'Mythes soumis'
+
+    def __str__(self):
+        return f'{self.author.username}: {self.myth_text[:40]}'
