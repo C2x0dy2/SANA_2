@@ -27,7 +27,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, GameRoomPlayer, GameRoomMessage
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, GameRoomPlayer, GameRoomMessage, WerewolfRoom, WerewolfPlayer, WerewolfMessage, WerewolfVote
 from .notifications import send_notification
 from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
@@ -36,7 +36,7 @@ from .serializers import serialize_journal_page, serialize_attachment
 from .reflection_questions import REFLECTION_QUESTIONS
 from .sensibilisation_content import SCREENING_TOOLS, QUIZ_QUESTIONS, get_daily_challenge, score_band
 from .games_content import POSITIVE_THOUGHTS, NEGATIVE_THOUGHTS, get_garden_stage, THOUGHT_REFRAMES, EMOTION_CARDS
-from .multiplayer_content import EMOTION_WORDS
+from .multiplayer_content import EMOTION_WORDS, SHADOW_DISCUSSION_PROMPTS
 from google import genai
 from google.genai import types as genai_types
 from google.genai import errors as genai_errors
@@ -2389,39 +2389,41 @@ Règles absolues :
 - Termine toujours sur une note encourageante."""
 
 
-def _generate_coach_feedback(room):
-    """Best-effort AI feedback on the finished game's collaboration, generated
-    from the room's chat transcript. Never raises — a Gemini hiccup shouldn't
-    block the game from finishing."""
+def _run_coach_feedback(transcript, system_prompt):
+    """Shared Gemini call for the "coach IA" feature across multiplayer games.
+    Returns the feedback text, or '' on any failure/empty transcript — never
+    raises, since a Gemini hiccup shouldn't block a game from finishing."""
     try:
         api_key = _get_valid_gemini_key()
-        if not api_key:
-            return
-        lines = [
-            f"{_anon_name(m.author)}: {m.content}" + (' (bonne réponse)' if m.is_correct_guess else '')
-            for m in room.messages.select_related('author', 'author__profile').order_by('created_at')
-            if not m.is_system
-        ]
-        if not lines:
-            return
-        transcript = '\n'.join(lines)
+        if not api_key or not transcript:
+            return ''
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model=GEMINI_MODEL,
             contents=f"Transcription de la partie :\n{transcript}",
             config=genai_types.GenerateContentConfig(
-                system_instruction=COACH_SYSTEM_PROMPT,
+                system_instruction=system_prompt,
                 max_output_tokens=300,
                 temperature=0.8,
                 thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
             ),
         )
-        feedback = (getattr(response, 'text', None) or '').strip()
-        if feedback:
-            room.ai_feedback = feedback
-            room.save(update_fields=['ai_feedback'])
+        return (getattr(response, 'text', None) or '').strip()
     except Exception:
-        logger.exception('Coach IA: échec de la génération du feedback pour le salon %s', room.code)
+        logger.exception('Coach IA: échec de la génération du feedback')
+        return ''
+
+
+def _generate_coach_feedback(room):
+    lines = [
+        f"{_anon_name(m.author)}: {m.content}" + (' (bonne réponse)' if m.is_correct_guess else '')
+        for m in room.messages.select_related('author', 'author__profile').order_by('created_at')
+        if not m.is_system
+    ]
+    feedback = _run_coach_feedback('\n'.join(lines), COACH_SYSTEM_PROMPT)
+    if feedback:
+        room.ai_feedback = feedback
+        room.save(update_fields=['ai_feedback'])
 
 
 @csrf_exempt
@@ -2579,6 +2581,379 @@ def post_game_room_message(request, code):
             _generate_coach_feedback(room)
 
     return JsonResponse({'message': 'Envoyé', 'is_correct': is_correct})
+
+
+# ── "L'Ombre parmi les Lumières" (édition bien-être de Qui est le loup) ────────
+
+WEREWOLF_MIN_PLAYERS = 4  # with only 3, the first night kill would immediately
+# hit the 2-alive parity win condition with no day discussion/vote ever
+# happening — 4 guarantees at least one full day cycle before the game can end
+
+WEREWOLF_COACH_SYSTEM_PROMPT = """Tu es un coach bienveillant qui observe une partie du jeu thérapeutique \
+"L'Ombre parmi les Lumières" sur SANA, une plateforme de santé mentale — une version douce et non-violente \
+du jeu du loup-garou. Des "Pensées Lumineuses" discutent et votent pour démasquer la "Pensée Sombre" \
+infiltrée parmi elles, qui elle-même essaie de se fondre dans le groupe.
+
+Tu reçois la transcription du chat de la partie (uniquement des pseudonymes, jamais de vraies identités) \
+ainsi que le résultat final.
+
+Rédige un feedback court (2 à 4 phrases), en français, chaleureux et constructif, sur la façon dont le \
+groupe a discuté et pris ses décisions ensemble : écoute, esprit critique, bienveillance dans les échanges, \
+capacité à argumenter sans accuser durement. Reste factuel par rapport à ce que tu observes, félicite ce qui \
+a bien fonctionné, et suggère gentiment un axe d'amélioration si pertinent. N'invente rien qui ne soit pas \
+dans la transcription.
+
+Règles absolues :
+- Jamais de diagnostic médical ou psychologique, jamais de jugement sur la santé mentale des joueur·euses.
+- Utilise uniquement les pseudonymes fournis, jamais de nom réel.
+- Ne fais aucun commentaire négatif sur la personne qui jouait la Pensée Sombre — c'était son rôle, pas un trait de caractère.
+- Termine toujours sur une note encourageante."""
+
+
+def _generate_werewolf_coach_feedback(room):
+    lines = [
+        f"{_anon_name(m.author)}: {m.content}"
+        for m in room.messages.select_related('author', 'author__profile').order_by('created_at')
+        if not m.is_system
+    ]
+    result_label = 'Les Lumières ont gagné' if room.result == 'lumieres_win' else 'La Pensée Sombre a gagné'
+    transcript = f"Résultat : {result_label}\n" + '\n'.join(lines)
+    feedback = _run_coach_feedback(transcript, WEREWOLF_COACH_SYSTEM_PROMPT)
+    if feedback:
+        room.ai_feedback = feedback
+        room.save(update_fields=['ai_feedback'])
+
+
+def _assign_werewolf_roles(room):
+    players = list(room.players.all())
+    sombre = random.choice(players)
+    for p in players:
+        p.role = 'sombre' if p.id == sombre.id else 'lumiere'
+    WerewolfPlayer.objects.bulk_update(players, ['role'])
+
+
+def _start_werewolf_night(room):
+    room.status = 'night'
+    room.round_number += 1
+    room.night_target = None
+    room.current_prompt = ''
+    room.save(update_fields=['status', 'round_number', 'night_target', 'current_prompt'])
+    WerewolfMessage.objects.create(
+        room=room, author=room.host, is_system=True, round_number=room.round_number,
+        content=f'🌙 La nuit tombe (manche {room.round_number}). La Pensée Sombre choisit en secret…',
+    )
+
+
+def _start_werewolf_day(room):
+    room.status = 'day_discussion'
+    room.current_prompt = random.choice(SHADOW_DISCUSSION_PROMPTS)
+    room.save(update_fields=['status', 'current_prompt'])
+    WerewolfMessage.objects.create(
+        room=room, author=room.host, is_system=True, round_number=room.round_number,
+        content=f'☀️ Le jour se lève. Discussion : {room.current_prompt}',
+    )
+
+
+def _check_werewolf_win(room):
+    """If a win condition is met, marks the room finished (+ result) and
+    returns True. Otherwise returns False and leaves the room untouched."""
+    alive = list(room.players.filter(is_alive=True))
+    sombre_alive = any(p.role == 'sombre' for p in alive)
+    if not sombre_alive:
+        room.status = 'finished'
+        room.result = 'lumieres_win'
+        room.save(update_fields=['status', 'result'])
+        return True
+    if len(alive) <= 2:
+        room.status = 'finished'
+        room.result = 'sombre_win'
+        room.save(update_fields=['status', 'result'])
+        return True
+    return False
+
+
+def _resolve_werewolf_vote(room):
+    votes = WerewolfVote.objects.filter(room=room, round_number=room.round_number)
+    tally = {}
+    for v in votes:
+        tally[v.target_id] = tally.get(v.target_id, 0) + 1
+    if not tally:
+        _start_werewolf_night(room)
+        return
+    max_votes = max(tally.values())
+    top = [uid for uid, c in tally.items() if c == max_votes]
+    if len(top) > 1:
+        WerewolfMessage.objects.create(
+            room=room, author=room.host, is_system=True, round_number=room.round_number,
+            content="⚖️ Égalité des votes — personne n'est démasqué·e cette manche.",
+        )
+        _start_werewolf_night(room)
+        return
+
+    target_player = room.players.select_related('user', 'user__profile').get(user_id=top[0])
+    target_player.is_alive = False
+    target_player.save(update_fields=['is_alive'])
+    role_label = 'la Pensée Sombre 🌑' if target_player.role == 'sombre' else 'une Pensée Lumineuse 💡'
+    WerewolfMessage.objects.create(
+        room=room, author=room.host, is_system=True, round_number=room.round_number,
+        content=f'🔦 {_anon_name(target_player.user)} était {role_label}.',
+    )
+    if _check_werewolf_win(room):
+        _generate_werewolf_coach_feedback(room)
+        return
+    _start_werewolf_night(room)
+
+
+def werewolf_room_page(request, code):
+    if not request.user.is_authenticated:
+        return redirect('sanasource:login')
+    room = get_object_or_404(WerewolfRoom, code=code.upper())
+    if not WerewolfPlayer.objects.filter(room=room, user=request.user).exists():
+        return redirect('sanasource:dashboard')
+    return render(request, 'page/werewolf_room.html', {'room_code': room.code})
+
+
+@csrf_exempt
+def create_werewolf_room(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    code = _generate_room_code()
+    while WerewolfRoom.objects.filter(code=code).exists():
+        code = _generate_room_code()
+    room = WerewolfRoom.objects.create(code=code, host=request.user)
+    WerewolfPlayer.objects.create(room=room, user=request.user)
+    return JsonResponse({'code': room.code}, status=201)
+
+
+@csrf_exempt
+def join_werewolf_room(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    code = (body.get('code') or '').strip().upper()
+    room = WerewolfRoom.objects.filter(code=code).first()
+    if not room:
+        return JsonResponse({'error': 'Salon introuvable — vérifie le code.'}, status=404)
+    if room.status != 'waiting':
+        return JsonResponse({'error': 'Cette partie a déjà commencé.'}, status=400)
+    player, created = WerewolfPlayer.objects.get_or_create(room=room, user=request.user)
+    if created:
+        WerewolfMessage.objects.create(
+            room=room, author=request.user, is_system=True, round_number=0,
+            content=f'👋 {_anon_name(request.user)} a rejoint le salon.',
+        )
+    return JsonResponse({'code': room.code}, status=201 if created else 200)
+
+
+@csrf_exempt
+def start_werewolf_room(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(WerewolfRoom, code=code.upper())
+    if room.host != request.user:
+        return JsonResponse({'error': "Seul l'hôte peut démarrer la partie"}, status=403)
+    if room.status != 'waiting':
+        return JsonResponse({'error': 'La partie a déjà commencé'}, status=400)
+    if room.players.count() < WEREWOLF_MIN_PLAYERS:
+        return JsonResponse({'error': f'Il faut au moins {WEREWOLF_MIN_PLAYERS} joueurs pour commencer'}, status=400)
+
+    _assign_werewolf_roles(room)
+    _start_werewolf_night(room)
+    return JsonResponse({'message': 'Partie démarrée !'})
+
+
+def werewolf_room_state(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    room = get_object_or_404(WerewolfRoom, code=code.upper())
+    my_player = WerewolfPlayer.objects.filter(room=room, user=request.user).first()
+    if not my_player:
+        return JsonResponse({'error': 'Tu ne fais pas partie de ce salon'}, status=403)
+
+    since_id = request.GET.get('since', 0)
+    try:
+        since_id = int(since_id)
+    except (TypeError, ValueError):
+        since_id = 0
+    messages = room.messages.filter(id__gt=since_id).select_related('author', 'author__profile')
+
+    is_night_actor = room.status == 'night' and my_player.role == 'sombre' and my_player.is_alive
+
+    players_payload = []
+    for p in room.players.select_related('user', 'user__profile').order_by('joined_at'):
+        show_role = room.status == 'finished' or not p.is_alive or p.user_id == request.user.id
+        players_payload.append({
+            'id': p.id,  # room-scoped WerewolfPlayer id — used for targeting, never the real user id
+            'name': _anon_name(p.user),
+            'is_you': p.user_id == request.user.id,
+            'is_alive': p.is_alive,
+            'role': p.role if show_role else None,
+        })
+
+    my_vote = None
+    votes_cast = 0
+    if room.status == 'day_vote':
+        vote = WerewolfVote.objects.filter(room=room, round_number=room.round_number, voter=request.user).first()
+        my_vote = room.players.filter(user_id=vote.target_id).values_list('id', flat=True).first() if vote else None
+        votes_cast = WerewolfVote.objects.filter(room=room, round_number=room.round_number).count()
+
+    return JsonResponse({
+        'status': room.status,
+        'round_number': room.round_number,
+        'is_host': room.host_id == request.user.id,
+        'my_role': my_player.role or None,
+        'my_alive': my_player.is_alive,
+        'is_night_actor': is_night_actor,
+        'current_prompt': room.current_prompt if room.status in ('day_discussion', 'day_vote') else None,
+        'result': room.result or None,
+        'ai_feedback': room.ai_feedback if room.status == 'finished' else None,
+        'alive_count': room.players.filter(is_alive=True).count(),
+        'votes_cast': votes_cast,
+        'my_vote': my_vote,
+        'players': players_payload,
+        'messages': [
+            {
+                'id': m.id,
+                'author': _anon_name(m.author),
+                'content': m.content,
+                'is_system': m.is_system,
+                'is_you': m.author_id == request.user.id,
+            }
+            for m in messages
+        ],
+    })
+
+
+@csrf_exempt
+def post_werewolf_message(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(WerewolfRoom, code=code.upper())
+    player = WerewolfPlayer.objects.filter(room=room, user=request.user).first()
+    if not player:
+        return JsonResponse({'error': 'Tu ne fais pas partie de ce salon'}, status=403)
+    if room.status != 'day_discussion':
+        return JsonResponse({'error': "Ce n'est pas le moment de discuter"}, status=400)
+    if not player.is_alive:
+        return JsonResponse({'error': "Ta lumière s'est éteinte — tu ne peux plus discuter"}, status=403)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    content = (body.get('content') or '').strip()[:200]
+    if not content:
+        return JsonResponse({'error': 'Message vide'}, status=400)
+
+    WerewolfMessage.objects.create(room=room, author=request.user, content=content, round_number=room.round_number)
+    return JsonResponse({'message': 'Envoyé'})
+
+
+@csrf_exempt
+def submit_werewolf_night_action(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(WerewolfRoom, code=code.upper())
+    player = WerewolfPlayer.objects.filter(room=room, user=request.user).first()
+    if not player or player.role != 'sombre' or not player.is_alive:
+        return JsonResponse({'error': "Tu n'es pas la Pensée Sombre"}, status=403)
+    if room.status != 'night':
+        return JsonResponse({'error': "Ce n'est pas la nuit"}, status=400)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    target_player_id = body.get('target_player_id')
+    target_player = room.players.select_related('user', 'user__profile').filter(
+        id=target_player_id, is_alive=True,
+    ).exclude(user=request.user).first()
+    if not target_player:
+        return JsonResponse({'error': 'Cible invalide'}, status=400)
+
+    target_player.is_alive = False
+    target_player.save(update_fields=['is_alive'])
+    room.night_target = target_player.user
+    room.save(update_fields=['night_target'])
+    WerewolfMessage.objects.create(
+        room=room, author=room.host, is_system=True, round_number=room.round_number,
+        content=f"💤 Cette nuit, la lumière de {_anon_name(target_player.user)} s'est éteinte. (Pensée Lumineuse)",
+    )
+
+    if _check_werewolf_win(room):
+        _generate_werewolf_coach_feedback(room)
+        return JsonResponse({'message': 'Nuit résolue'})
+    _start_werewolf_day(room)
+    return JsonResponse({'message': 'Nuit résolue'})
+
+
+@csrf_exempt
+def start_werewolf_vote(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(WerewolfRoom, code=code.upper())
+    if room.host != request.user:
+        return JsonResponse({'error': "Seul l'hôte peut lancer le vote"}, status=403)
+    if room.status != 'day_discussion':
+        return JsonResponse({'error': "Ce n'est pas le moment de voter"}, status=400)
+
+    room.status = 'day_vote'
+    room.save(update_fields=['status'])
+    WerewolfMessage.objects.create(
+        room=room, author=room.host, is_system=True, round_number=room.round_number,
+        content='🗳️ Le vote commence — désignez qui vous semble être la Pensée Sombre.',
+    )
+    return JsonResponse({'message': 'Vote lancé'})
+
+
+@csrf_exempt
+def cast_werewolf_vote(request, code):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    room = get_object_or_404(WerewolfRoom, code=code.upper())
+    player = WerewolfPlayer.objects.filter(room=room, user=request.user).first()
+    if not player or not player.is_alive:
+        return JsonResponse({'error': "Tu ne peux pas voter"}, status=403)
+    if room.status != 'day_vote':
+        return JsonResponse({'error': "Ce n'est pas le moment de voter"}, status=400)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+    target_player_id = body.get('target_player_id')
+    target_player = room.players.filter(id=target_player_id, is_alive=True).exclude(user=request.user).first()
+    if not target_player:
+        return JsonResponse({'error': 'Cible invalide'}, status=400)
+
+    WerewolfVote.objects.update_or_create(
+        room=room, round_number=room.round_number, voter=request.user,
+        defaults={'target': target_player.user},
+    )
+
+    alive_count = room.players.filter(is_alive=True).count()
+    votes_cast = WerewolfVote.objects.filter(room=room, round_number=room.round_number).count()
+    if votes_cast >= alive_count:
+        _resolve_werewolf_vote(room)
+
+    return JsonResponse({'message': 'Vote enregistré'})
 
 
 def groupe(request):

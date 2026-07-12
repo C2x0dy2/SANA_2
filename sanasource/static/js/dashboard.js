@@ -2107,3 +2107,39 @@ async function pollDMUnread() {
     updateDMBadge(data.unread_total || 0);
   } catch(e) {}
 }
+
+// ── JEU MULTIJOUEUR: L'OMBRE PARMI LES LUMIÈRES ──
+// Contrairement à Devine l'émotion, ce jeu a sa propre page dédiée (animations
+// jour/nuit) plutôt qu'une modale — voir jeux/loup/<code>/.
+async function createWerewolfRoom(){
+  const msg = document.getElementById('werewolfJoinMsg');
+  try{
+    const res = await fetch('/api/jeux/loup/creer/', {method:'POST', headers:{'X-CSRFToken':getCsrf()}});
+    const data = await res.json();
+    if(!res.ok){ msg.textContent = data.error || 'Une erreur est survenue.'; return; }
+    location.href = '/jeux/loup/' + data.code + '/';
+  }catch(e){
+    console.error('❌ Create werewolf room failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
+
+async function joinWerewolfRoom(){
+  const input = document.getElementById('joinWerewolfCode');
+  const msg = document.getElementById('werewolfJoinMsg');
+  const code = input.value.trim().toUpperCase();
+  if(!code){ msg.textContent = 'Entre un code de partie.'; return; }
+  try{
+    const res = await fetch('/api/jeux/loup/rejoindre/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({code}),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.textContent = data.error || 'Une erreur est survenue.'; return; }
+    location.href = '/jeux/loup/' + data.code + '/';
+  }catch(e){
+    console.error('❌ Join werewolf room failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}

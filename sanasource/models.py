@@ -743,3 +743,99 @@ class GameRoomMessage(models.Model):
 
     def __str__(self):
         return f'[{self.room.code}] {self.author.username}: {self.content[:40]}'
+
+
+# ── "L'Ombre parmi les Lumières" (édition bien-être de Qui est le loup) ────────
+# Même pattern polling que GameRoom, mais avec un cycle nuit/jour : une seule
+# "Pensée Sombre" infiltrée parmi les "Pensées Lumineuses", élimination
+# nocturne non-violente ("une lumière s'éteint"), discussion + vote le jour.
+
+class WerewolfRoom(models.Model):
+    STATUS_CHOICES = [
+        ('waiting',        'En attente'),
+        ('night',          'Nuit'),
+        ('day_discussion', 'Discussion'),
+        ('day_vote',       'Vote'),
+        ('finished',       'Terminé'),
+    ]
+    RESULT_CHOICES = [
+        ('', ''),
+        ('lumieres_win', 'Les Lumières ont gagné'),
+        ('sombre_win',   'La Pensée Sombre a gagné'),
+    ]
+    code             = models.CharField(max_length=6, unique=True)
+    host             = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hosted_werewolf_rooms')
+    status           = models.CharField(max_length=16, choices=STATUS_CHOICES, default='waiting')
+    round_number     = models.PositiveIntegerField(default=0)
+    current_prompt   = models.CharField(max_length=200, blank=True)
+    night_target     = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    result           = models.CharField(max_length=16, choices=RESULT_CHOICES, blank=True, default='')
+    ai_feedback      = models.TextField(blank=True, default='')
+    created_at       = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Salon Ombre et Lumières'
+        verbose_name_plural = 'Salons Ombre et Lumières'
+
+    def __str__(self):
+        return f'{self.code} ({self.status})'
+
+
+class WerewolfPlayer(models.Model):
+    ROLE_CHOICES = [
+        ('lumiere', 'Pensée Lumineuse'),
+        ('sombre',  'Pensée Sombre'),
+    ]
+    room      = models.ForeignKey(WerewolfRoom, on_delete=models.CASCADE, related_name='players')
+    user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='werewolf_room_memberships')
+    role      = models.CharField(max_length=10, choices=ROLE_CHOICES, blank=True)
+    is_alive  = models.BooleanField(default=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['joined_at']
+        verbose_name        = 'Joueur Ombre et Lumières'
+        verbose_name_plural = 'Joueurs Ombre et Lumières'
+        constraints = [
+            models.UniqueConstraint(fields=['room', 'user'], name='unique_werewolf_player_per_room'),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} in {self.room.code}'
+
+
+class WerewolfMessage(models.Model):
+    room          = models.ForeignKey(WerewolfRoom, on_delete=models.CASCADE, related_name='messages')
+    author        = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+    content       = models.CharField(max_length=200)
+    round_number  = models.PositiveIntegerField(default=0)
+    is_system     = models.BooleanField(default=False)
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['created_at']
+        verbose_name        = 'Message Ombre et Lumières'
+        verbose_name_plural = 'Messages Ombre et Lumières'
+
+    def __str__(self):
+        return f'[{self.room.code}] {self.author.username}: {self.content[:40]}'
+
+
+class WerewolfVote(models.Model):
+    room          = models.ForeignKey(WerewolfRoom, on_delete=models.CASCADE, related_name='votes')
+    round_number  = models.PositiveIntegerField()
+    voter         = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+    target        = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['created_at']
+        verbose_name        = 'Vote Ombre et Lumières'
+        verbose_name_plural = 'Votes Ombre et Lumières'
+        constraints = [
+            models.UniqueConstraint(fields=['room', 'round_number', 'voter'], name='unique_vote_per_round'),
+        ]
+
+    def __str__(self):
+        return f'[{self.room.code}] r{self.round_number} {self.voter.username} -> {self.target.username}'

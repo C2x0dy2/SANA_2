@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+SANA — L'Ombre parmi les Lumières
+{% endblock %}
+
+{% block theme_vars %}
+:root{
+  --p950:#1e0d17;--p800:#3d1d2e;--p700:#5e2f47;--p400:#9a5e79;
+  --r500:#c26e8a;--r300:#dca8bc;--r100:#f2d8e4;--r50:#fce8f0;
+  --blush:#fdf3f7;--ivory:#fefaf8;--cream:#fef7f2;
+  --sage:#8dab88;--sage-p:#d4e4d0;
+  --amber:#e8a44a;--amber-p:#fdf0dc;
+  --blue:#6b9fd4;--blue-p:#deeaf7;
+  --txt:#1a0d14;--txt-m:#6b4a58;--txt-s:#9a7585;
+  --white:#fff;--glass:rgba(255,255,255,.78);
+  --nav-h:60px;--rad:20px;
+}
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/werewolf.css' %}">
+{% endblock %}
+
+{% block navbar %}
+<div class="topbar">
+  <div class="topbar-left">
+    {% url 'sanasource:dashboard' as dash_url %}
+    {% include "includes/back_button.html" with back_href=dash_url back_label="Dashboard" %}
+    <span class="topbar-title">🌑 L'Ombre parmi les Lumières</span>
+  </div>
+  <div class="topbar-right">
+    <span class="ww-code-pill" id="topbarCode">{{ room_code }}</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="ww-stage" id="wwStage" data-room-code="{{ room_code }}">
+  <div class="ww-loading" id="wwLoading">
+    <div class="sana-spinner"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{% static 'js/werewolf.js' %}"></script>
+{% endblock %}
