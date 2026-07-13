@@ -1000,13 +1000,7 @@ def dashboard(request):
     # calculée à la première visite du dashboard après la fin de la période).
     _ensure_blog_weekly_winner()
     _ensure_blog_yearly_winner()
-    blog_posts = BlogPost.objects.filter(is_reported=False).select_related(
-        'author', 'author__profile'
-    ).annotate(
-        like_count_annotated=Count('likes', distinct=True),
-        comment_count_annotated=Count('comments', distinct=True),
-    )[:20]
-    saved_blog_posts = BlogPost.objects.filter(saves=request.user, is_reported=False).select_related(
+    blog_posts = BlogPost.objects.filter(is_reported=False, is_archived=False).select_related(
         'author', 'author__profile'
     ).annotate(
         like_count_annotated=Count('likes', distinct=True),
@@ -1035,7 +1029,6 @@ def dashboard(request):
         'tag_counts':          tag_counts,
         'reviews_feed':        reviews_feed,
         'blog_posts':              blog_posts,
-        'saved_blog_posts':        saved_blog_posts,
         'user_liked_blog_ids':     user_liked_blog_ids,
         'user_saved_blog_ids':     user_saved_blog_ids,
         'blog_weekly_winner':      blog_weekly_winner,
@@ -2095,19 +2088,28 @@ def blog_post_api(request):
         return JsonResponse({'error': 'Non authentifié'}, status=401)
     if request.method != 'POST':
         return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
-    try:
-        body = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'JSON invalide'}, status=400)
-    title = (body.get('title') or '').strip()[:150]
-    content = (body.get('content') or '').strip()
-    category = body.get('category', 'astuce')
+
+    # multipart/form-data (pas JSON) car l'image, optionnelle, voyage dans
+    # request.FILES — même convention que les pièces jointes du journal.
+    title = (request.POST.get('title') or '').strip()[:150]
+    content = (request.POST.get('content') or '').strip()
+    category = request.POST.get('category', 'astuce')
     if category not in dict(BlogPost.CATEGORY_CHOICES):
         category = 'astuce'
     if not title or not content:
         return JsonResponse({'error': 'Titre et contenu obligatoires'}, status=400)
 
+    image = request.FILES.get('image')
+    if image:
+        if image.size > MAX_ATTACHMENT_SIZE:
+            return JsonResponse({'error': 'Image trop volumineuse (8 Mo max)'}, status=400)
+        if not (image.content_type or '').startswith('image/'):
+            return JsonResponse({'error': 'Le fichier doit être une image'}, status=400)
+
     post = BlogPost.objects.create(author=request.user, title=title, content=content, category=category)
+    if image:
+        post.image = image
+        post.save(update_fields=['image'])
     prof = getattr(request.user, 'profile', None)
     anon = prof.username_anonyme if prof else 'Anonyme·e'
     return JsonResponse({
@@ -2116,6 +2118,7 @@ def blog_post_api(request):
         'content':         post.content,
         'category':        post.category,
         'category_label':  post.get_category_display(),
+        'image_url':       post.image.url if post.image else None,
         'anon':            anon,
         'initial':         anon[0].upper() if anon else 'A',
         'like_count':      0,
@@ -2259,6 +2262,37 @@ def delete_blog_post(request, post_id):
         return JsonResponse({'error': 'Tu ne peux supprimer que tes propres articles'}, status=403)
     post.delete()
     return JsonResponse({'message': 'Article supprimé'})
+
+
+@csrf_exempt
+def toggle_blog_archive(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    post = get_object_or_404(BlogPost, id=post_id)
+    if post.author != request.user:
+        return JsonResponse({'error': 'Tu ne peux archiver que tes propres articles'}, status=403)
+    post.is_archived = not post.is_archived
+    post.save(update_fields=['is_archived'])
+    return JsonResponse({'is_archived': post.is_archived})
+
+
+def my_archived_blog_posts_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    posts = BlogPost.objects.filter(author=request.user, is_archived=True)
+    return JsonResponse({
+        'posts': [
+            {
+                'id':             p.id,
+                'title':          p.title,
+                'category_label': p.get_category_display(),
+                'created_at':     p.created_at.isoformat(),
+            }
+            for p in posts
+        ],
+    })
 
 
 # ============================================================

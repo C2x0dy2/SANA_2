@@ -15,6 +15,7 @@ user_saved_blog_ids from the parent context.
     </div>
   </div>
   <div class="blogpost-title">{{ post.title }}</div>
+  {% if post.image %}<img class="blogpost-image" src="{{ post.image.url }}" alt="">{% endif %}
   <div class="post-text">{{ post.content|linebreaksbr }}</div>
   <div class="post-actions">
     <button class="post-btn {% if post.id in user_liked_blog_ids %}liked{% endif %}"
@@ -29,6 +30,7 @@ user_saved_blog_ids from the parent context.
             🔖 {% if post.id in user_saved_blog_ids %}Enregistré{% else %}Enregistrer{% endif %}
     </button>
     {% if post.author == user %}
+    <button class="post-btn" onclick="blogToggleArchive({{ post.id }})" title="Archiver cet article">📦 Archiver</button>
     <button class="post-btn post-btn-report" onclick="deleteBlogPost({{ post.id }})" title="Supprimer cet article">🗑️</button>
     {% else %}
     <button class="post-btn post-btn-report" onclick="openReportBlogPost({{ post.id }})" title="Signaler cet article">🚩</button>

@@ -254,8 +254,8 @@ class ImpostorRoomAdmin(admin.ModelAdmin):
 
 @admin.register(BlogPost)
 class BlogPostAdmin(admin.ModelAdmin):
-    list_display  = ['title', 'author', 'category', 'is_reported', 'like_count', 'created_at']
-    list_filter   = ['category', 'is_reported']
+    list_display  = ['title', 'author', 'category', 'is_reported', 'is_archived', 'like_count', 'created_at']
+    list_filter   = ['category', 'is_reported', 'is_archived']
     search_fields = ['title', 'content', 'author__username']
     actions       = ['clear_report', 'delete_reported']
 

@@ -100,14 +100,6 @@ function toggleLike(btn){
   sp.textContent=btn.classList.contains('liked')?parseInt(sp.textContent)+1:parseInt(sp.textContent)-1;
 }
 
-// ── TABS ──
-function switchTab(tab, contentId){
-  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.rtab-content').forEach(c=>c.classList.remove('active'));
-  tab.classList.add('active');
-  document.getElementById(contentId).classList.add('active');
-}
-
 // ── CHATBOT DASHBOARD (multi-conversation) ──
 const CHAT_URL='/api/chat/';
 const CONVERSATIONS_URL='/api/conversations/';
@@ -1566,13 +1558,6 @@ function dashPublishPost() {
 }
 
 // ── BLOG AJAX (DASHBOARD) ──
-function switchBlogSubtab(which){
-  document.getElementById('blogSubtabAll').classList.toggle('active', which === 'all');
-  document.getElementById('blogSubtabSaved').classList.toggle('active', which === 'saved');
-  document.getElementById('blogFeedAll').style.display = which === 'all' ? 'flex' : 'none';
-  document.getElementById('blogFeedSaved').style.display = which === 'saved' ? 'flex' : 'none';
-}
-
 function blogToggleLike(postId, btn){
   fetch('/api/blog/' + postId + '/like/', {
     method: 'POST',
@@ -1682,26 +1667,42 @@ function deleteBlogPost(postId){
   });
 }
 
+function handleBlogImageChange(input){
+  const label = document.getElementById('blogImageFileName');
+  if (!label) return;
+  label.textContent = (input.files && input.files[0]) ? input.files[0].name : 'Ajouter une image (optionnel)';
+}
+
 function publishBlogPost(){
   const titleEl = document.getElementById('blogWriteTitle');
   const contentEl = document.getElementById('blogWriteContent');
   const categoryEl = document.getElementById('blogWriteCategory');
+  const imageEl = document.getElementById('blogWriteImage');
   const title = (titleEl.value || '').trim();
   const content = (contentEl.value || '').trim();
   const category = categoryEl.value || 'astuce';
   if (!title) { titleEl.focus(); return; }
   if (!content) { contentEl.focus(); return; }
+
+  const formData = new FormData();
+  formData.append('title', title);
+  formData.append('content', content);
+  formData.append('category', category);
+  if (imageEl.files && imageEl.files[0]) formData.append('image', imageEl.files[0]);
+
   fetch('/api/blog/', {
     method: 'POST',
     credentials: 'same-origin',
-    headers: {'Content-Type':'application/json','X-CSRFToken':getCsrf()},
-    body: JSON.stringify({title, content, category}),
+    headers: {'X-CSRFToken':getCsrf()},
+    body: formData,
   })
   .then(r => r.json())
   .then(data => {
     if (data.error) { alert(data.error); return; }
     titleEl.value = '';
     contentEl.value = '';
+    imageEl.value = '';
+    handleBlogImageChange(imageEl);
     const feed = document.getElementById('blogFeedAll');
     const empty = feed.querySelector('p');
     if (empty && empty.closest('div').textContent.includes('Aucun article')) empty.closest('div').remove();
@@ -1717,11 +1718,13 @@ function publishBlogPost(){
         '</div>' +
       '</div>' +
       '<div class="blogpost-title">' + escHtml(data.title) + '</div>' +
+      (data.image_url ? '<img class="blogpost-image" src="' + escHtml(data.image_url) + '" alt="">' : '') +
       '<div class="post-text">' + escHtml(data.content) + '</div>' +
       '<div class="post-actions">' +
         '<button class="post-btn" id="blog-like-btn-' + data.id + '" onclick="blogToggleLike(' + data.id + ', this)">❤️ <span id="blog-like-count-' + data.id + '">0</span></button>' +
         '<button class="post-btn" onclick="toggleBlogComments(' + data.id + ')">💬 <span id="blog-comment-count-' + data.id + '">0</span></button>' +
         '<button class="post-btn" id="blog-save-btn-' + data.id + '" onclick="blogToggleSave(' + data.id + ', this)">🔖 Enregistrer</button>' +
+        '<button class="post-btn" onclick="blogToggleArchive(' + data.id + ')" title="Archiver cet article">📦 Archiver</button>' +
         '<button class="post-btn post-btn-report" onclick="deleteBlogPost(' + data.id + ')" title="Supprimer cet article">🗑️</button>' +
       '</div>' +
       '<div class="post-comments" id="blog-comments-' + data.id + '" style="display:none;">' +
@@ -1732,6 +1735,74 @@ function publishBlogPost(){
         '</div>' +
       '</div>';
     feed.prepend(card);
+  });
+}
+
+function blogToggleArchive(postId){
+  fetch('/api/blog/' + postId + '/archiver/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'X-CSRFToken': getCsrf()},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    if (data.is_archived){
+      const card = document.getElementById('blog-post-' + postId);
+      if (card) card.remove();
+    }
+  });
+}
+
+function openMyArchives(){
+  document.getElementById('myArchivesModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  loadMyArchives();
+}
+function closeMyArchives(){
+  document.getElementById('myArchivesModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.getElementById('myArchivesModal').addEventListener('click', function(e){
+  if (e.target === this) closeMyArchives();
+});
+
+function loadMyArchives(){
+  const list = document.getElementById('myArchivesList');
+  fetch('/api/blog/mes-archives/', {credentials: 'same-origin'})
+    .then(r => r.json())
+    .then(data => renderMyArchives(data.posts || []))
+    .catch(() => { list.innerHTML = '<p style="text-align:center;padding:20px;color:var(--txt-s);font-size:.82rem;">Impossible de charger tes archives.</p>'; });
+}
+
+function renderMyArchives(posts){
+  const list = document.getElementById('myArchivesList');
+  if (!posts.length){
+    list.innerHTML = '<p style="text-align:center;padding:20px;color:var(--txt-s);font-size:.82rem;">Aucun article archivé pour l\'instant.</p>';
+    return;
+  }
+  list.innerHTML = posts.map(p =>
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--blush);border-radius:14px;padding:12px 16px;margin-bottom:8px;">' +
+      '<div>' +
+        '<div style="font-family:\'Playfair Display\',serif;font-size:.9rem;color:var(--p950);margin-bottom:2px;">' + escHtml(p.title) + '</div>' +
+        '<div style="font-size:.68rem;color:var(--txt-s);">' + escHtml(p.category_label) + '</div>' +
+      '</div>' +
+      '<button class="btn-sm btn-outline-sm" onclick="unarchiveBlogPost(' + p.id + ')">Désarchiver</button>' +
+    '</div>'
+  ).join('');
+}
+
+function unarchiveBlogPost(postId){
+  fetch('/api/blog/' + postId + '/archiver/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'X-CSRFToken': getCsrf()},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    loadMyArchives();
+    if (!data.is_archived) location.reload();
   });
 }
 

@@ -943,9 +943,11 @@ class BlogPost(models.Model):
     title       = models.CharField(max_length=150)
     content     = models.TextField()
     category    = models.CharField(max_length=12, choices=CATEGORY_CHOICES, default='astuce')
+    image       = models.FileField(upload_to='blog_images/', null=True, blank=True)
     likes       = models.ManyToManyField(User, related_name='liked_blog_posts', blank=True)
     saves       = models.ManyToManyField(User, related_name='saved_blog_posts', blank=True)
     is_reported = models.BooleanField(default=False)
+    is_archived = models.BooleanField(default=False)  # masqué du fil public par son auteur·rice, réversible
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
 

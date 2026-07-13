@@ -726,146 +726,70 @@ SANA — Mon Espace
   <!-- ══ BLOG & RESSOURCES ══ -->
   <div id="sec-ressources" class="section">
     <div class="sec-title">Blog & <em>Ressources</em></div>
-    <div class="sec-sub">Articles, conférences, jeux thérapeutiques et témoignages</div>
+    <div class="sec-sub">Astuces contre l'anxiété, chroniques, histoires vécues — l'espace d'écriture de la communauté</div>
 
-    <div class="resources-tabs">
-      <div class="rtab active" onclick="switchTab(this,'tab-blog')">📖 Blog</div>
-      <div class="rtab" onclick="switchTab(this,'tab-conf')">🎙️ Conférences</div>
-      <div class="rtab" onclick="switchTab(this,'tab-jeux')">🎮 Jeux thérapeutiques</div>
-    </div>
-
-    <!-- Blog -->
-    <div id="tab-blog" class="rtab-content active">
-      {% if blog_weekly_winner or blog_yearly_winner %}
-      <div class="blog-winners-row">
-        {% if blog_weekly_winner %}
-        <div class="blog-winner-banner">
-          <div class="blog-winner-label">🏆 Blog de la semaine</div>
-          <div class="blog-winner-title">{{ blog_weekly_winner.post.title }}</div>
-          <div class="blog-winner-author">par {{ blog_weekly_winner.author.profile.username_anonyme|default:"Anonyme·e" }} · {{ blog_weekly_winner.likes_snapshot }} ❤️</div>
-        </div>
-        {% endif %}
-        {% if blog_yearly_winner %}
-        <div class="blog-winner-banner blog-winner-yearly">
-          <div class="blog-winner-label">👑 Blog de l'année {{ blog_yearly_winner.year }}</div>
-          <div class="blog-winner-title">{{ blog_yearly_winner.post.title }}</div>
-          <div class="blog-winner-author">par {{ blog_yearly_winner.author.profile.username_anonyme|default:"Anonyme·e" }} · {{ blog_yearly_winner.likes_snapshot }} ❤️</div>
-        </div>
-        {% endif %}
+    {% if blog_weekly_winner or blog_yearly_winner %}
+    <div class="blog-winners-row">
+      {% if blog_weekly_winner %}
+      <div class="blog-winner-banner">
+        <div class="blog-winner-label">🏆 Blog de la semaine</div>
+        <div class="blog-winner-title">{{ blog_weekly_winner.post.title }}</div>
+        <div class="blog-winner-author">par {{ blog_weekly_winner.author.profile.username_anonyme|default:"Anonyme·e" }} · {{ blog_weekly_winner.likes_snapshot }} ❤️</div>
       </div>
       {% endif %}
+      {% if blog_yearly_winner %}
+      <div class="blog-winner-banner blog-winner-yearly">
+        <div class="blog-winner-label">👑 Blog de l'année {{ blog_yearly_winner.year }}</div>
+        <div class="blog-winner-title">{{ blog_yearly_winner.post.title }}</div>
+        <div class="blog-winner-author">par {{ blog_yearly_winner.author.profile.username_anonyme|default:"Anonyme·e" }} · {{ blog_yearly_winner.likes_snapshot }} ❤️</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
 
-      <div class="comm-layout">
-        <div>
-          <div class="resources-tabs" style="margin-bottom:14px;">
-            <div class="rtab active" id="blogSubtabAll" onclick="switchBlogSubtab('all')">📚 Tous les articles</div>
-            <div class="rtab" id="blogSubtabSaved" onclick="switchBlogSubtab('saved')">🔖 Mes favoris</div>
-          </div>
+    <div class="comm-layout">
+      <div class="post-feed" id="blogFeedAll">
+        {% for post in blog_posts %}
+          {% include "includes/blog_post_card.html" %}
+        {% empty %}
+        <div style="text-align:center;padding:40px;color:var(--txt-s);">
+          <div style="font-size:2rem;margin-bottom:10px;">📖</div>
+          <p style="font-size:.85rem;">Aucun article pour l'instant.<br>Sois le premier à partager une astuce ou une histoire !</p>
+        </div>
+        {% endfor %}
+      </div>
 
-          <div class="post-feed" id="blogFeedAll">
-            {% for post in blog_posts %}
-              {% include "includes/blog_post_card.html" %}
-            {% empty %}
-            <div style="text-align:center;padding:40px;color:var(--txt-s);">
-              <div style="font-size:2rem;margin-bottom:10px;">📖</div>
-              <p style="font-size:.85rem;">Aucun article pour l'instant.<br>Sois le premier à partager une astuce ou une histoire !</p>
-            </div>
-            {% endfor %}
-          </div>
-
-          <div class="post-feed" id="blogFeedSaved" style="display:none;">
-            {% for post in saved_blog_posts %}
-              {% include "includes/blog_post_card.html" %}
-            {% empty %}
-            <div style="text-align:center;padding:40px;color:var(--txt-s);">
-              <div style="font-size:2rem;margin-bottom:10px;">🔖</div>
-              <p style="font-size:.85rem;">Aucun article enregistré pour l'instant.</p>
-            </div>
-            {% endfor %}
+      <div class="comm-sidebar">
+        <div class="write-card">
+          <div class="eyebrow">Écrire un article</div>
+          <p class="privacy-hint">🔒 Ne partage pas ton nom, ton numéro ou ton adresse ici — reste anonyme, pour ta sécurité.</p>
+          <input type="text" class="write-input" id="blogWriteTitle" maxlength="150" placeholder="Titre de ton article…" style="margin-bottom:8px;">
+          <select id="blogWriteCategory" style="width:100%;padding:7px 10px;border:1.5px solid rgba(194,110,138,.18);border-radius:10px;font-family:'Jost',sans-serif;font-size:.78rem;background:var(--blush);color:var(--txt-m);outline:none;cursor:pointer;margin-bottom:8px;">
+            <option value="astuce">💡 Astuce anti-anxiété</option>
+            <option value="histoire">📖 Histoire vécue</option>
+            <option value="autre">✍️ Autre réflexion</option>
+          </select>
+          <textarea class="write-input" id="blogWriteContent" rows="6" placeholder="Partage ton astuce, ton histoire, ta réflexion…" style="margin-bottom:8px;"></textarea>
+          <label class="write-image-label" for="blogWriteImage">🖼️ <span id="blogImageFileName">Ajouter une image (optionnel)</span></label>
+          <input type="file" accept="image/*" id="blogWriteImage" style="display:none;" onchange="handleBlogImageChange(this)">
+          <div class="write-footer">
+            <span class="write-anon-tag">🔒 Totalement anonyme</span>
+            <button class="btn-post" onclick="publishBlogPost()">Publier</button>
           </div>
         </div>
 
-        <div class="comm-sidebar">
-          <div class="write-card">
-            <div class="eyebrow">Écrire un article</div>
-            <p class="privacy-hint">🔒 Ne partage pas ton nom, ton numéro ou ton adresse ici — reste anonyme, pour ta sécurité.</p>
-            <input type="text" class="write-input" id="blogWriteTitle" maxlength="150" placeholder="Titre de ton article…" style="margin-bottom:8px;">
-            <select id="blogWriteCategory" style="width:100%;padding:7px 10px;border:1.5px solid rgba(194,110,138,.18);border-radius:10px;font-family:'Jost',sans-serif;font-size:.78rem;background:var(--blush);color:var(--txt-m);outline:none;cursor:pointer;margin-bottom:8px;">
-              <option value="astuce">💡 Astuce anti-anxiété</option>
-              <option value="histoire">📖 Histoire vécue</option>
-              <option value="autre">✍️ Autre réflexion</option>
-            </select>
-            <textarea class="write-input" id="blogWriteContent" rows="6" placeholder="Partage ton astuce, ton histoire, ta réflexion…"></textarea>
-            <div class="write-footer">
-              <span class="write-anon-tag">🔒 Totalement anonyme</span>
-              <button class="btn-post" onclick="publishBlogPost()">Publier</button>
-            </div>
-          </div>
-
+        <div class="card" style="padding:clamp(16px,2.5vw,22px);">
+          <button class="btn-sm btn-outline-sm" style="width:100%;" onclick="openMyArchives()">📦 Mes articles archivés</button>
           {% if blog_weekly_wins_count > 0 or blog_yearly_wins_count > 0 %}
-          <div class="card" style="padding:clamp(16px,2.5vw,22px);">
-            <div class="eyebrow">Tes distinctions</div>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;font-size:.78rem;color:var(--txt-m);">
-              {% if blog_weekly_wins_count > 0 %}<div>🏆 Blog de la semaine × {{ blog_weekly_wins_count }}</div>{% endif %}
-              {% if blog_yearly_wins_count > 0 %}<div>👑 Blog de l'année × {{ blog_yearly_wins_count }}</div>{% endif %}
-            </div>
+          <div class="eyebrow" style="margin-top:16px;">Tes distinctions</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;font-size:.78rem;color:var(--txt-m);">
+            {% if blog_weekly_wins_count > 0 %}<div>🏆 Blog de la semaine × {{ blog_weekly_wins_count }}</div>{% endif %}
+            {% if blog_yearly_wins_count > 0 %}<div>👑 Blog de l'année × {{ blog_yearly_wins_count }}</div>{% endif %}
           </div>
           {% endif %}
         </div>
       </div>
     </div>
-
-    <!-- Conférences -->
-    <div id="tab-conf" class="rtab-content">
-      <div style="text-align:center;padding:clamp(40px,6vw,60px) 20px;">
-        <div style="font-size:3rem;margin-bottom:14px;opacity:.3;">🎙️</div>
-        <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:300;font-style:italic;color:var(--p950);margin-bottom:8px;">Conférences bientôt disponibles</div>
-        <p style="font-size:.82rem;color:var(--txt-s);line-height:1.75;max-width:380px;margin:0 auto;">Des conférences avec des professionnels de santé mentale ivoiriens seront planifiées prochainement.</p>
-      </div>
-    </div>
-
-    <!-- Jeux -->
-    <div id="tab-jeux" class="rtab-content">
-      <div class="jeux-grid">
-        <div class="jeu-card">
-          <span class="jeu-emoji">🧘</span>
-          <div class="jeu-title">Respiration guidée</div>
-          <div class="jeu-desc">Exercice de cohérence cardiaque pour calmer le système nerveux en quelques minutes.</div>
-          <span class="jeu-duration">5 min</span>
-        </div>
-        <div class="jeu-card">
-          <span class="jeu-emoji">🎨</span>
-          <div class="jeu-title">Coloriage anti-stress</div>
-          <div class="jeu-desc">Mandala interactif à colorier librement pour relâcher la tension mentale.</div>
-          <span class="jeu-duration">10–20 min</span>
-        </div>
-        <div class="jeu-card">
-          <span class="jeu-emoji">🌸</span>
-          <div class="jeu-title">Journal de gratitude</div>
-          <div class="jeu-desc">Écris 3 choses positives de ta journée pour réentraîner ton cerveau vers le positif.</div>
-          <span class="jeu-duration">5 min/jour</span>
-        </div>
-        <div class="jeu-card">
-          <span class="jeu-emoji">🧩</span>
-          <div class="jeu-title">Pleine conscience</div>
-          <div class="jeu-desc">Exercice 5-4-3-2-1 pour ancrer dans le présent lors des moments d'anxiété aiguë.</div>
-          <span class="jeu-duration">3 min</span>
-        </div>
-        <div class="jeu-card">
-          <span class="jeu-emoji">💭</span>
-          <div class="jeu-title">Restructuration cognitive</div>
-          <div class="jeu-desc">Identifie et reformule les pensées négatives automatiques avec guidance interactive.</div>
-          <span class="jeu-duration">15 min</span>
-        </div>
-        <div class="jeu-card">
-          <span class="jeu-emoji">🎵</span>
-          <div class="jeu-title">Relaxation musicale</div>
-          <div class="jeu-desc">Sélection de sons naturels et de musiques apaisantes pour un moment de détente.</div>
-          <span class="jeu-duration">Libre</span>
-        </div>
-      </div>
-    </div>
-
   </div>
 
   <!-- ══ MON PROFESSIONNEL ══ -->
@@ -1639,6 +1563,15 @@ SANA — Mon Espace
       <button onclick="closeReportPost()" style="flex:1;padding:12px;border:1.5px solid rgba(194,110,138,.25);border-radius:100px;background:var(--white);font-family:'Jost',sans-serif;font-size:.82rem;color:var(--txt-s);cursor:pointer;">Annuler</button>
       <button onclick="submitReportPost()" style="flex:1;padding:12px;background:#c0392b;border:none;border-radius:100px;font-family:'Jost',sans-serif;font-size:.82rem;color:white;font-weight:600;cursor:pointer;">Signaler</button>
     </div>
+  </div>
+</div>
+
+<!-- MES ARCHIVES (Blog) -->
+<div id="myArchivesModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border-radius:28px;padding:clamp(24px,4vw,32px);max-width:460px;width:100%;max-height:80vh;overflow-y:auto;animation:secIn .3s ease;">
+    <div style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:300;color:var(--p950);margin-bottom:14px;">📦 Mes articles <em>archivés</em></div>
+    <div id="myArchivesList"><p style="text-align:center;padding:20px;color:var(--txt-s);font-size:.82rem;">Chargement…</p></div>
+    <button onclick="closeMyArchives()" style="width:100%;margin-top:14px;padding:12px;border:1.5px solid rgba(194,110,138,.25);border-radius:100px;background:var(--white);font-family:'Jost',sans-serif;font-size:.82rem;color:var(--txt-s);cursor:pointer;">Fermer</button>
   </div>
 </div>
 
