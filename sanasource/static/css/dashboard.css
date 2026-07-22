@@ -719,7 +719,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 .post-comment-input-row{display:flex;gap:8px;}
 .post-comment-input{
   flex:1;background:var(--blush);border:1.5px solid rgba(194,110,138,.15);border-radius:100px;
-  padding:8px 14px;font-family:'Jost',sans-serif;font-size:.78rem;color:var(--txt);outline:none;
+  padding:8px 14px;font-family:'Jost',sans-serif;font-size:max(.78rem,16px);color:var(--txt);outline:none;
   transition:border-color .3s;
 }
 .post-comment-input:focus{border-color:var(--r500);}

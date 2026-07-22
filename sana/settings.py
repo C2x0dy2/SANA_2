@@ -282,11 +282,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ========================
 # CACHE (also used by django-ratelimit for login/registration throttling)
 # ========================
-# In-process cache — fine as long as this app runs a single web worker (see
-# Procfile: `gunicorn sana.wsgi:application`, no --workers flag, so 1 by
-# default). If this is ever scaled to multiple workers/dynos, rate-limit
-# counters would no longer be shared across them and should move to a
-# shared backend (e.g. django-redis) instead.
+# In-process cache — fine as long as this app runs a single OS process (see
+# Procfile: `daphne ... sana.asgi:application`, a single ASGI process whose
+# event loop dispatches sync views across a shared thread pool — no separate
+# worker processes). If this is ever scaled to multiple processes/dynos,
+# rate-limit counters would no longer be shared across them and should move
+# to a shared backend (e.g. django-redis) instead.
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -297,10 +298,10 @@ CACHES = {
 # django-ratelimit's system check (E003) only officially recognizes
 # Memcached/Redis as "shared" caches and errors on LocMemCache. LocMemCache's
 # operations are internally lock-protected and correct within a single
-# process, which matches this app's actual deployment (Procfile runs
-# `gunicorn sana.wsgi:application` with no --workers flag, i.e. 1 worker) —
-# so this is a deliberate, documented exception, not an oversight. Revisit
-# (switch to django-redis) if this app is ever scaled to multiple workers.
+# process, which matches this app's actual deployment (Procfile runs a
+# single `daphne` process) — so this is a deliberate, documented exception,
+# not an oversight. Revisit (switch to django-redis) if this app is ever
+# scaled to multiple processes.
 SILENCED_SYSTEM_CHECKS = ['django_ratelimit.E003']
 
 # ========================

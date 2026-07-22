@@ -212,7 +212,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);disp
 /* ── RICH TEXT EDITOR ── */
 .page-content-editable{
   flex:1;outline:none;overflow-y:auto;
-  font-family:'Jost',sans-serif;font-size:.92rem;line-height:32px;color:var(--ink);
+  font-family:'Jost',sans-serif;font-size:max(.92rem,16px);line-height:32px;color:var(--ink);
   cursor:text;
 }
 .page-content-editable.is-empty::before{content:attr(data-placeholder);color:var(--txt-s);opacity:.55;}
@@ -223,7 +223,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);disp
 .page-content-editable p,.page-content-editable div{margin:0;}
 .page-content-editable b,.page-content-editable strong{font-weight:700;}
 
-.page-content-display{white-space:pre-wrap;font-family:'Jost',sans-serif;font-size:.92rem;line-height:32px;color:var(--ink);}
+.page-content-display{white-space:pre-wrap;font-family:'Jost',sans-serif;font-size:max(.92rem,16px);line-height:32px;color:var(--ink);}
 
 /* ── SCRAPBOOK LAYER ── */
 .scrapbook-layer{position:absolute;inset:0;z-index:4;pointer-events:none;}

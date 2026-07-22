@@ -108,7 +108,7 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);min-
 .ww-input-row{display:flex;gap:8px;margin-bottom:14px;}
 .ww-input-row input{
   flex:1;padding:10px 16px;border-radius:100px;border:1.5px solid rgba(194,110,138,.2);
-  background:var(--white);font-family:'Jost',sans-serif;font-size:.82rem;
+  background:var(--white);font-family:'Jost',sans-serif;font-size:max(.82rem,16px);
 }
 
 /* ── VOTE PHASE ── */
