@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+SANA — Découvre les fonctionnalités
+{% endblock %}
+
+{% block fonts %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block theme_vars %}
+        :root {
+            --rose-pale:      #fff5f5;
+            --rose-clair:     #ffe9f3;
+            --rose-doux:      #ffd9e8;
+            --rose-principal: #b3708a;
+            --rose-fonce:     #9e6b7e;
+            --texte-doux:     #8f5e75;
+        }
+{% endblock %}
+
+{% block page_styles %}
+        html, body { height: 100%; }
+        body {
+            font-family: 'Jost', sans-serif;
+            background: linear-gradient(145deg, var(--rose-pale) 0%, var(--rose-clair) 50%, var(--rose-doux) 100%);
+            min-height: 100vh; min-height: 100dvh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px 16px;
+            overflow-x: hidden;
+        }
+
+        .tuto-skip {
+            position: fixed; top: 20px; right: 22px; z-index: 10;
+            font-family: 'Jost', sans-serif; font-size: 0.82rem; font-weight: 500;
+            color: var(--texte-doux); text-decoration: none; opacity: 0.75;
+            padding: 8px 16px; border-radius: 100px; transition: all 0.2s;
+        }
+        .tuto-skip:hover { opacity: 1; background: rgba(255,255,255,0.6); }
+
+        .tuto-card {
+            width: 100%; max-width: 480px; text-align: center;
+            background: rgba(255,255,255,0.55);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.78); border-radius: 32px;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.5) inset, 0 30px 70px rgba(179,112,138,0.18);
+            padding: 48px 40px 36px;
+            animation: cardIn 0.7s cubic-bezier(0.22,1,0.36,1) forwards;
+        }
+        @keyframes cardIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+        .tuto-slide { display: none; }
+        .tuto-slide.active { display: block; animation: slideIn 0.4s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: translateX(0); } }
+
+        .tuto-icon {
+            width: 84px; height: 84px; margin: 0 auto 22px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--rose-doux), var(--rose-clair));
+            display: flex; align-items: center; justify-content: center; font-size: 2.4rem;
+        }
+        .tuto-title {
+            font-family: 'Playfair Display', serif; font-size: clamp(1.5rem, 3.5vw, 1.9rem);
+            font-weight: 400; font-style: italic; color: var(--rose-fonce); margin-bottom: 12px;
+        }
+        .tuto-desc {
+            font-size: 0.9rem; color: var(--texte-doux); font-weight: 300; line-height: 1.7;
+            min-height: 4.6em;
+        }
+
+        .tuto-dots { display: flex; gap: 7px; justify-content: center; margin: 28px 0 22px; }
+        .tuto-dot {
+            width: 7px; height: 7px; border-radius: 50%; background: rgba(179,112,138,0.25);
+            transition: all 0.25s; cursor: pointer;
+        }
+        .tuto-dot.active { width: 22px; border-radius: 4px; background: var(--rose-principal); }
+
+        .tuto-next {
+            width: 100%; padding: 14px; border: none; border-radius: 100px; cursor: pointer;
+            background: var(--rose-principal); color: #fff;
+            font-family: 'Jost', sans-serif; font-size: 0.88rem; font-weight: 500; letter-spacing: 0.3px;
+            transition: background 0.25s, transform 0.15s;
+        }
+        .tuto-next:hover { background: var(--rose-fonce); }
+        .tuto-next:active { transform: scale(0.98); }
+{% endblock %}
+
+{% block content %}
+    <a href="{{ continue_url }}" class="tuto-skip">Passer →</a>
+
+    <div class="tuto-card">
+        <div class="tuto-slide active" data-slide="0">
+            <div class="tuto-icon">🌸</div>
+            <h1 class="tuto-title">Bienvenue<br>sur SANA</h1>
+            <p class="tuto-desc">Ton compte est presque prêt. Avant de continuer, voici un tour rapide de ce que tu peux faire ici.</p>
+        </div>
+        <div class="tuto-slide" data-slide="1">
+            <div class="tuto-icon">💬</div>
+            <h1 class="tuto-title">Parle à SANA</h1>
+            <p class="tuto-desc">Un chatbot bienveillant, disponible à toute heure, pour t'écouter sans jugement et t'accompagner dans ce que tu ressens.</p>
+        </div>
+        <div class="tuto-slide" data-slide="2">
+            <div class="tuto-icon">📈</div>
+            <h1 class="tuto-title">Suis ton humeur</h1>
+            <p class="tuto-desc">Enregistre ton humeur chaque jour et observe son évolution sur la semaine, en toute simplicité.</p>
+        </div>
+        <div class="tuto-slide" data-slide="3">
+            <div class="tuto-icon">👥</div>
+            <h1 class="tuto-title">Groupes & communauté</h1>
+            <p class="tuto-desc">Rejoins des groupes de soutien et échange avec d'autres, sous un pseudonyme anonyme — jamais ton vrai nom.</p>
+        </div>
+        <div class="tuto-slide" data-slide="4">
+            <div class="tuto-icon">📖</div>
+            <h1 class="tuto-title">Ton journal</h1>
+            <p class="tuto-desc">Un espace d'écriture personnel, ou "Burn After Writing" pour déposer ce que tu veux laisser derrière toi.</p>
+        </div>
+        <div class="tuto-slide" data-slide="5">
+            <div class="tuto-icon">🎮</div>
+            <h1 class="tuto-title">Jeux & sensibilisation</h1>
+            <p class="tuto-desc">Des mini-jeux, des quiz et un défi du jour pour apprendre à mieux comprendre et gérer tes émotions.</p>
+        </div>
+
+        <div class="tuto-dots" id="tutoDots"></div>
+
+        <button class="tuto-next" id="tutoNextBtn" onclick="tutoNext()">Suivant</button>
+    </div>
+
+    <script>
+        const TUTO_SLIDES = document.querySelectorAll('.tuto-slide');
+        const TUTO_TOTAL = TUTO_SLIDES.length;
+        const TUTO_CONTINUE_URL = "{{ continue_url }}";
+        let tutoIndex = 0;
+
+        const dotsRoot = document.getElementById('tutoDots');
+        for (let i = 0; i < TUTO_TOTAL; i++) {
+            const dot = document.createElement('span');
+            dot.className = 'tuto-dot' + (i === 0 ? ' active' : '');
+            dot.onclick = () => tutoGoTo(i);
+            dotsRoot.appendChild(dot);
+        }
+
+        function tutoRender() {
+            TUTO_SLIDES.forEach((el, i) => el.classList.toggle('active', i === tutoIndex));
+            dotsRoot.querySelectorAll('.tuto-dot').forEach((el, i) => el.classList.toggle('active', i === tutoIndex));
+            document.getElementById('tutoNextBtn').textContent = (tutoIndex === TUTO_TOTAL - 1) ? 'Commencer' : 'Suivant';
+        }
+
+        function tutoGoTo(i) {
+            tutoIndex = i;
+            tutoRender();
+        }
+
+        function tutoNext() {
+            if (tutoIndex < TUTO_TOTAL - 1) {
+                tutoIndex++;
+                tutoRender();
+            } else {
+                window.location.href = TUTO_CONTINUE_URL;
+            }
+        }
+    </script>
+{% endblock %}

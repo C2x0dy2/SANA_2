@@ -54,6 +54,13 @@ SANA — Vérifie ta boîte mail
             text-align: left; background: rgba(220,80,80,0.08); border: 1px solid rgba(220,80,80,0.25);
             border-radius: 12px; padding: 12px 16px; font-size: 0.84rem; color: var(--error); margin: 18px 0;
         }
+        .alert-tip {
+            display: flex; gap: 10px; align-items: flex-start; text-align: left;
+            background: rgba(179,112,138,0.08); border: 1px solid rgba(179,112,138,0.2);
+            border-radius: 12px; padding: 12px 16px; font-size: 0.82rem; color: var(--texte-doux);
+            line-height: 1.6; margin: 16px 0 8px;
+        }
+        .alert-tip svg { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; stroke: var(--rose-principal); fill: none; stroke-width: 2; }
 
         .resend-form { margin-top: 26px; padding-top: 22px; border-top: 1px solid rgba(179,112,138,0.15); }
         .resend-text { font-size: 0.8rem; color: var(--texte-doux); opacity: 0.85; margin-bottom: 12px; }
@@ -85,9 +92,10 @@ SANA — Vérifie ta boîte mail
                 Un e-mail de vérification vient d'être envoyé{% if email %} à <span class="form-email">{{ email }}</span>{% endif %}.
                 Clique sur le lien qu'il contient pour activer ton compte.
             </p>
-            <p class="form-desc" style="opacity:0.7;font-size:0.78rem;">
-                Pense à vérifier tes courriers indésirables si tu ne le vois pas rapidement.
-            </p>
+            <div class="alert-tip">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v5"/><path d="M12 16.5v.01"/></svg>
+                <span>Tu ne le vois pas dans quelques minutes ? Regarde dans le dossier <strong>Spams / Courriers indésirables</strong> de ta boîte mail — les e-mails automatiques y atterrissent parfois par erreur.</span>
+            </div>
         {% endif %}
 
         {% if error %}

@@ -8,6 +8,7 @@ import os
 import random
 import re
 import secrets
+from urllib.parse import quote
 
 from django.core.files.base import ContentFile
 
@@ -260,9 +261,19 @@ def register_view(request):
                 'send_failed': True,
             })
 
-        return render(request, 'page/verify_email_sent.html', {'email': email})
+        # New accounts see a quick feature walkthrough before being sent to
+        # wait for their verification email — "Passer" skips straight there.
+        continue_url = reverse('sanasource:verify_email_sent') + '?email=' + quote(email)
+        return render(request, 'page/onboarding_tutorial.html', {'continue_url': continue_url})
 
     return render(request, 'page/register.html')
+
+
+def verify_email_sent_view(request):
+    """Standalone, GET-able version of the "check your inbox" screen — lets
+    onboarding_tutorial.html's "Passer"/"Commencer" link straight to it."""
+    return render(request, 'page/verify_email_sent.html', {'email': request.GET.get('email', '')})
+
 
 def logout_view(request):
     if request.user.is_authenticated:
