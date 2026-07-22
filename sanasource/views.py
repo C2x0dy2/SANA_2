@@ -18,6 +18,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.db.models import Count, Max, OuterRef, Subquery, IntegerField, Q
@@ -125,6 +126,7 @@ def _get_current_daily_challenge(user, profile):
     return current, pending
 
 
+@never_cache
 @ratelimit(key='ip', rate='5/h', method='POST', block=False)
 def register_view(request):
     if request.user.is_authenticated:
@@ -361,6 +363,7 @@ def service_worker(request):
         content = f.read()
     return HttpResponse(content, content_type='application/javascript')
 
+@never_cache
 @ratelimit(key='ip', rate='10/m', method='POST', block=False)
 def login_view(request):
     if request.user.is_authenticated:
