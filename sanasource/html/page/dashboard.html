@@ -567,7 +567,7 @@ SANA — Mon Espace
 
     <div class="groups-grid" id="dashGroupsGrid">
       {% for group in groups %}
-      <div class="group-card gc-{{ forloop.counter }}">
+      <div class="group-card gc-{{ forloop.counter }}" style="cursor:pointer;" onclick="location.href='{% url 'sanasource:group_page' %}?open={{ group.id }}'">
         <span class="group-icon">{{ group.icon }}</span>
         <div class="group-name">{{ group.name }}</div>
         <div class="group-desc">{{ group.description|default:"Groupe de soutien"|truncatechars:90 }}</div>
@@ -575,7 +575,7 @@ SANA — Mon Espace
           <span class="group-members" id="dgm-count-{{ group.id }}">👥 {{ group.member_count }} membre{{ group.member_count|pluralize }}</span>
           <button class="group-join {% if group.id in user_group_ids %}joined{% endif %}"
                   id="dgm-btn-{{ group.id }}"
-                  onclick="dashToggleGroup({{ group.id }}, this)">
+                  onclick="event.stopPropagation(); dashToggleGroup({{ group.id }}, this)">
             {% if group.id in user_group_ids %}✓ Rejoint{% else %}Rejoindre{% endif %}
           </button>
         </div>

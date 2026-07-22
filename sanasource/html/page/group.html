@@ -829,6 +829,16 @@ document.getElementById('panelLeft').classList.add('open');
 if (window.innerWidth > 768) {
   document.getElementById('panelLeft').style.transform = '';
 }
+
+// Deep-link support: /groupes/?open=<id> (used by the group cards shown
+// elsewhere, e.g. the dashboard accueil) opens straight into that group's
+// chat instead of just landing on the group list.
+(function () {
+  const openId = new URLSearchParams(window.location.search).get('open');
+  if (openId && document.getElementById('gi-' + openId)) {
+    openGroup(parseInt(openId, 10));
+  }
+})();
 </script>
 {% endblock %}
 
