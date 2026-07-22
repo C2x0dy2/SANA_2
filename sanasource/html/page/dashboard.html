@@ -267,10 +267,10 @@ SANA — Mon Espace
         <div class="qc-title">Mon humeur</div>
         <div class="qc-sub">Suis ton évolution sur 7 jours.</div>
       </div>
-      <div class="quick-card qc-3" onclick="showSection('ressources',null)">
+      <div class="quick-card qc-3" onclick="showSection('meditation',null)">
         <span class="qc-icon">🧘</span>
         <div class="qc-title">Méditation</div>
-        <div class="qc-sub">Exercice guidé de 5 minutes.</div>
+        <div class="qc-sub">Vidéos, podcasts & astuces anti-stress.</div>
       </div>
       <div class="quick-card qc-4" onclick="showSection('communaute',null)">
         <span class="qc-icon">🤝</span>
@@ -304,9 +304,9 @@ SANA — Mon Espace
       <!-- Ressources -->
       <div class="ressources-card">
         <div class="eyebrow">Ressources disponibles</div>
-        <div class="ressource-item" onclick="showSection('ressources',null)" style="cursor:pointer;">
+        <div class="ressource-item" onclick="showSection('meditation',null)" style="cursor:pointer;">
           <div class="ri-icon ri-1">🧘</div>
-          <div><div class="ri-title">Exercices de respiration</div><div class="ri-sub">Activité guidée · Section ressources</div></div>
+          <div><div class="ri-title">Méditation & détente</div><div class="ri-sub">Vidéos, podcasts, astuces & simulateur</div></div>
           <span class="ri-arr">→</span>
         </div>
         <div class="ressource-item" onclick="showSection('humeur',null)" style="cursor:pointer;">
@@ -720,6 +720,72 @@ SANA — Mon Espace
 
     <div class="card" style="padding:clamp(18px,3vw,24px);text-align:center;">
       <p style="font-size:.8rem;color:var(--txt-s);line-height:1.7;">D'autres jeux arrivent bientôt : coloriage relaxant, mission bien-être, défi bienveillance, escape game…</p>
+    </div>
+  </div>
+
+  <!-- ══ MÉDITATION & DÉTENTE ══ -->
+  <div id="sec-meditation" class="section">
+    <div class="sec-title">Méditation & <em>détente</em></div>
+    <div class="sec-sub">Des ressources pour souffler, te recentrer et relâcher la pression — à ton rythme</div>
+
+    <div class="card garden-card" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      <div class="garden-emoji">🧘</div>
+      <div style="flex:1;">
+        <div class="eyebrow">S'entraîner</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--p950);margin:4px 0;">Simulateur de respiration guidée</div>
+        <p style="font-size:.78rem;color:var(--txt-s);line-height:1.6;margin-bottom:10px;">6 cycles d'inspiration/rétention/expiration, à ton rythme — une façon rapide de calmer le corps avant ou après un moment difficile.</p>
+        <button class="btn-sm btn-primary-sm" onclick="openBreatheGame()">Commencer l'exercice</button>
+      </div>
+    </div>
+
+    <div class="eyebrow" style="margin-bottom:12px;">🎬 Vidéos de relaxation</div>
+    <div class="card" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      <a href="https://www.youtube.com/results?search_query=m%C3%A9ditation+guid%C3%A9e+10+minutes" target="_blank" rel="noopener" class="ressource-item" style="text-decoration:none;">
+        <div class="ri-icon ri-1">🧘</div>
+        <div><div class="ri-title">Méditation guidée (10 min)</div><div class="ri-sub">Recherche YouTube · nouvel onglet</div></div>
+        <span class="ri-arr">↗</span>
+      </a>
+      <a href="https://www.youtube.com/results?search_query=respiration+coh%C3%A9rence+cardiaque" target="_blank" rel="noopener" class="ressource-item" style="text-decoration:none;">
+        <div class="ri-icon ri-2">🌬️</div>
+        <div><div class="ri-title">Cohérence cardiaque</div><div class="ri-sub">Recherche YouTube · nouvel onglet</div></div>
+        <span class="ri-arr">↗</span>
+      </a>
+      <a href="https://www.youtube.com/results?search_query=yoga+doux+relaxation+du+soir" target="_blank" rel="noopener" class="ressource-item" style="text-decoration:none;">
+        <div class="ri-icon ri-3">🧎</div>
+        <div><div class="ri-title">Yoga doux & étirements du soir</div><div class="ri-sub">Recherche YouTube · nouvel onglet</div></div>
+        <span class="ri-arr">↗</span>
+      </a>
+      <a href="https://www.youtube.com/results?search_query=sons+relaxants+pluie+bruit+blanc" target="_blank" rel="noopener" class="ressource-item" style="text-decoration:none;">
+        <div class="ri-icon ri-4">🌧️</div>
+        <div><div class="ri-title">Sons relaxants (pluie, bruit blanc…)</div><div class="ri-sub">Recherche YouTube · nouvel onglet</div></div>
+        <span class="ri-arr">↗</span>
+      </a>
+    </div>
+
+    <div class="eyebrow" style="margin-bottom:12px;">🎧 Podcasts bien-être</div>
+    <div class="card" style="margin-bottom:clamp(16px,2.5vw,24px);">
+      <a href="https://open.spotify.com/search/m%C3%A9ditation%20pleine%20conscience" target="_blank" rel="noopener" class="ressource-item" style="text-decoration:none;">
+        <div class="ri-icon ri-1">🎧</div>
+        <div><div class="ri-title">Pleine conscience</div><div class="ri-sub">Recherche Spotify · nouvel onglet</div></div>
+        <span class="ri-arr">↗</span>
+      </a>
+      <a href="https://open.spotify.com/search/podcast%20anti-stress%20bien-%C3%AAtre" target="_blank" rel="noopener" class="ressource-item" style="text-decoration:none;">
+        <div class="ri-icon ri-2">💆</div>
+        <div><div class="ri-title">Gestion du stress</div><div class="ri-sub">Recherche Spotify · nouvel onglet</div></div>
+        <span class="ri-arr">↗</span>
+      </a>
+    </div>
+
+    <div class="eyebrow" style="margin-bottom:12px;">💡 Astuces anti-stress</div>
+    <div class="card" style="padding:clamp(18px,3vw,24px);">
+      <ul style="display:flex;flex-direction:column;gap:12px;font-size:.82rem;color:var(--txt-m);line-height:1.6;padding-left:18px;">
+        <li>La règle du <strong>5-4-3-2-1</strong> : nomme 5 choses que tu vois, 4 que tu entends, 3 que tu peux toucher, 2 que tu sens, 1 que tu goûtes — pour revenir au moment présent.</li>
+        <li>Respire en carré : inspire 4 secondes, retiens 4 secondes, expire 4 secondes, retiens 4 secondes.</li>
+        <li>Relâche tes muscles un par un, des pieds jusqu'au visage, en contractant puis relâchant chaque groupe quelques secondes.</li>
+        <li>Marche 10 minutes dehors, même courtes, ça aide vraiment à faire retomber la tension.</li>
+        <li>Note ce qui te pèse dans ton <a href="{% url 'sanasource:journal_home' %}" style="color:var(--r500);">journal</a> plutôt que de le garder pour toi.</li>
+        <li>Limite les écrans 30 minutes avant de dormir pour un sommeil plus réparateur.</li>
+      </ul>
     </div>
   </div>
 
@@ -1234,9 +1300,9 @@ SANA — Mon Espace
           <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Enregistrer ton humeur aujourd'hui</div><div style="font-size:.68rem;color:var(--txt-s);">Maintenir le streak 🔥</div></div>
           <span style="color:var(--r500);font-size:.8rem;">→</span>
         </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blush);border-radius:12px;cursor:pointer;" onclick="showSection('ressources',null)">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blush);border-radius:12px;cursor:pointer;" onclick="showSection('meditation',null)">
           <span style="font-size:1.2rem;">🧘</span>
-          <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Faire un exercice de respiration</div><div style="font-size:.68rem;color:var(--txt-s);">5 minutes · Recommandé pour toi</div></div>
+          <div style="flex:1;"><div style="font-size:.82rem;font-weight:500;color:var(--p950);">Prendre un moment de détente</div><div style="font-size:.68rem;color:var(--txt-s);">Vidéos, podcasts & astuces · Recommandé pour toi</div></div>
           <span style="color:var(--r500);font-size:.8rem;">→</span>
         </div>
         <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blush);border-radius:12px;cursor:pointer;" onclick="location.href='{% url 'sanasource:journal_home' %}'">

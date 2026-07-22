@@ -2,6 +2,7 @@
 const sectionMap = {
   accueil:'Accueil', chat:'Chat SANA', humeur:'Mon Humeur',
   communaute:'Communauté', groupes:'Groupes', avis:'Avis', messages:'Messages Privés',
+  jeux:'Jeux thérapeutiques', meditation:'Méditation & détente',
   ressources:'Blog & Ressources', pro:'Mon Professionnel', badges:'Mes Badges',
   profil:'Mon Profil', parcours:'Mon Parcours', sensibilisation:'Sensibilisation'
 };
