@@ -77,6 +77,8 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);disp
 }
 .bubble-wrap.me .bubble-time{justify-content:flex-end;color:rgba(194,110,138,.7);}
 .check{font-size:.65rem;letter-spacing:-2px;opacity:.55;}
+.bubble-delete{background:none;border:none;cursor:pointer;font-size:.62rem;opacity:.5;padding:0;margin-left:2px;color:inherit;transition:opacity .2s;}
+.bubble-delete:hover{opacity:1;}
 .check.read{opacity:1;color:#5cb85c;}
 
 .date-sep{
@@ -186,10 +188,26 @@ function buildBubble(m) {
   wrap.dataset.id = m.id;
   const checkHtml = m.is_me
     ? '<span class="check' + (m.read ? ' read' : '') + '">✓✓</span>' : '';
+  const deleteHtml = m.is_me
+    ? '<button class="bubble-delete" onclick="deleteDmMessage(' + m.id + ')" title="Supprimer">🗑</button>' : '';
   wrap.innerHTML =
     '<div class="bubble">' + esc(m.content) + '</div>' +
-    '<div class="bubble-time">' + m.sent_at + checkHtml + '</div>';
+    '<div class="bubble-time">' + m.sent_at + checkHtml + deleteHtml + '</div>';
   return wrap;
+}
+
+function deleteDmMessage(id) {
+  if (!confirm('Supprimer ce message ?')) return;
+  fetch('/api/dm/message/' + id + '/supprimer/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': getCsrf()},
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      const wrap = document.querySelector('.bubble-wrap[data-id="' + id + '"]');
+      if (wrap) wrap.remove();
+    });
 }
 
 async function sendMsg() {

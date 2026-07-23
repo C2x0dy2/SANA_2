@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import json
 
-from .models import SanaGroup, SolidarityMessage
+from .models import SanaGroup, SolidarityMessage, CommunityPost, Review, DirectMessage
 
 
 class NeverCacheHeadersTests(TestCase):
@@ -199,3 +199,66 @@ class SolidarityWallTests(TestCase):
         self.assertTrue(msg.is_reported)
         listing = self.client.get(reverse('sanasource:solidarity_wall_api'))
         self.assertEqual(len(listing.json()['messages']), 0)
+
+
+class ContentDeletionTests(TestCase):
+    """Author-only delete for Communauté posts, Avis, and DM messages -
+    mirrors the existing blog-post deletion (author check, 403 otherwise)."""
+
+    def setUp(self):
+        self.author = User.objects.create_user(username='author@test.com', email='author@test.com', password='pass12345')
+        self.other = User.objects.create_user(username='stranger@test.com', email='stranger@test.com', password='pass12345')
+
+    def test_community_post_deletable_by_author_only(self):
+        post = CommunityPost.objects.create(author=self.author, content='Un post à moi')
+
+        self.client.force_login(self.other)
+        forbidden = self.client.post(reverse('sanasource:delete_community_post', args=[post.id]))
+        self.assertEqual(forbidden.status_code, 403)
+        self.assertTrue(CommunityPost.objects.filter(id=post.id).exists())
+
+        self.client.force_login(self.author)
+        ok = self.client.post(reverse('sanasource:delete_community_post', args=[post.id]))
+        self.assertEqual(ok.status_code, 200)
+        self.assertFalse(CommunityPost.objects.filter(id=post.id).exists())
+
+    def test_review_deletable_by_author_only(self):
+        review = Review.objects.create(author=self.author, content='Mon avis sur SANA', rating=5)
+
+        self.client.force_login(self.other)
+        forbidden = self.client.post(reverse('sanasource:delete_review', args=[review.id]))
+        self.assertEqual(forbidden.status_code, 403)
+
+        self.client.force_login(self.author)
+        ok = self.client.post(reverse('sanasource:delete_review', args=[review.id]))
+        self.assertEqual(ok.status_code, 200)
+        self.assertFalse(Review.objects.filter(id=review.id).exists())
+
+    def test_dashboard_avis_section_shows_delete_button_for_own_review_only(self):
+        Review.objects.create(author=self.author, content='Mon propre avis ici', rating=5)
+        Review.objects.create(author=self.other, content='Avis de quelqu\'un d\'autre', rating=4)
+        self.client.force_login(self.author)
+        response = self.client.get(reverse('sanasource:dashboard'))
+        self.assertContains(response, 'deleteReview(')
+
+    def test_dm_message_deletable_by_sender_only(self):
+        msg = DirectMessage.objects.create(sender=self.author, receiver=self.other, content='Salut')
+
+        self.client.force_login(self.other)
+        forbidden = self.client.post(reverse('sanasource:delete_dm_message', args=[msg.id]))
+        self.assertEqual(forbidden.status_code, 403)
+        self.assertTrue(DirectMessage.objects.filter(id=msg.id).exists())
+
+        self.client.force_login(self.author)
+        ok = self.client.post(reverse('sanasource:delete_dm_message', args=[msg.id]))
+        self.assertEqual(ok.status_code, 200)
+        self.assertFalse(DirectMessage.objects.filter(id=msg.id).exists())
+
+    def test_anonymous_cannot_delete_anything(self):
+        post = CommunityPost.objects.create(author=self.author, content='x')
+        review = Review.objects.create(author=self.author, content='y', rating=3)
+        msg = DirectMessage.objects.create(sender=self.author, receiver=self.other, content='z')
+
+        self.assertEqual(self.client.post(reverse('sanasource:delete_community_post', args=[post.id])).status_code, 401)
+        self.assertEqual(self.client.post(reverse('sanasource:delete_review', args=[review.id])).status_code, 401)
+        self.assertEqual(self.client.post(reverse('sanasource:delete_dm_message', args=[msg.id])).status_code, 401)

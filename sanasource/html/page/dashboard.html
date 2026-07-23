@@ -481,7 +481,11 @@ SANA — Mon Espace
                     onclick="dashToggleSupport({{ post.id }}, this)">
                     🤝 Soutenir <span id="support-count-{{ post.id }}">{{ post.support_count }}</span>
             </button>
+            {% if post.author == user %}
+            <button class="post-btn post-btn-report" onclick="deleteCommunityPost({{ post.id }})" title="Supprimer ce post">🗑️</button>
+            {% else %}
             <button class="post-btn post-btn-report" onclick="openReportPost({{ post.id }})" title="Signaler ce post">🚩</button>
+            {% endif %}
           </div>
           <div class="post-comments" id="comments-{{ post.id }}" style="display:none;">
             <div class="post-comments-list" id="comments-list-{{ post.id }}"></div>
@@ -615,10 +619,11 @@ SANA — Mon Espace
 
     <div class="reviews-feed" id="reviewsFeed">
       {% for review in reviews_feed %}
-      <div class="review-card">
+      <div class="review-card" id="review-{{ review.id }}">
         <div class="review-card-head">
           <div class="review-card-author">{% if review.author.profile %}{{ review.author.profile.username_anonyme }}{% else %}Anonyme·e{% endif %}</div>
           {% if review.is_approved %}<span class="review-badge">✓ Publié sur l'accueil</span>{% endif %}
+          {% if review.author == user %}<button class="post-btn post-btn-report" style="margin-left:auto;" onclick="deleteReview({{ review.id }})" title="Supprimer mon avis">🗑️</button>{% endif %}
         </div>
         <div class="review-card-stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
         <p class="review-card-text">{{ review.content }}</p>

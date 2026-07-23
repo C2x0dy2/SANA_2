@@ -2054,6 +2054,19 @@ def report_post(request, post_id):
 
 
 @csrf_exempt
+def delete_community_post(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    post = get_object_or_404(CommunityPost, id=post_id)
+    if post.author != request.user:
+        return JsonResponse({'error': 'Tu ne peux supprimer que tes propres posts'}, status=403)
+    post.delete()
+    return JsonResponse({'message': 'Post supprimé'})
+
+
+@csrf_exempt
 def post_comments_api(request, post_id):
     post = get_object_or_404(CommunityPost, id=post_id)
 
@@ -2353,6 +2366,19 @@ def submit_review(request):
 
     Review.objects.create(author=request.user, content=content[:1000], rating=rating)
     return JsonResponse({'message': 'Merci pour ton avis ! Il sera visible après validation.'}, status=201)
+
+
+@csrf_exempt
+def delete_review(request, review_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    review = get_object_or_404(Review, id=review_id)
+    if review.author != request.user:
+        return JsonResponse({'error': 'Tu ne peux supprimer que tes propres avis'}, status=403)
+    review.delete()
+    return JsonResponse({'message': 'Avis supprimé'})
 
 
 # ============================================================
@@ -3803,6 +3829,19 @@ def dm_api(request, user_id):
         })
 
     return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def delete_dm_message(request, message_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    msg = get_object_or_404(DirectMessage, id=message_id)
+    if msg.sender != request.user:
+        return JsonResponse({'error': 'Tu ne peux supprimer que tes propres messages'}, status=403)
+    msg.delete()
+    return JsonResponse({'message': 'Message supprimé'})
 
 
 def dm_page(request, user_id):

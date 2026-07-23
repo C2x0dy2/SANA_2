@@ -95,6 +95,21 @@ async function submitReview(){
   }
 }
 
+function deleteReview(reviewId){
+  if (!confirm('Supprimer définitivement cet avis ?')) return;
+  fetch('/api/avis/' + reviewId + '/supprimer/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'X-CSRFToken': getCsrf()},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    const card = document.getElementById('review-' + reviewId);
+    if (card) card.remove();
+  });
+}
+
 // ── LIKE (legacy, kept for compatibility) ──
 function toggleLike(btn){
   btn.classList.toggle('liked');
@@ -1649,7 +1664,7 @@ function dashPublishPost() {
         '<button class="post-btn" id="like-btn-' + data.id + '" onclick="dashToggleLike(' + data.id + ', this)">❤️ <span id="like-count-' + data.id + '">0</span></button>' +
         '<button class="post-btn" onclick="toggleComments(' + data.id + ')">💬 <span id="comment-count-' + data.id + '">0</span></button>' +
         '<button class="post-btn" id="support-btn-' + data.id + '" data-requests-support="' + (data.requests_support ? '1' : '0') + '" onclick="dashToggleSupport(' + data.id + ', this)">🤝 Soutenir <span id="support-count-' + data.id + '">0</span></button>' +
-        '<button class="post-btn post-btn-report" onclick="openReportPost(' + data.id + ')" title="Signaler ce post">🚩</button>' +
+        '<button class="post-btn post-btn-report" onclick="deleteCommunityPost(' + data.id + ')" title="Supprimer ce post">🗑️</button>' +
       '</div>' +
       '<div class="post-comments" id="comments-' + data.id + '" style="display:none;">' +
         '<div class="post-comments-list" id="comments-list-' + data.id + '"></div>' +
@@ -1754,6 +1769,21 @@ function submitBlogComment(postId){
     }
     const countEl = document.getElementById('blog-comment-count-' + postId);
     if (countEl) countEl.textContent = data.comment_count;
+  });
+}
+
+function deleteCommunityPost(postId){
+  if (!confirm('Supprimer définitivement ce post ?')) return;
+  fetch('/api/communaute/' + postId + '/supprimer/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'X-CSRFToken': getCsrf()},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    const card = document.getElementById('post-' + postId);
+    if (card) card.remove();
   });
 }
 
