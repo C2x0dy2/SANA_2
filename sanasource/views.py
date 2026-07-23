@@ -1147,6 +1147,19 @@ def join_leave_group(request, group_id):
 
 
 @csrf_exempt
+def delete_group(request, group_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method not in ('POST', 'DELETE'):
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    group = get_object_or_404(SanaGroup, id=group_id)
+    if group.created_by_id != request.user.id:
+        return JsonResponse({'error': 'Seul·e la personne qui a créé ce groupe peut le supprimer.'}, status=403)
+    group.delete()
+    return JsonResponse({'ok': True})
+
+
+@csrf_exempt
 def group_messages_api(request, group_id):
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Non authentifié'}, status=401)

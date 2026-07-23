@@ -109,6 +109,35 @@ class GroupDeepLinkTests(TestCase):
         self.assertContains(response, f'id="gi-{self.group.id}"')
 
 
+class GroupDeletionTests(TestCase):
+    def setUp(self):
+        self.creator = User.objects.create_user(username='creator@test.com', email='creator@test.com', password='pass12345')
+        self.other = User.objects.create_user(username='other@test.com', email='other@test.com', password='pass12345')
+        self.group = SanaGroup.objects.create(name='Groupe Test', description='desc', icon='🌸', created_by=self.creator)
+
+    def test_creator_can_delete_their_group(self):
+        self.client.force_login(self.creator)
+        response = self.client.post(reverse('sanasource:delete_group', args=[self.group.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SanaGroup.objects.filter(id=self.group.id).exists())
+
+    def test_non_creator_cannot_delete_the_group(self):
+        self.client.force_login(self.other)
+        response = self.client.post(reverse('sanasource:delete_group', args=[self.group.id]))
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(SanaGroup.objects.filter(id=self.group.id).exists())
+
+    def test_anonymous_user_cannot_delete_group(self):
+        response = self.client.post(reverse('sanasource:delete_group', args=[self.group.id]))
+        self.assertEqual(response.status_code, 401)
+        self.assertTrue(SanaGroup.objects.filter(id=self.group.id).exists())
+
+    def test_group_page_exposes_creator_id_for_delete_button(self):
+        self.client.force_login(self.creator)
+        response = self.client.get(reverse('sanasource:group_page'))
+        self.assertContains(response, f'data-creator="{self.creator.id}"')
+
+
 class SolidarityWallTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='sw1@test.com', email='sw1@test.com', password='pass12345')

@@ -44,6 +44,7 @@ urlpatterns = [
     path('groupes/', views.group_page, name='group_page'),
     path('api/groupes/creer/', views.create_group, name='create_group'),
     path('api/groupes/<int:group_id>/membres/', views.join_leave_group, name='join_leave_group'),
+    path('api/groupes/<int:group_id>/supprimer/', views.delete_group, name='delete_group'),
     path('api/groupes/<int:group_id>/messages/', views.group_messages_api, name='group_messages_api'),
     path('api/humeur/', views.save_mood, name='save_mood'),
     path('journal/', views.journal_home, name='journal_home'),
