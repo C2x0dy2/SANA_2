@@ -658,6 +658,33 @@ class SubmittedMyth(models.Model):
         return f'{self.author.username}: {self.myth_text[:40]}'
 
 
+class SolidarityMessage(models.Model):
+    """A short, anonymous word of encouragement on the Sensibilisation "mur
+    de solidarité" — deliberately tweet-length so the wall stays a wall of
+    quick support rather than another long-form post feed (that's what the
+    Blog/Communauté sections are for)."""
+    author      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='solidarity_messages')
+    content     = models.CharField(max_length=280)
+    hearts      = models.ManyToManyField(User, related_name='hearted_solidarity_messages', blank=True)
+    is_reported = models.BooleanField(default=False)  # masqué en attendant modération
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Message de solidarité'
+        verbose_name_plural = 'Messages de solidarité'
+
+    def __str__(self):
+        return f'{self.author.username}: {self.content[:40]}'
+
+    @property
+    def heart_count(self):
+        annotated = self.__dict__.get('heart_count_annotated')
+        if annotated is not None:
+            return annotated
+        return self.hearts.count()
+
+
 # ── Jeux thérapeutiques ───────────────────────────────────────────────────────
 
 class GameSession(models.Model):

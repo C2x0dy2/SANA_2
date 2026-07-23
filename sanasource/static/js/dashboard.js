@@ -26,6 +26,7 @@ function showSection(id, trigger){
   document.getElementById('topbarTitle').textContent = sectionMap[id] || '';
   if(id==='chat') initDashChat();
   if(id==='messages') loadDMConversationsSection();
+  if(id==='sensibilisation' && !solidarityWallLoaded) loadSolidarityWall();
   closeSidebar();
 }
 
@@ -801,6 +802,109 @@ async function submitMyth(){
   }catch(e){
     console.error('❌ Myth submit failed', e);
     msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
+
+// ── MUR DE SOLIDARITÉ ──
+const SOLIDARITY_CARD_VARIANTS = ['sw-1', 'sw-2', 'sw-3', 'sw-4'];
+let solidarityWallLoaded = false;
+
+function renderSolidarityCard(m, index){
+  const el = document.createElement('div');
+  el.className = 'solidarity-card ' + SOLIDARITY_CARD_VARIANTS[index % SOLIDARITY_CARD_VARIANTS.length];
+  el.id = 'sw-card-' + m.id;
+  el.innerHTML =
+    '<div class="solidarity-text">' + escHtml(m.content) + '</div>' +
+    '<div class="solidarity-meta">' +
+      '<span class="solidarity-author">' + escHtml(m.author_name) + ' · ' + escHtml(m.created_at) + '</span>' +
+      '<div class="solidarity-actions">' +
+        (m.is_mine ? '' : '<button class="solidarity-report" onclick="reportSolidarityMessage(' + m.id + ')">Signaler</button>') +
+        '<button class="solidarity-heart' + (m.is_hearted ? ' hearted' : '') + '" id="sw-heart-' + m.id + '" onclick="toggleSolidarityHeart(' + m.id + ')">' +
+          '<span id="sw-heart-icon-' + m.id + '">' + (m.is_hearted ? '❤️' : '🤍') + '</span> <span id="sw-heart-count-' + m.id + '">' + m.heart_count + '</span>' +
+        '</button>' +
+      '</div>' +
+    '</div>';
+  return el;
+}
+
+async function loadSolidarityWall(){
+  const root = document.getElementById('solidarityWall');
+  if(!root) return;
+  try{
+    const res = await fetch('/api/sensibilisation/solidarite/');
+    const data = await res.json();
+    root.innerHTML = '';
+    if(!data.messages || !data.messages.length){
+      root.innerHTML = '<p style="grid-column:1/-1;text-align:center;font-size:.8rem;color:var(--txt-s);padding:20px;">Aucun message pour l\'instant — sois le premier·ère à en laisser un 🫂</p>';
+      return;
+    }
+    data.messages.forEach((m, i) => root.appendChild(renderSolidarityCard(m, i)));
+    solidarityWallLoaded = true;
+  }catch(e){
+    console.error('❌ Solidarity wall load failed', e);
+    root.innerHTML = '<p style="grid-column:1/-1;text-align:center;font-size:.8rem;color:var(--txt-s);padding:20px;">Impossible de charger le mur pour l\'instant.</p>';
+  }
+}
+
+async function submitSolidarityMessage(){
+  const input = document.getElementById('solidarityInput');
+  const msg = document.getElementById('solidarityMsg');
+  const text = input.value.trim();
+  if(text.length < 3){ msg.textContent = 'Ton message est un peu court 🌸'; return; }
+  msg.textContent = 'Envoi…';
+  try{
+    const res = await fetch('/api/sensibilisation/solidarite/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({content: text}),
+    });
+    const data = await res.json().catch(()=>({}));
+    if(res.ok){
+      input.value = '';
+      msg.textContent = 'Merci pour ce mot 🫂';
+      const root = document.getElementById('solidarityWall');
+      if(root){
+        if(!solidarityWallLoaded){ root.innerHTML = ''; solidarityWallLoaded = true; }
+        root.prepend(renderSolidarityCard(data, 0));
+      }
+    }else{
+      msg.textContent = data.error || 'Une erreur est survenue.';
+    }
+  }catch(e){
+    console.error('❌ Solidarity submit failed', e);
+    msg.textContent = 'Une erreur est survenue, réessaie plus tard.';
+  }
+}
+
+async function toggleSolidarityHeart(id){
+  try{
+    const res = await fetch('/api/sensibilisation/solidarite/' + id + '/coeur/', {
+      method:'POST',
+      headers:{'X-CSRFToken':getCsrf()},
+    });
+    const data = await res.json();
+    const btn = document.getElementById('sw-heart-' + id);
+    const icon = document.getElementById('sw-heart-icon-' + id);
+    const count = document.getElementById('sw-heart-count-' + id);
+    if(btn) btn.classList.toggle('hearted', data.is_hearted);
+    if(icon) icon.textContent = data.is_hearted ? '❤️' : '🤍';
+    if(count) count.textContent = data.heart_count;
+  }catch(e){
+    console.error('❌ Solidarity heart toggle failed', e);
+  }
+}
+
+async function reportSolidarityMessage(id){
+  if(!confirm('Signaler ce message pour modération ?')) return;
+  try{
+    await fetch('/api/sensibilisation/solidarite/' + id + '/signaler/', {
+      method:'POST',
+      headers:{'X-CSRFToken':getCsrf()},
+    });
+    const card = document.getElementById('sw-card-' + id);
+    if(card) card.remove();
+  }catch(e){
+    console.error('❌ Solidarity report failed', e);
   }
 }
 

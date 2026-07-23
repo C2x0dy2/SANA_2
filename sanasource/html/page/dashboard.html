@@ -1345,8 +1345,22 @@ SANA — Mon Espace
       <div style="font-size:clamp(.8rem,1.6vw,.9rem);color:rgba(253,243,247,.65);max-width:500px;line-height:1.7;font-weight:300;">Pourtant, moins de 10 % consultent un professionnel. La stigmatisation tue. SANA est là pour changer ça — ensemble.</div>
     </div>
 
+    <!-- Mur de solidarité -->
+    <div class="eyebrow" style="margin-bottom:12px;">🫂 Mur de solidarité</div>
+    <div class="card" style="padding:clamp(18px,3vw,24px);margin-bottom:14px;">
+      <p style="font-size:.78rem;color:var(--txt-s);margin-bottom:10px;">Laisse un mot d'encouragement anonyme pour quelqu'un que tu ne connais pas — parfois, une phrase suffit à faire du bien.</p>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="solidarityInput" class="post-comment-input" placeholder="Écris un mot de soutien…" maxlength="280" style="flex:1;">
+        <button class="post-comment-send" onclick="submitSolidarityMessage()">Envoyer</button>
+      </div>
+      <p class="review-msg" id="solidarityMsg"></p>
+    </div>
+    <div class="solidarity-wall" id="solidarityWall">
+      <p style="grid-column:1/-1;text-align:center;font-size:.8rem;color:var(--txt-s);padding:20px;">Chargement du mur…</p>
+    </div>
+
     <!-- Mythes vs Réalités -->
-    <div class="eyebrow" style="margin-bottom:12px;">Mythes & Réalités</div>
+    <div class="eyebrow" style="margin-bottom:12px;margin-top:clamp(20px,3vw,28px);">Mythes & Réalités</div>
     <div class="grid-2" style="margin-bottom:clamp(16px,2.5vw,24px);">
       <div class="card" style="padding:clamp(18px,3vw,26px);border-left:3px solid #e54a4a;">
         <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:3px;color:#e54a4a;margin-bottom:10px;font-weight:600;">❌ Mythe</div>

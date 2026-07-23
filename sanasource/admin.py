@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, WerewolfRoom, ImpostorRoom, BlogPost, BlogComment, BlogPostReport, BlogWeeklyWinner, BlogYearlyWinner
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, SolidarityMessage, GameSession, GameRoom, WerewolfRoom, ImpostorRoom, BlogPost, BlogComment, BlogPostReport, BlogWeeklyWinner, BlogYearlyWinner
 
 
 @admin.register(UserProfile)
@@ -222,6 +222,26 @@ class SubmittedMythAdmin(admin.ModelAdmin):
     @admin.action(description='Approuver les mythes sélectionnés')
     def approve_myths(self, request, queryset):
         queryset.update(is_approved=True)
+
+
+@admin.register(SolidarityMessage)
+class SolidarityMessageAdmin(admin.ModelAdmin):
+    list_display  = ['author', 'content_preview', 'heart_count_display', 'is_reported', 'created_at']
+    list_filter   = ['is_reported']
+    search_fields = ['author__username', 'content']
+    actions       = ['clear_report_flag']
+
+    @admin.display(description='Message')
+    def content_preview(self, obj):
+        return obj.content[:60]
+
+    @admin.display(description='Cœurs')
+    def heart_count_display(self, obj):
+        return obj.hearts.count()
+
+    @admin.action(description='Lever le signalement')
+    def clear_report_flag(self, request, queryset):
+        queryset.update(is_reported=False)
 
 
 @admin.register(GameSession)

@@ -1112,6 +1112,32 @@ body{font-family:'Jost',sans-serif;background:var(--blush);color:var(--txt);over
 /* ══════════════════════════════════
    SENSIBILISATION — quiz/défis/évaluation
 ══════════════════════════════════ */
+/* ── Mur de solidarité ── */
+.solidarity-wall{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:14px;margin-bottom:clamp(20px,3vw,28px);
+}
+.solidarity-card{
+  border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 2px 10px rgba(107,47,71,.06);
+}
+.solidarity-card.sw-1{background:var(--r50);}
+.solidarity-card.sw-2{background:var(--sage-p);}
+.solidarity-card.sw-3{background:var(--amber-p);}
+.solidarity-card.sw-4{background:var(--blue-p);}
+.solidarity-text{font-size:.84rem;color:var(--p950);line-height:1.6;font-weight:400;}
+.solidarity-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.solidarity-author{font-size:.66rem;color:var(--txt-s);}
+.solidarity-actions{display:flex;align-items:center;gap:10px;}
+.solidarity-heart{
+  display:flex;align-items:center;gap:4px;background:none;border:none;cursor:pointer;
+  font-size:.74rem;color:var(--txt-s);transition:color .2s,transform .15s;padding:0;
+}
+.solidarity-heart:hover{transform:scale(1.08);}
+.solidarity-heart.hearted{color:var(--r500);}
+.solidarity-report{background:none;border:none;cursor:pointer;font-size:.62rem;color:var(--txt-s);opacity:.6;padding:0;text-decoration:underline;}
+.solidarity-report:hover{opacity:1;color:var(--r500);}
+
 .challenge-progress-bar{background:var(--blush);border-radius:100px;height:6px;overflow:hidden;margin-bottom:6px;}
 .challenge-progress-fill{background:linear-gradient(to right,var(--r500),var(--r300));height:100%;border-radius:100px;transition:width .4s ease;}
 .challenge-status{font-size:.68rem;color:var(--txt-s);}

@@ -29,7 +29,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, GameSession, GameRoom, GameRoomPlayer, GameRoomMessage, WerewolfRoom, WerewolfPlayer, WerewolfMessage, WerewolfVote, ImpostorRoom, ImpostorPlayer, ImpostorMessage, ImpostorVote, BlogPost, BlogComment, BlogPostReport, BlogWeeklyWinner, BlogYearlyWinner
+from .models import UserProfile, SanaGroup, GroupMessage, MoodEntry, CommunityPost, Comment, PostReport, Notification, PushSubscription, DirectMessage, Conversation, Message, Journal, JournalEntry, JournalPage, Attachment, Review, NewsletterSubscriber, ScreeningResult, QuizAttempt, DailyChallengeCompletion, SubmittedMyth, SolidarityMessage, GameSession, GameRoom, GameRoomPlayer, GameRoomMessage, WerewolfRoom, WerewolfPlayer, WerewolfMessage, WerewolfVote, ImpostorRoom, ImpostorPlayer, ImpostorMessage, ImpostorVote, BlogPost, BlogComment, BlogPostReport, BlogWeeklyWinner, BlogYearlyWinner
 from .notifications import send_notification
 from .emails import send_welcome_email, send_verification_email, send_newsletter_confirmation_email
 from .tokens import email_verification_token
@@ -2620,6 +2620,79 @@ def submit_myth(request):
         return JsonResponse({'error': 'Décris un peu plus le mythe que tu as entendu 🌸'}, status=400)
     SubmittedMyth.objects.create(author=request.user, myth_text=myth_text[:500])
     return JsonResponse({'message': 'Merci ! Ton mythe sera publié avec une réponse après validation.'}, status=201)
+
+
+def _serialize_solidarity_message(msg, user):
+    prof = getattr(msg.author, 'profile', None)
+    return {
+        'id':           msg.id,
+        'author_name':  prof.username_anonyme if prof else 'Anonyme·e',
+        'content':      msg.content,
+        'heart_count':  msg.heart_count,
+        'is_hearted':   msg.hearts.filter(id=user.id).exists(),
+        'is_mine':      msg.author_id == user.id,
+        'created_at':   msg.created_at.strftime('%d/%m %H:%M'),
+    }
+
+
+@csrf_exempt
+def solidarity_wall_api(request):
+    """Mur de solidarité — a live feed of short, anonymous words of
+    encouragement (Sensibilisation section). Visible immediately like
+    CommunityPost (not gated behind admin approval like SubmittedMyth),
+    since the whole point is that it feels alive; is_reported hides a
+    message pending moderation instead."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+
+    if request.method == 'GET':
+        messages = SolidarityMessage.objects.filter(is_reported=False).select_related(
+            'author', 'author__profile'
+        ).annotate(heart_count_annotated=Count('hearts', distinct=True))[:40]
+        return JsonResponse({
+            'messages': [_serialize_solidarity_message(m, request.user) for m in messages],
+        })
+
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON invalide'}, status=400)
+        content = (body.get('content') or '').strip()
+        if len(content) < 3:
+            return JsonResponse({'error': 'Ton message est un peu court 🌸'}, status=400)
+        msg = SolidarityMessage.objects.create(author=request.user, content=content[:280])
+        return JsonResponse(_serialize_solidarity_message(msg, request.user), status=201)
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def solidarity_heart_toggle(request, message_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    msg = get_object_or_404(SolidarityMessage, id=message_id, is_reported=False)
+    if msg.hearts.filter(id=request.user.id).exists():
+        msg.hearts.remove(request.user)
+        is_hearted = False
+    else:
+        msg.hearts.add(request.user)
+        is_hearted = True
+    return JsonResponse({'is_hearted': is_hearted, 'heart_count': msg.hearts.count()})
+
+
+@csrf_exempt
+def solidarity_report(request, message_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Non authentifié'}, status=401)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    msg = get_object_or_404(SolidarityMessage, id=message_id)
+    msg.is_reported = True
+    msg.save(update_fields=['is_reported'])
+    return JsonResponse({'ok': True})
 
 
 # ============================================================

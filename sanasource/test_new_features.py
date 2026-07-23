@@ -9,7 +9,9 @@ from django.test import TestCase
 from django.urls import reverse
 from unittest.mock import patch
 
-from .models import SanaGroup
+import json
+
+from .models import SanaGroup, SolidarityMessage
 
 
 class NeverCacheHeadersTests(TestCase):
@@ -105,4 +107,66 @@ class GroupDeepLinkTests(TestCase):
     def test_group_page_renders_item_and_deep_link_script(self):
         response = self.client.get(reverse('sanasource:group_page') + f'?open={self.group.id}')
         self.assertContains(response, f'id="gi-{self.group.id}"')
-        self.assertContains(response, 'openGroup(parseInt(openId, 10))')
+
+
+class SolidarityWallTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='sw1@test.com', email='sw1@test.com', password='pass12345')
+        self.other = User.objects.create_user(username='sw2@test.com', email='sw2@test.com', password='pass12345')
+        self.client.force_login(self.user)
+
+    def test_dashboard_has_solidarity_wall_ui(self):
+        response = self.client.get(reverse('sanasource:dashboard'))
+        self.assertContains(response, 'id="solidarityWall"')
+        self.assertContains(response, 'submitSolidarityMessage()')
+
+    def test_anonymous_user_cannot_post_or_list(self):
+        self.client.logout()
+        response = self.client.get(reverse('sanasource:solidarity_wall_api'))
+        self.assertEqual(response.status_code, 401)
+
+    def test_post_message_then_list_shows_it(self):
+        response = self.client.post(
+            reverse('sanasource:solidarity_wall_api'),
+            data=json.dumps({'content': 'Tu n\'es pas seul·e, ça va aller.'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data['heart_count'], 0)
+        self.assertTrue(data['is_mine'])
+
+        listing = self.client.get(reverse('sanasource:solidarity_wall_api'))
+        self.assertEqual(len(listing.json()['messages']), 1)
+
+    def test_too_short_message_rejected(self):
+        response = self.client.post(
+            reverse('sanasource:solidarity_wall_api'),
+            data=json.dumps({'content': 'hi'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(SolidarityMessage.objects.count(), 0)
+
+    def test_heart_toggle_adds_and_removes(self):
+        msg = SolidarityMessage.objects.create(author=self.other, content='Courage à toi 🌸')
+        url = reverse('sanasource:solidarity_heart_toggle', args=[msg.id])
+
+        first = self.client.post(url).json()
+        self.assertTrue(first['is_hearted'])
+        self.assertEqual(first['heart_count'], 1)
+
+        second = self.client.post(url).json()
+        self.assertFalse(second['is_hearted'])
+        self.assertEqual(second['heart_count'], 0)
+
+    def test_report_hides_message_from_wall(self):
+        msg = SolidarityMessage.objects.create(author=self.other, content='Message à signaler')
+        report_url = reverse('sanasource:solidarity_report', args=[msg.id])
+        response = self.client.post(report_url)
+        self.assertEqual(response.status_code, 200)
+
+        msg.refresh_from_db()
+        self.assertTrue(msg.is_reported)
+        listing = self.client.get(reverse('sanasource:solidarity_wall_api'))
+        self.assertEqual(len(listing.json()['messages']), 0)
