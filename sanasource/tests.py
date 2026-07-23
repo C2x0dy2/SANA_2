@@ -268,7 +268,7 @@ class RegistrationTests(TestCase):
         data = {
             'first_name': 'Alex', 'email': 'alex@test.com',
             'password1': 'Zr8!qLm2#Wp9x', 'password2': 'Zr8!qLm2#Wp9x',
-            'username_anonyme': 'alex_anon',
+            'username_anonyme': 'nebula_quiet7',
         }
         data.update(overrides)
         return self.client.post(reverse('sanasource:register'), data)
@@ -295,7 +295,7 @@ class RegistrationTests(TestCase):
         self.assertEqual(response.status_code, 200)  # "check your email" page, not a redirect
         user = User.objects.get(username='alex@test.com')
         self.assertFalse(user.is_active)
-        self.assertEqual(user.profile.username_anonyme, 'alex_anon')
+        self.assertEqual(user.profile.username_anonyme, 'nebula_quiet7')
         mock_send_verification.assert_called_once()
         self.assertEqual(mock_send_verification.call_args[0][1], user)
         # Not logged in — an inactive account isn't authenticated yet.
@@ -317,7 +317,7 @@ class RegistrationTests(TestCase):
 
     def test_duplicate_username_anonyme_rejected(self):
         other = User.objects.create_user(username='other@test.com', email='other@test.com', password='Xk9#mQ2vLp!7Rz')
-        other.profile.username_anonyme = 'alex_anon'
+        other.profile.username_anonyme = 'nebula_quiet7'
         other.profile.save()
         response = self._register()
         self.assertIn('déjà pris', response.context['error'])

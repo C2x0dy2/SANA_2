@@ -1142,8 +1142,6 @@ SANA - Tu n'es pas seul·e
             <li><a href="{% url 'sanasource:accueil' %}">Accueil</a></li>
             <li><a href="#services">Services</a></li>
             <li><a href="#manifesto">À propos</a></li>
-            <li><a href="{% url 'sanasource:help' %}">Ressources</a></li>
-            <li><a href="{% url 'sanasource:help' %}" class="nav-cta">Obtenir de l'aide</a></li>
         </ul>
 
         <div class="burger" id="burger">
@@ -1156,8 +1154,6 @@ SANA - Tu n'es pas seul·e
         <a href="{% url 'sanasource:accueil' %}" onclick="closeMobile()">Accueil</a>
         <a href="#services" onclick="closeMobile()">Services</a>
         <a href="#manifesto" onclick="closeMobile()">À propos</a>
-        <a href="{% url 'sanasource:help' %}" onclick="closeMobile()">Ressources</a>
-        <a href="{% url 'sanasource:help' %}" onclick="closeMobile()">Obtenir de l'aide</a>
     </div>
 {% endblock %}
 
@@ -1185,12 +1181,12 @@ SANA - Tu n'es pas seul·e
 
             <div class="hero-stats">
                 <div class="stat">
-                    <span class="stat-num">12k+</span>
-                    <span class="stat-label">Personnes aidées</span>
+                    <span class="stat-num">100%</span>
+                    <span class="stat-label">Anonyme</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-num">98%</span>
-                    <span class="stat-label">Se sentent comprises</span>
+                    <span class="stat-num">Gratuit</span>
+                    <span class="stat-label">Aucun coût, jamais</span>
                 </div>
                 <div class="stat">
                     <span class="stat-num">24/7</span>
@@ -1450,12 +1446,16 @@ SANA - Tu n'es pas seul·e
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const nums = document.querySelectorAll('.stat-num');
-                    const values = [12000, 98, 24];
-                    const suffixes = ['k+', '%', '/7'];
+                    const values = [100, 'Gratuit', 24];
+                    const suffixes = ['%', '', '/7'];
                     nums.forEach((el, i) => {
-                        el.textContent = '0';
-                        el.dataset.suffix = suffixes[i];
-                        animateCounter(el, values[i]);
+                        if (typeof values[i] === 'number') {
+                            el.textContent = '0';
+                            el.dataset.suffix = suffixes[i];
+                            animateCounter(el, values[i]);
+                        } else {
+                            el.textContent = values[i];
+                        }
                     });
                     statsObserver.disconnect();
                 }
